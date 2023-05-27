@@ -9,10 +9,19 @@ stdenv.mkDerivation rec {
     hash = "sha256-I34wnUawdSEMDky3ib/Qycd37d9sswNBw/49vMZYw4A=";
   };
 
+  configurePhase = lib.optionalString (stdenv.buildPlatform != stdenv.hostPlatform) ''
+    $preConfigure
+    ${if stdenv.hostPlatform.isLinux then "cp Makefile.linux Makefile"
+      else if stdenv.hostPlatform.isDarwin then "cp Makefile.macos Makefile"
+      else "cp Makefile.bsd Makefile"}
+    $postConfigure
+  '';
+
   postPatch = ''
     substituteInPlace entr.c --replace /bin/cat ${coreutils}/bin/cat
     substituteInPlace entr.1 --replace /bin/cat cat
   '';
+
   dontAddPrefix = true;
   doCheck = true;
   checkTarget = "test";
