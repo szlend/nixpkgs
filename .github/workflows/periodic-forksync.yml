@@ -1,0 +1,38 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron:  '0 */1 * * *'
+  workflow_dispatch: # on button click
+
+jobs:
+  nixos-unstable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tgymnich/fork-sync@v1.6.3
+        with:
+          owner: NixOS
+          base: fork-nixos-unstable
+          head: nixos-unstable
+          retries: 0
+          retry_after: 2
+  nixos-23_05:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tgymnich/fork-sync@v1.6.3
+        with:
+          owner: NixOS
+          base: fork-nixos-23.05
+          head: nixos-23.05
+          retries: 0
+          retry_after: 2
+  master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tgymnich/fork-sync@v1.6.3
+        with:
+          owner: NixOS
+          base: master
+          head: master
+          retries: 0
+          retry_after: 2
