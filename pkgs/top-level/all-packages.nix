@@ -2581,6 +2581,8 @@ with pkgs;
 
   retroarch-assets = callPackage ../applications/emulators/retroarch/retroarch-assets.nix { };
 
+  libretranslate = with python3.pkgs; toPythonApplication libretranslate;
+
   libretro = recurseIntoAttrs
     (callPackage ../applications/emulators/retroarch/cores.nix {
       retroarch = retroarchBare;
@@ -39522,7 +39524,7 @@ with pkgs;
 
   openzwave = callPackage ../development/libraries/openzwave { };
 
-  mongoc = callPackage ../development/libraries/mongoc { };
+  mongoc = darwin.apple_sdk_11_0.callPackage ../development/libraries/mongoc { };
 
   mongoose = callPackage ../development/libraries/science/math/mongoose { };
 
