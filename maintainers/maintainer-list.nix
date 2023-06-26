@@ -4460,6 +4460,12 @@
     githubId = 424946;
     name = "James Earl Douglas";
   };
+  earthengine = {
+    email = "earthengine@skiff.com";
+    github = "ee2500";
+    githubId = 134107129;
+    name = "EarthEngine";
+  };
   ebbertd = {
     email = "daniel@ebbert.nrw";
     github = "ebbertd";
@@ -10470,6 +10476,11 @@
     github = "M-Gregoire";
     githubId = 9469313;
     name = "Gregoire Martinache";
+  };
+  mgregson = {
+    github = "mgregson";
+    githubId = 333572;
+    name = "Michael Gregson";
   };
   mgttlinger = {
     email = "megoettlinger@gmail.com";
