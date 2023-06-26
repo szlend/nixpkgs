@@ -10764,6 +10764,8 @@ with pkgs;
 
   notary = callPackage ../tools/security/notary { };
 
+  notation = callPackage ../tools/security/notation { };
+
   notify-osd = callPackage ../applications/misc/notify-osd { };
 
   notes-up = callPackage ../applications/office/notes-up { };
@@ -16923,7 +16925,7 @@ with pkgs;
 
   tbox = callPackage ../development/libraries/tbox { };
 
-  inherit (nodePackages) typescript;
+  typescript = callPackage ../development/compilers/typescript { };
 
   bupc = callPackage ../development/compilers/bupc { };
 
@@ -17335,6 +17337,16 @@ with pkgs;
   php = php82;
   phpExtensions = php.extensions;
   phpPackages = php.packages;
+
+  # Import PHP83 interpreter, extensions and packages
+  php83 = callPackage ../development/interpreters/php/8.3.nix {
+    stdenv = if stdenv.cc.isClang then llvmPackages.stdenv else stdenv;
+    pcre2 = pcre2.override {
+      withJitSealloc = false; # See https://bugs.php.net/bug.php?id=78927 and https://bugs.php.net/bug.php?id=78630
+    };
+  };
+  php83Extensions = recurseIntoAttrs php83.extensions;
+  php83Packages = recurseIntoAttrs php83.packages;
 
   # Import PHP82 interpreter, extensions and packages
   php82 = callPackage ../development/interpreters/php/8.2.nix {
@@ -26551,6 +26563,8 @@ with pkgs;
 
   scalr-cli = callPackage ../tools/admin/scalr-cli { };
 
+  scaphandre = callPackage ../servers/scaphandre { };
+
   shairplay = callPackage ../servers/shairplay { avahi = avahi-compat; };
 
   shairport-sync = callPackage ../servers/shairport-sync { };
@@ -32012,9 +32026,7 @@ with pkgs;
 
   img2pdf = with python3Packages; toPythonApplication img2pdf;
 
-  imgbrd-grabber = qt5.callPackage ../applications/graphics/imgbrd-grabber {
-    typescript = nodePackages.typescript;
-  };
+  imgbrd-grabber = qt5.callPackage ../applications/graphics/imgbrd-grabber { };
 
   imgcat = callPackage ../applications/graphics/imgcat { };
 
