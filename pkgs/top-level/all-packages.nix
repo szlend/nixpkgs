@@ -9698,6 +9698,8 @@ with pkgs;
 
   netsniff-ng = callPackage ../tools/networking/netsniff-ng { };
 
+  networkminer = callPackage ../tools/security/networkminer { };
+
   nixpacks = callPackage ../applications/virtualization/nixpacks { };
 
   nkeys = callPackage ../tools/system/nkeys { };
@@ -12443,9 +12445,7 @@ with pkgs;
 
   seqdiag = with python3Packages; toPythonApplication seqdiag;
 
-  sequoia = callPackage ../tools/security/sequoia {
-    pythonPackages = python3Packages;
-  };
+  sequoia-sq = callPackage ../tools/security/sequoia-sq { };
 
   sequoia-chameleon-gnupg = callPackage ../tools/security/sequoia-chameleon-gnupg { };
 
@@ -13643,6 +13643,8 @@ with pkgs;
 
   usbmuxd2 = callPackage ../tools/misc/usbmuxd2 { };
 
+  usort = with python3Packages; toPythonApplication usort;
+
   ustreamer = callPackage ../applications/video/ustreamer { };
 
   usync = callPackage ../applications/misc/usync { };
@@ -14020,6 +14022,8 @@ with pkgs;
   };
 
   udunits = callPackage ../development/libraries/udunits { };
+
+  ufmt = with python3Packages; toPythonApplication ufmt;
 
   uftp = callPackage ../servers/uftp { };
 
@@ -20688,9 +20692,9 @@ with pkgs;
 
   flyway = callPackage ../development/tools/flyway { };
 
-  inherit (callPackages ../development/libraries/fmt { }) fmt_8 fmt_9;
+  inherit (callPackages ../development/libraries/fmt { }) fmt_8 fmt_9 fmt_10;
 
-  fmt = fmt_9;
+  fmt = fmt_10;
 
   fplll = callPackage ../development/libraries/fplll { };
   fplll_20160331 = callPackage ../development/libraries/fplll/20160331.nix { };
@@ -37482,6 +37486,8 @@ with pkgs;
   steamcmd = steamPackages.steamcmd;
 
   steam-acf = callPackage ../tools/games/steam-acf { };
+
+  steamback = python311.pkgs.callPackage ../tools/games/steamback { };
 
   protontricks = python3Packages.callPackage ../tools/package-management/protontricks {
     inherit winetricks steam-run yad;
