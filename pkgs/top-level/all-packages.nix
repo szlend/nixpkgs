@@ -15048,6 +15048,10 @@ with pkgs;
 
   crystal2nix = callPackage ../development/compilers/crystal2nix { };
 
+  crystalline = callPackage ../development/tools/language-servers/crystalline {
+    llvmPackages = llvmPackages_15;
+  };
+
   icr = callPackage ../development/tools/icr { };
 
   scry = callPackage ../development/tools/scry { crystal = crystal_1_2; };
@@ -21578,6 +21582,7 @@ with pkgs;
 
   ispc = callPackage ../development/compilers/ispc {
     inherit (llvmPackages) stdenv;
+    xcode = darwin.xcode_14;
   };
 
   isso = callPackage ../servers/isso {
@@ -23351,7 +23356,7 @@ with pkgs;
 
   mlc = callPackage ../tools/system/mlc { };
 
-  mlt = callPackage ../development/libraries/mlt { };
+  mlt = darwin.apple_sdk_11_0.callPackage ../development/libraries/mlt { };
 
   mlib = callPackage ../development/libraries/mlib { };
 
