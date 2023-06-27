@@ -7203,6 +7203,8 @@ with pkgs;
 
   ecmtools = callPackage ../tools/cd-dvd/ecm-tools { };
 
+  erofs-utils = callPackage ../tools/filesystems/erofs-utils { };
+
   e2tools = callPackage ../tools/filesystems/e2tools { };
 
   e2fsprogs = callPackage ../tools/filesystems/e2fsprogs { };
@@ -25458,6 +25460,8 @@ with pkgs;
 
   alps = callPackage ../servers/alps { };
 
+  anuko-time-tracker = callPackage ../servers/web-apps/anuko-time-tracker { };
+
   apache-directory-server = callPackage ../servers/ldap/apache-directory-server { };
 
   apacheHttpd_2_4 = callPackage ../servers/http/apache-httpd/2.4.nix {
@@ -27062,8 +27066,6 @@ with pkgs;
   dsd = callPackage ../applications/radio/dsd { };
 
   dstat = callPackage ../os-specific/linux/dstat { };
-
-  erofs-utils = callPackage ../os-specific/linux/erofs-utils { };
 
   evdev-proto = callPackage ../os-specific/bsd/freebsd/evdev-proto { };
 
