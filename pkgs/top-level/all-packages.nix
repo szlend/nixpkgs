@@ -1551,6 +1551,10 @@ with pkgs;
 
   asleap = callPackage ../tools/networking/asleap { };
 
+  awsbck = callPackage ../tools/backup/awsbck {
+    inherit (darwin.apple_sdk.frameworks) Security;
+  };
+
   balena-cli = callPackage ../tools/admin/balena-cli { };
 
   basez = callPackage ../tools/misc/basez { };
@@ -9154,6 +9158,8 @@ with pkgs;
   jscoverage = callPackage ../development/tools/misc/jscoverage { };
 
   jsduck = callPackage ../development/tools/jsduck { };
+
+  jsluice = callPackage ../tools/security/jsluice { };
 
   json-schema-for-humans = with python3Packages; toPythonApplication json-schema-for-humans;
 
@@ -40451,6 +40457,7 @@ with pkgs;
   winePackages = recurseIntoAttrs (winePackagesFor (config.wine.build or "wine32"));
   wine64Packages = recurseIntoAttrs (winePackagesFor "wine64");
   wineWowPackages = recurseIntoAttrs (winePackagesFor "wineWow");
+  wineWow64Packages = recurseIntoAttrs (winePackagesFor "wineWow64");
 
   wine = winePackages.full;
   wine64 = wine64Packages.full;
