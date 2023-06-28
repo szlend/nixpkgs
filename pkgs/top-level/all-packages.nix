@@ -7840,6 +7840,8 @@ with pkgs;
 
   forktty = callPackage ../os-specific/linux/forktty { };
 
+  fortran-fpm = callPackage ../tools/package-management/fortran-fpm { };
+
   fortune = callPackage ../tools/misc/fortune { };
 
   fox = callPackage ../development/libraries/fox {
@@ -41112,4 +41114,6 @@ with pkgs;
   reindeer = callPackage ../development/tools/reindeer { };
 
   charasay = callPackage ../tools/misc/charasay { };
+
+  waylyrics = callPackage ../applications/audio/waylyrics { };
 }
