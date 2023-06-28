@@ -12449,9 +12449,15 @@ with pkgs;
 
   sequoia-sq = callPackage ../tools/security/sequoia-sq { };
 
+  sequoia-sqv = callPackage ../tools/security/sequoia-sqv { };
+
+  sequoia-sqop = callPackage ../tools/security/sequoia-sqop { };
+
   sequoia-chameleon-gnupg = callPackage ../tools/security/sequoia-chameleon-gnupg { };
 
   sewer = callPackage ../tools/admin/sewer { };
+
+  sexp = callPackage ../development/libraries/sexp { };
 
   sfeed = callPackage ../tools/misc/sfeed { };
 
@@ -13039,6 +13045,8 @@ with pkgs;
   };
 
   tagtime = callPackage ../applications/misc/tagtime { };
+
+  tailer = callPackage ../tools/misc/tailer { };
 
   inherit (callPackages ../applications/networking/taler { })
     taler-exchange taler-merchant;
@@ -27262,13 +27270,6 @@ with pkgs;
 
   iwd = callPackage ../os-specific/linux/iwd { };
 
-  jfbview = callPackage ../os-specific/linux/jfbview {
-    imlib2 = imlib2Full;
-  };
-  jfbpdf = jfbview.override {
-    imageSupport = false;
-  };
-
   jool-cli = callPackage ../os-specific/linux/jool/cli.nix { };
 
   juju = callPackage ../applications/networking/juju { };
@@ -27612,6 +27613,8 @@ with pkgs;
     inherit (darwin.apple_sdk_11_0) Libsystem;
     inherit (darwin.apple_sdk_11_0.frameworks) AppKit Security;
   };
+
+  nushellFull = nushell.override { additionalFeatures = p: p ++ ["dataframe" "extra"]; };
 
   nu_scripts = callPackage ../shells/nushell/nu_scripts { };
 
@@ -36205,6 +36208,7 @@ with pkgs;
 
   cryptop = python3.pkgs.callPackage ../applications/blockchains/cryptop { };
 
+  dcrctl = callPackage ../applications/blockchains/dcrctl { };
   dcrd = callPackage ../applications/blockchains/dcrd { };
   dcrwallet = callPackage ../applications/blockchains/dcrwallet { };
 
