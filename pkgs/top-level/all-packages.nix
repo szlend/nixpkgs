@@ -2065,6 +2065,8 @@ with pkgs;
     inherit (darwin.apple_sdk.frameworks) Security;
   };
 
+  git-graph = callPackage ../applications/version-management/git-graph { };
+
   git-hound = callPackage ../applications/version-management/git-hound { };
 
   git-hub = callPackage ../applications/version-management/git-hub { };
@@ -10953,9 +10955,7 @@ with pkgs;
 
   onlykey = callPackage ../tools/security/onlykey { node_webkit = nwjs; };
 
-  ooniprobe-cli = callPackage ../tools/networking/ooniprobe-cli {
-    buildGoModule = buildGo119Module; # go 1.20 build failure
-  };
+  ooniprobe-cli = callPackage ../tools/networking/ooniprobe-cli { };
 
   openapi-generator-cli = callPackage ../tools/networking/openapi-generator-cli { jre = pkgs.jre_headless; };
   openapi-generator-cli-unstable = callPackage ../tools/networking/openapi-generator-cli/unstable.nix { jre = pkgs.jre_headless; };
@@ -39454,6 +39454,8 @@ with pkgs;
   gummi = callPackage ../applications/misc/gummi { };
 
   gummy = callPackage ../tools/misc/gummy { };
+
+  hashpump = callPackage ../tools/misc/hashpump { };
 
   hck = callPackage ../tools/text/hck { };
 
