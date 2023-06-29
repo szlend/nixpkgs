@@ -3548,6 +3548,8 @@ with pkgs;
 
   github-commenter = callPackage ../development/tools/github-commenter { };
 
+  github-copilot-intellij-agent = callPackage ../development/tools/github-copilot-intellij-agent { };
+
   github-desktop = callPackage ../applications/version-management/github-desktop {
     openssl = openssl_1_1;
     curl = curl.override { openssl = openssl_1_1; };
@@ -11918,6 +11920,8 @@ with pkgs;
   qscintilla-qt4 = callPackage ../development/libraries/qscintilla-qt4 { };
 
   qrcp = callPackage ../tools/networking/qrcp { };
+
+  qrscan = callPackage ../tools/misc/qrscan { };
 
   qtikz = libsForQt5.callPackage ../applications/graphics/ktikz { };
 
