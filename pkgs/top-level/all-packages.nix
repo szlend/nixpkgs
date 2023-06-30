@@ -10243,6 +10243,8 @@ with pkgs;
 
   mediawiki = callPackage ../servers/web-apps/mediawiki { };
 
+  mediawriter = callPackage ../tools/system/mediawriter { };
+
   memtier-benchmark = callPackage ../tools/networking/memtier-benchmark { };
 
   memtest86-efi = callPackage ../tools/misc/memtest86-efi { };
@@ -16945,9 +16947,7 @@ with pkgs;
   swiftpm2nix = callPackage ../development/tools/swiftpm2nix { };
 
   swiProlog = callPackage ../development/compilers/swi-prolog {
-    openssl = openssl_1_1;
     inherit (darwin.apple_sdk.frameworks) Security;
-    jdk = openjdk8; # TODO: remove override https://github.com/NixOS/nixpkgs/pull/89731
   };
   swiPrologWithGui = swiProlog.override { withGui = true; };
 
@@ -16962,7 +16962,9 @@ with pkgs;
     inherit (darwin.apple_sdk.frameworks) Cocoa Foundation;
   };
 
-  teyjus = callPackage ../development/compilers/teyjus { };
+  teyjus = callPackage ../development/compilers/teyjus {
+    inherit (ocamlPackages) buildDunePackage;
+  };
 
   thrust = callPackage ../development/tools/thrust {
     gconf = gnome2.GConf;
@@ -28647,6 +28649,8 @@ with pkgs;
 
   freepats = callPackage ../data/misc/freepats { };
 
+  game-devices-udev-rules = callPackage ../os-specific/linux/game-devices-udev-rules { };
+
   garamond-libre = callPackage ../data/fonts/garamond-libre { };
 
   g15daemon = callPackage ../os-specific/linux/g15daemon { };
@@ -32993,11 +32997,12 @@ with pkgs;
 
   moonlight-embedded = callPackage ../applications/misc/moonlight-embedded { };
 
-  moonlight-qt = libsForQt5.callPackage ../applications/misc/moonlight-qt {
+  moonlight-qt = libsForQt5.callPackage ../applications/misc/moonlight-qt ({
+  } // lib.optionalAttrs stdenv.isLinux {
     SDL2 = buildPackages.SDL2.override {
       drmSupport = true;
     };
-  };
+  });
 
   mooSpace = callPackage ../applications/audio/mooSpace { };
 
