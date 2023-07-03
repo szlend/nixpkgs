@@ -36621,6 +36621,8 @@ with pkgs;
     inherit (darwin.apple_sdk.frameworks) Cocoa;
   };
 
+  doomrunner = qt5.callPackage ../games/doom-ports/doomrunner { };
+
   chocolate-doom = callPackage ../games/doom-ports/chocolate-doom { };
 
   crispy-doom = callPackage ../games/doom-ports/crispy-doom { };
@@ -41222,4 +41224,6 @@ with pkgs;
   charasay = callPackage ../tools/misc/charasay { };
 
   waylyrics = callPackage ../applications/audio/waylyrics { };
+
+  gitrs = callPackage ../tools/misc/gitrs { };
 }
