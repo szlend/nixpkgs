@@ -786,6 +786,8 @@ with pkgs;
 
   # Dotnet
 
+  csharp-ls = callPackage ../development/tools/language-servers/csharp-ls { };
+
   dotnetCorePackages = recurseIntoAttrs (callPackage ../development/compilers/dotnet {});
 
   dotnet-sdk_2 = dotnetCorePackages.sdk_2_1;
@@ -3505,8 +3507,6 @@ with pkgs;
   };
 
   fedifetcher = callPackage ../tools/misc/fedifetcher { };
-
-  fitnesstrax = callPackage ../applications/misc/fitnesstrax { };
 
   flavours = callPackage ../applications/misc/flavours { };
 
@@ -12679,7 +12679,9 @@ with pkgs;
 
   slirp4netns = callPackage ../tools/networking/slirp4netns { };
 
-  slowlorust = callPackage ../tools/networking/slowlorust { };
+  slowlorust = callPackage ../tools/networking/slowlorust {
+    inherit (darwin.apple_sdk.frameworks) Security;
+  };
 
   slsa-verifier = callPackage ../tools/security/slsa-verifier { };
 
