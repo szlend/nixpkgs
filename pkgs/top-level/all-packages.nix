@@ -9611,6 +9611,8 @@ with pkgs;
 
   lazycli = callPackage ../tools/misc/lazycli { };
 
+  lavat = callPackage ../tools/misc/lavat { };
+
   lcdf-typetools = callPackage ../tools/misc/lcdf-typetools { };
 
   ldapdomaindump = with python3Packages; toPythonApplication ldapdomaindump;
@@ -24404,6 +24406,10 @@ with pkgs;
   vcdimager = callPackage ../development/libraries/vcdimager { };
 
   vcg = callPackage ../development/libraries/vcg { };
+
+  vencord = callPackage ../misc/vencord { };
+
+  vencord-web-extension = callPackage ../misc/vencord { buildWebExtension = true; };
 
   vid-stab = callPackage ../development/libraries/vid-stab {
     inherit (llvmPackages) openmp;
