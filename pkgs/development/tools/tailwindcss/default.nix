@@ -2,12 +2,12 @@
 , fetchurl
 , stdenv
 , runCommand
-, tailwindcss-bin
+, tailwindcss
 ,
 }:
 let
   inherit (stdenv.hostPlatform) system;
-  throwSystem = throw "tailwindcss-bin has not been packaged for ${system} yet.";
+  throwSystem = throw "tailwindcss has not been packaged for ${system} yet.";
 
   plat = {
     aarch64-darwin = "macos-arm64";
@@ -18,16 +18,16 @@ let
   }.${system} or throwSystem;
 
   hash = {
-    aarch64-darwin = "sha256-GXSFDXRBGnEgqfISou85Ivd5npjZB7aMsfrQ2Y+EN0g=";
-    aarch64-linux = "sha256-H2kbeso8/566czi1pEyip5rAgFJQYfdLnAImP25tDe0=";
-    armv7l-linux = "sha256-52XyCmsjuHKs3aGUaAA0uQxGTY06k8gxK/fLYSVdP74=";
-    x86_64-darwin = "sha256-8gwu/sVTjQGE4mSdxtk7ivQyAiRwCuL0Ot/aCrER/as=";
-    x86_64-linux = "sha256-W9JRBB4JDTighDry21ukaFm1H1iKyg7HVG9RJHmIn2Q=";
+    aarch64-darwin = "sha256-MncDpGRggZBuEdEW/06OQwdkZsPSaSgrvmElVbn+DFg=";
+    aarch64-linux = "sha256-2Hiv11tqeSlFx/I0VD8MOJt+AmAB5yUFqny3bT4eR+w=";
+    armv7l-linux = "sha256-msguyvTGQV7BC1eIMAGyIIaZk1qVz/pB8G8iQsKJAEA=";
+    x86_64-darwin = "sha256-PEQjSU2CBLN0Vct3sbhe9cbEJBP1jhUWpL91KFMcBn0=";
+    x86_64-linux = "sha256-yRzMhkL3nX21U46NaGpNwY4AqTGA9TdyCKmpPH77m2o=";
   }.${system} or throwSystem;
 in
 stdenv.mkDerivation rec {
-  pname = "tailwindcss-bin";
-  version = "3.3.2";
+  pname = "tailwindcss";
+  version = "3.4.13";
 
   src = fetchurl {
     url = "https://github.com/tailwindlabs/tailwindcss/releases/download/v${version}/tailwindcss-${plat}";
@@ -46,7 +46,7 @@ stdenv.mkDerivation rec {
   '';
 
   passthru.tests.helptext = runCommand "tailwindcss-test-helptext" { } ''
-    ${tailwindcss-bin}/bin/tailwindcss --help > $out
+    ${tailwindcss}/bin/tailwindcss --help > $out
   '';
   passthru.updateScript = ./update.sh;
 
@@ -56,6 +56,7 @@ stdenv.mkDerivation rec {
     license = licenses.mit;
     sourceProvenance = [ sourceTypes.binaryNativeCode ];
     maintainers = [ maintainers.adamcstephens ];
+    mainProgram = "tailwindcss";
     platforms = platforms.darwin ++ platforms.linux;
   };
 }

@@ -28,24 +28,27 @@ rustPlatform.buildRustPackage rec {
   };
 
   buildInputs = [ installShellFiles ]
-    ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security libiconv ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ darwin.apple_sdk.frameworks.Security libiconv ];
 
   HOME = "$TMPDIR";
 
-  postInstall = ''
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd volta \
       --bash <($out/bin/volta completions bash) \
       --fish <($out/bin/volta completions fish) \
       --zsh <($out/bin/volta completions zsh)
   '';
   meta = with lib; {
-    description = "The Hassle-Free JavaScript Tool Manager";
+    description = "Hassle-Free JavaScript Tool Manager";
     longDescription = ''
       With Volta, you can select a Node engine once and then stop worrying
       about it. You can switch between projects and stop having to manually
       switch between Nodes. You can install npm package binaries in your
       toolchain without having to periodically reinstall them or figure out why
       they’ve stopped working.
+
+      Note: Volta cannot be used on NixOS out of the box because it downloads
+      Node binaries that assume shared libraries are in FHS standard locations.
     '';
     homepage = "https://volta.sh/";
     changelog = "https://github.com/volta-cli/volta/blob/main/RELEASES.md";

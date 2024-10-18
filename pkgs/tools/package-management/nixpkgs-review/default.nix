@@ -1,33 +1,55 @@
-{ lib
-, python3
-, fetchFromGitHub
+{
+  lib,
+  python3Packages,
+  fetchFromGitHub,
 
-, bubblewrap
-, nix-output-monitor
-, cacert
-, git
-, nix
+  installShellFiles,
+  bubblewrap,
+  nix-output-monitor,
+  cacert,
+  git,
+  nix,
+  versionCheckHook,
 
-, withSandboxSupport ? false
-, withNom ? false
+  withAutocomplete ? true,
+  withSandboxSupport ? false,
+  withNom ? false,
 }:
 
-python3.pkgs.buildPythonApplication rec {
+python3Packages.buildPythonApplication rec {
   pname = "nixpkgs-review";
-  version = "2.9.3";
+  version = "2.12.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Mic92";
     repo = "nixpkgs-review";
-    rev = version;
-    sha256 = "sha256-Pcyhrw6oR+tLf/qgLnb7qx3003ldv3KuDVg6QsEhQp0=";
+    rev = "refs/tags/${version}";
+    hash = "sha256-yNdBqL3tceuoUHx8/j2y5ZTq1zeVDAm37RZtlCbC6rg=";
   };
+
+  build-system = [
+    python3Packages.setuptools
+  ];
+
+  dependencies = lib.optionals withAutocomplete [
+    python3Packages.argcomplete
+  ];
+
+  nativeBuildInputs =
+    [
+      installShellFiles
+    ]
+    ++ lib.optionals withAutocomplete [
+      python3Packages.argcomplete
+    ];
 
   makeWrapperArgs =
     let
-      binPath = [ nix git ]
-        ++ lib.optional withSandboxSupport bubblewrap
-        ++ lib.optional withNom nix-output-monitor;
+      binPath = [
+        nix
+        git
+      ] ++ lib.optional withSandboxSupport bubblewrap ++ lib.optional withNom nix-output-monitor;
     in
     [
       "--prefix PATH : ${lib.makeBinPath binPath}"
@@ -36,13 +58,29 @@ python3.pkgs.buildPythonApplication rec {
       "--unset PYTHONPATH"
     ];
 
-  doCheck = false;
+  postInstall = lib.optionalString withAutocomplete ''
+    for cmd in nix-review nixpkgs-review; do
+      installShellCompletion --cmd $cmd \
+        --bash <(register-python-argcomplete $cmd) \
+        --fish <(register-python-argcomplete $cmd -s fish) \
+        --zsh <(register-python-argcomplete $cmd -s zsh)
+    done
+  '';
 
-  meta = with lib; {
+  nativeCheckInputs = [
+    versionCheckHook
+  ];
+  versionCheckProgramArg = [ "--version" ];
+
+  meta = {
+    changelog = "https://github.com/Mic92/nixpkgs-review/releases/tag/${version}";
     description = "Review pull-requests on https://github.com/NixOS/nixpkgs";
     homepage = "https://github.com/Mic92/nixpkgs-review";
-    changelog = "https://github.com/Mic92/nixpkgs-review/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ figsoda mic92 SuperSandro2000 ];
+    license = lib.licenses.mit;
+    mainProgram = "nixpkgs-review";
+    maintainers = with lib.maintainers; [
+      figsoda
+      mic92
+    ];
   };
 }

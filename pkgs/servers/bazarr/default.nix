@@ -1,4 +1,4 @@
-{ stdenv, lib, fetchurl, makeWrapper, unzip, python3, unar, ffmpeg, nixosTests }:
+{ stdenv, lib, fetchzip, makeWrapper, python3, unar, ffmpeg, nixosTests }:
 
 let
   runtimeProgDeps = [
@@ -8,19 +8,26 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "bazarr";
-  version = "1.2.2";
+  version = "1.4.4";
 
-  sourceRoot = ".";
-
-  src = fetchurl {
+  src = fetchzip {
     url = "https://github.com/morpheus65535/bazarr/releases/download/v${version}/bazarr.zip";
-    sha256 = "sha256-gHbaRqUEwTfYG4kJ3BNxaG74EDLW7khfvCk6dkRALt8=";
+    hash = "sha256-FZKGHC7CLzIzOXH77iHwSb9+Mw1z+kiz+1rLO6XU/94=";
+    stripRoot = false;
   };
 
-  nativeBuildInputs = [ unzip makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
 
   buildInputs = [
-    (python3.withPackages (ps: [ ps.lxml ps.numpy ps.gevent ps.gevent-websocket ps.pillow ]))
+    (python3.withPackages (ps: [
+      ps.lxml
+      ps.numpy
+      ps.gevent
+      ps.gevent-websocket
+      ps.pillow
+      ps.setuptools
+      ps.psycopg2
+    ]))
   ] ++ runtimeProgDeps;
 
   installPhase = ''
@@ -51,6 +58,7 @@ stdenv.mkDerivation rec {
     sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     license = licenses.gpl3Only;
     maintainers = with maintainers; [ d-xo ];
+    mainProgram = "bazarr";
     platforms = platforms.all;
   };
 }

@@ -25,7 +25,7 @@ mkProtobufDerivation = buildProtobuf: stdenv: stdenv.mkDerivation {
     chmod -R a+w gmock
     chmod -R a+w googletest
     ln -s ../googletest gmock/gtest
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     substituteInPlace src/google/protobuf/testing/googletest.cc \
       --replace 'tmpnam(b)' '"'$TMPDIR'/foo"'
   '';
@@ -33,7 +33,7 @@ mkProtobufDerivation = buildProtobuf: stdenv: stdenv.mkDerivation {
   nativeBuildInputs = [ autoreconfHook buildPackages.which buildPackages.stdenv.cc buildProtobuf ];
 
   buildInputs = [ zlib ];
-  configureFlags = if buildProtobuf == null then [] else [ "--with-protoc=${buildProtobuf}/bin/protoc" ];
+  configureFlags = lib.optional (buildProtobuf != null) "--with-protoc=${buildProtobuf}/bin/protoc";
 
   enableParallelBuilding = true;
 

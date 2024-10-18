@@ -3,22 +3,25 @@
 
 stdenv.mkDerivation rec {
   pname = "opustags";
-  version = "1.8.0";
+  version = "1.10.1";
 
   src = fetchFromGitHub {
     owner = "fmang";
     repo = "opustags";
     rev = version;
-    sha256 = "sha256-qxtTJ4Hl2ccL+rhONeoOfV6ZyJaWaVDPMsXYJkXCWkY=";
+    sha256 = "sha256-0lo+4VMYXGwXUuRxU1xZRxzlUQ4o4n/CDHXDM27FK44=";
   };
+
+
+  nativeBuildInputs = [ cmake pkg-config ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ libiconv ];
 
   buildInputs = [ libogg ];
 
-  nativeBuildInputs = [ cmake pkg-config ] ++ lib.optionals stdenv.isDarwin [ libiconv ];
-
   doCheck = true;
 
-  nativeCheckInputs = [ ffmpeg glibcLocales perl ] ++ (with perlPackages; [ ListMoreUtils ]);
+  nativeCheckInputs = [ ffmpeg glibcLocales perl ]
+    ++ (with perlPackages; [ ListMoreUtils TestDeep ]);
 
   checkPhase = ''
     export LANG="en_US.UTF-8"
@@ -30,8 +33,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/fmang/opustags";
     description = "Ogg Opus tags editor";
     platforms = platforms.all;
-    broken = stdenv.isDarwin;
-    maintainers = with maintainers; [ kmein SuperSandro2000 ];
+    broken = stdenv.hostPlatform.isDarwin;
+    maintainers = with maintainers; [ kmein ];
     license = licenses.bsd3;
+    mainProgram = "opustags";
   };
 }

@@ -1,18 +1,34 @@
-{ lib, fetchFromGitHub, buildGoModule, installShellFiles, symlinkJoin }:
+{ lib, fetchFromGitHub, buildGoModule, installShellFiles, symlinkJoin, stdenv }:
 
 let
+  metaCommon = with lib; {
+    description = "Command-line interface for running Temporal Server and interacting with Workflows, Activities, Namespaces, and other parts of Temporal";
+    homepage = "https://docs.temporal.io/cli";
+    license = licenses.mit;
+    maintainers = with maintainers; [ aaronjheng ];
+  };
+
+  overrideModAttrs = old: {
+    # https://gitlab.com/cznic/libc/-/merge_requests/10
+    postBuild = ''
+      patch -p0 < ${./darwin-sandbox-fix.patch}
+    '';
+  };
+
   tctl-next = buildGoModule rec {
     pname = "tctl-next";
-    version = "0.9.0";
+    version = "1.0.0";
 
     src = fetchFromGitHub {
       owner = "temporalio";
       repo = "cli";
       rev = "v${version}";
-      hash = "sha256-zgi1wNx7fWf/iFGKaVffcXnC90vUz+mBT6HhCGdXMa0=";
+      hash = "sha256-y0C2z2iMMQSG5+xGngZ98+ixIgbvaQxPdAWuPbEbBAY=";
     };
 
-    vendorHash = "sha256-muTNwK2Sb2+0df/6DtAzT14gwyuqa13jkG6eQaqhSKg=";
+    vendorHash = "sha256-zhGqDHdVGg7eGnw5L3eSyXKBTjp85ir5zrtf7HbXmC0=";
+
+    inherit overrideModAttrs;
 
     nativeBuildInputs = [ installShellFiles ];
 
@@ -21,32 +37,44 @@ let
     ldflags = [
       "-s"
       "-w"
-      "-X github.com/temporalio/cli/headers.Version=${version}"
+      "-X github.com/temporalio/cli/temporalcli.Version=${version}"
     ];
 
+    # Tests fail with x86 on macOS Rosetta 2
+    doCheck = !(stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64);
+
     preCheck = ''
-      export HOME=$(mktemp -d)
+      export HOME="$(mktemp -d)"
     '';
 
     postInstall = ''
       installShellCompletion --cmd temporal \
         --bash <($out/bin/temporal completion bash) \
+        --fish <($out/bin/temporal completion fish) \
         --zsh <($out/bin/temporal completion zsh)
     '';
+
+    __darwinAllowLocalNetworking = true;
+
+    meta = metaCommon // {
+      mainProgram = "temporal";
+    };
   };
 
   tctl = buildGoModule rec {
     pname = "tctl";
-    version = "1.18.0";
+    version = "1.18.1";
 
     src = fetchFromGitHub {
       owner = "temporalio";
       repo = "tctl";
       rev = "v${version}";
-      hash = "sha256-LcBKkx3mcDOrGT6yJx98CSgxbwskqGPWqOzHWOu6cig=";
+      hash = "sha256-LX4hyPme+mkNmPvrTHIT5Ow3QM8BTAB7MXSY1fa8tSk=";
     };
 
-    vendorHash = "sha256-BUYEeC5zli++OxVFgECJGqJkbDwglLppSxgo+4AqOb0=";
+    vendorHash = "sha256-294lnUKnXNrN6fJ+98ub7LwsJ9aT+FzWCB3nryfAlCI=";
+
+    inherit overrideModAttrs;
 
     nativeBuildInputs = [ installShellFiles ];
 
@@ -55,7 +83,7 @@ let
     ldflags = [ "-s" "-w" ];
 
     preCheck = ''
-      export HOME=$(mktemp -d)
+      export HOME="$(mktemp -d)"
     '';
 
     postInstall = ''
@@ -63,6 +91,12 @@ let
         --bash <($out/bin/tctl completion bash) \
         --zsh <($out/bin/tctl completion zsh)
     '';
+
+    __darwinAllowLocalNetworking = true;
+
+    meta = metaCommon // {
+      mainProgram = "tctl";
+    };
   };
 in
 symlinkJoin rec {
@@ -75,11 +109,10 @@ symlinkJoin rec {
     tctl
   ];
 
-  meta = with lib; {
-    description = "Temporal CLI";
-    homepage = "https://temporal.io";
-    license = licenses.mit;
-    maintainers = with maintainers; [ aaronjheng ];
+  passthru = { inherit tctl tctl-next; };
+
+  meta = metaCommon // {
     mainProgram = "temporal";
+    platforms = lib.unique (lib.concatMap (drv: drv.meta.platforms) paths);
   };
 }

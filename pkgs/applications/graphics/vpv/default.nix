@@ -26,7 +26,7 @@ stdenv.mkDerivation (finalAttrs: {
   cargoRoot = "src/fuzzy-finder";
   cargoDeps = rustPlatform.fetchCargoTarball {
     src = finalAttrs.src;
-    sourceRoot = "source/src/fuzzy-finder";
+    sourceRoot = "${finalAttrs.src.name}/src/fuzzy-finder";
     hash = "sha256-CDKlmwA2Wj78xPaSiYPmIJ7xmiE5Co+oGGejZU3v1zI=";
   };
 
@@ -58,6 +58,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Image viewer for image processing experts";
     maintainers = [ lib.maintainers.kidanger ];
     license = lib.licenses.gpl3;
-    broken = stdenv.isDarwin; # the CMake expects the SDL2::SDL2main target for darwin
+    broken = stdenv.hostPlatform.isDarwin; # the CMake expects the SDL2::SDL2main target for darwin
+    mainProgram = "vpv";
   };
 })

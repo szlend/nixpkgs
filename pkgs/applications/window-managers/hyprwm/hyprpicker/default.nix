@@ -1,95 +1,68 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, pkg-config
-, cmake
-, ninja
-, cairo
-, fribidi
-, libdatrie
-, libjpeg
-, libselinux
-, libsepol
-, libthai
-, pango
-, pcre
-, util-linux
-, wayland
-, wayland-protocols
-, wayland-scanner
-, wlroots
-, libXdmcp
-, debug ? false
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  nix-update-script,
+  pkg-config,
+  cmake,
+  cairo,
+  hyprutils,
+  hyprwayland-scanner,
+  libGL,
+  libjpeg,
+  libxkbcommon,
+  pango,
+  wayland,
+  wayland-protocols,
+  wayland-scanner,
+  libXdmcp,
+  debug ? false,
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "hyprpicker" + lib.optionalString debug "-debug";
-  version = "0.1.1";
+  version = "0.4.1";
 
   src = fetchFromGitHub {
     owner = "hyprwm";
-    repo = finalAttrs.pname;
+    repo = "hyprpicker";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-k+rG5AZjz47Q6bpVcTK7r4s7Avg3O+1iw+skK+cn0rk=";
+    hash = "sha256-gu26MSYbTlRLMUpZ9PeYXtqqhzPDQXxEDkjiJgwzIIc=";
   };
 
-  cmakeFlags = lib.optional debug "-DCMAKE_BUILD_TYPE=Debug";
+  cmakeBuildType = if debug then "Debug" else "Release";
 
   nativeBuildInputs = [
     cmake
-    ninja
+    hyprwayland-scanner
     pkg-config
   ];
 
   buildInputs = [
     cairo
-    fribidi
-    libdatrie
+    hyprutils
+    libGL
     libjpeg
-    libselinux
-    libsepol
-    libthai
+    libxkbcommon
     pango
-    pcre
     wayland
     wayland-protocols
     wayland-scanner
-    wlroots
     libXdmcp
-    util-linux
   ];
 
-  configurePhase = ''
-    runHook preConfigure
-
-    make protocols
-
-    runHook postConfigure
+  postInstall = ''
+    mkdir -p $out/share/licenses
+    install -Dm644 $src/LICENSE -t $out/share/licenses/hyprpicker
   '';
 
-  buildPhase = ''
-    runHook preBuild
+  passthru.updateScript = nix-update-script { };
 
-    make release
-
-    runHook postBuild
-  '';
-
-  installPhase = ''
-    runHook preInstall
-
-    mkdir -p $out/{bin,share/licenses}
-
-    install -Dm755 build/hyprpicker -t $out/bin
-    install -Dm644 LICENSE -t $out/share/licenses/hyprpicker
-
-    runHook postInstall
-  '';
-
-  meta = with lib; {
-    description = "A wlroots-compatible Wayland color picker that does not suck";
+  meta = {
+    description = "Wlroots-compatible Wayland color picker that does not suck";
     homepage = "https://github.com/hyprwm/hyprpicker";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ fufexan ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ fufexan ];
     platforms = wayland.meta.platforms;
+    mainProgram = "hyprpicker";
   };
 })

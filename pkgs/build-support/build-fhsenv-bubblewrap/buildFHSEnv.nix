@@ -8,13 +8,16 @@
 , pkgsi686Linux
 }:
 
-{ name ? null
-, profile ? ""
+{ profile ? ""
 , targetPkgs ? pkgs: []
 , multiPkgs ? pkgs: []
+, multiArch ? false # Whether to include 32bit packages
+, includeClosures ? false # Whether to include closures of all packages
+, nativeBuildInputs ? []
 , extraBuildCommands ? ""
 , extraBuildCommandsMulti ? ""
 , extraOutputsToInstall ? []
+, ... # for name, or pname+version
 } @ args:
 
 # HOWTO:
@@ -33,43 +36,58 @@
 # /lib will link to /lib32
 
 let
-  inherit (stdenv) is64bit;
+  inherit (stdenv.hostPlatform) is64bit;
 
-  # use of glibc_multi is only supported on x86_64-linux
-  isMultiBuild  = multiPkgs != null && stdenv.isx86_64 && stdenv.isLinux;
+  name = if (args ? pname && args ? version)
+    then "${args.pname}-${args.version}"
+    else args.name;
+
+  # "use of glibc_multi is only supported on x86_64-linux"
+  isMultiBuild = multiArch && stdenv.system == "x86_64-linux";
   isTargetBuild = !isMultiBuild;
 
-  # list of packages (usually programs) which are only be installed for the
-  # host's architecture
+  # list of packages (usually programs) which match the host's architecture
+  # (which includes stuff from multiPkgs)
   targetPaths = targetPkgs pkgs ++ (if multiPkgs == null then [] else multiPkgs pkgs);
 
-  # list of packages which are installed for both x86 and x86_64 on x86_64
-  # systems
+  # list of packages which are for x86 (only multiPkgs, only for x86_64 hosts)
   multiPaths = multiPkgs pkgsi686Linux;
 
-  # base packages of the chroot
+  # base packages of the fhsenv
   # these match the host's architecture, glibc_multi is used for multilib
   # builds. glibcLocales must be before glibc or glibc_multi as otherwiese
   # the wrong LOCALE_ARCHIVE will be used where only C.UTF-8 is available.
-  basePkgs = with pkgs;
-    [ glibcLocales
-      (if isMultiBuild then glibc_multi else glibc)
-      (toString gcc.cc.lib) bashInteractiveFHS coreutils less shadow su
-      gawk diffutils findutils gnused gnugrep
-      gnutar gzip bzip2 xz
-    ];
-  baseMultiPkgs = with pkgsi686Linux;
-    [ (toString gcc.cc.lib)
-    ];
+  baseTargetPaths = with pkgs; [
+    glibcLocales
+    (if isMultiBuild then glibc_multi else glibc)
+    (toString gcc.cc.lib)
+    bashInteractiveFHS
+    coreutils
+    less
+    shadow
+    su
+    gawk
+    diffutils
+    findutils
+    gnused
+    gnugrep
+    gnutar
+    gzip
+    bzip2
+    xz
+  ];
+  baseMultiPaths = with pkgsi686Linux; [
+    (toString gcc.cc.lib)
+  ];
 
   ldconfig = writeShellScriptBin "ldconfig" ''
-    # due to a glibc bug, 64-bit ldconfig complains about patchelf'd 32-bit libraries, so we're using 32-bit ldconfig
-    exec ${if stdenv.isx86_64 && stdenv.isLinux then pkgsi686Linux.glibc.bin else pkgs.glibc.bin}/bin/ldconfig -f /etc/ld.so.conf -C /etc/ld.so.cache "$@"
+    # due to a glibc bug, 64-bit ldconfig complains about patchelf'd 32-bit libraries, so we use 32-bit ldconfig when we have them
+    exec ${if isMultiBuild then pkgsi686Linux.glibc.bin else pkgs.glibc.bin}/bin/ldconfig -f /etc/ld.so.conf -C /etc/ld.so.cache "$@"
   '';
+
   etcProfile = writeText "profile" ''
-    export PS1='${name}-chrootenv:\u@\h:\w\$ '
+    export PS1='${name}-fhsenv:\u@\h:\w\$ '
     export LOCALE_ARCHIVE='/usr/lib/locale/locale-archive'
-    export LD_LIBRARY_PATH="/run/opengl-driver/lib:/run/opengl-driver-32/lib:/usr/lib:/usr/lib32''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
     export PATH="/run/wrappers/bin:/usr/bin:/usr/sbin:$PATH"
     export TZDIR='/etc/zoneinfo'
 
@@ -91,6 +109,7 @@ let
 
     # Force compilers and other tools to look in default search paths
     unset NIX_ENFORCE_PURITY
+    export NIX_BINTOOLS_WRAPPER_TARGET_HOST_${stdenv.cc.suffixSalt}=1
     export NIX_CC_WRAPPER_TARGET_HOST_${stdenv.cc.suffixSalt}=1
     export NIX_CFLAGS_COMPILE='-idirafter /usr/include'
     export NIX_CFLAGS_LINK='-L/usr/lib -L/usr/lib32'
@@ -98,13 +117,17 @@ let
     export PKG_CONFIG_PATH=/usr/lib/pkgconfig
     export ACLOCAL_PATH=/usr/share/aclocal
 
+    # GStreamer searches for plugins relative to its real binary's location
+    # https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/bd97973ce0f2c5495bcda5cccd4f7ef7dcb7febc
+    export GST_PLUGIN_SYSTEM_PATH_1_0=/usr/lib/gstreamer-1.0:/usr/lib32/gstreamer-1.0
+
     ${profile}
   '';
 
-  # Compose /etc for the chroot environment
-  etcPkg = runCommandLocal "${name}-chrootenv-etc" { } ''
+  # Compose /etc for the fhs environment
+  etcPkg = runCommandLocal "${name}-fhs-etc" { } ''
     mkdir -p $out/etc
-    cd $out/etc
+    pushd $out/etc
 
     # environment variables
     ln -s ${etcProfile} profile
@@ -117,7 +140,7 @@ let
   staticUsrProfileTarget = buildEnv {
     name = "${name}-usr-target";
     # ldconfig wrapper must come first so it overrides the original ldconfig
-    paths = [ etcPkg ldconfig ] ++ basePkgs ++ targetPaths;
+    paths = [ etcPkg ldconfig ] ++ baseTargetPaths ++ targetPaths;
     extraOutputsToInstall = [ "out" "lib" "bin" ] ++ extraOutputsToInstall;
     ignoreCollisions = true;
     postBuild = ''
@@ -127,35 +150,37 @@ let
               target=$(readlink $out/share/glib-2.0)
               rm $out/share/glib-2.0
               mkdir $out/share/glib-2.0
-              ln -fs $target/* $out/share/glib-2.0
+              ln -fsr $target/* $out/share/glib-2.0
           fi
 
           if [[ -L $out/share/glib-2.0/schemas ]]; then
               target=$(readlink $out/share/glib-2.0/schemas)
               rm $out/share/glib-2.0/schemas
               mkdir $out/share/glib-2.0/schemas
-              ln -fs $target/* $out/share/glib-2.0/schemas
+              ln -fsr $target/* $out/share/glib-2.0/schemas
           fi
 
           mkdir -p $out/share/glib-2.0/schemas
 
           for d in $out/share/gsettings-schemas/*; do
               # Force symlink, in case there are duplicates
-              ln -fs $d/glib-2.0/schemas/*.xml $out/share/glib-2.0/schemas
-              ln -fs $d/glib-2.0/schemas/*.gschema.override $out/share/glib-2.0/schemas
+              ln -fsr $d/glib-2.0/schemas/*.xml $out/share/glib-2.0/schemas
+              ln -fsr $d/glib-2.0/schemas/*.gschema.override $out/share/glib-2.0/schemas
           done
 
           # and compile them
           ${pkgs.glib.dev}/bin/glib-compile-schemas $out/share/glib-2.0/schemas
       fi
     '';
+    inherit includeClosures;
   };
 
   staticUsrProfileMulti = buildEnv {
     name = "${name}-usr-multi";
-    paths = baseMultiPkgs ++ multiPaths;
+    paths = baseMultiPaths ++ multiPaths;
     extraOutputsToInstall = [ "out" "lib" ] ++ extraOutputsToInstall;
     ignoreCollisions = true;
+    inherit includeClosures;
   };
 
   # setup library paths only for the targeted architecture
@@ -172,32 +197,39 @@ let
     ln -s lib64 lib
 
     # copy glibc stuff
-    cp -rsHf ${staticUsrProfileTarget}/lib/32/* lib32/ && chmod u+w -R lib32/
+    cp -rsHf ${staticUsrProfileTarget}/lib/32/* lib32/
+    chmod u+w -R lib32/
 
     # copy content of multiPaths (32bit libs)
-    [ -d ${staticUsrProfileMulti}/lib ] && cp -rsHf ${staticUsrProfileMulti}/lib/* lib32/ && chmod u+w -R lib32/
+    if [ -d ${staticUsrProfileMulti}/lib ]; then
+      cp -rsHf ${staticUsrProfileMulti}/lib/* lib32/
+      chmod u+w -R lib32/
+    fi
 
     # copy content of targetPaths (64bit libs)
-    cp -rsHf ${staticUsrProfileTarget}/lib/* lib64/ && chmod u+w -R lib64/
+    cp -rsHf ${staticUsrProfileTarget}/lib/* lib64/
+    chmod u+w -R lib64/
 
     # symlink 32-bit ld-linux.so
-    ln -Ls ${staticUsrProfileTarget}/lib/32/ld-linux.so.2 lib/
+    ln -Lsf ${staticUsrProfileTarget}/lib/32/ld-linux.so.2 lib/
   '';
 
   setupLibDirs = if isTargetBuild
                  then setupLibDirsTarget
                  else setupLibDirsMulti;
 
-  # the target profile is the actual profile that will be used for the chroot
+  # the target profile is the actual profile that will be used for the fhs
   setupTargetProfile = ''
     mkdir -m0755 usr
-    cd usr
+    pushd usr
+
     ${setupLibDirs}
-    ${lib.optionalString isMultiBuild ''
+
+    '' + lib.optionalString isMultiBuild ''
     if [ -d "${staticUsrProfileMulti}/share" ]; then
       cp -rLf ${staticUsrProfileMulti}/share share
     fi
-    ''}
+    '' + ''
     if [ -d "${staticUsrProfileTarget}/share" ]; then
       if [ -d share ]; then
         chmod -R 755 share
@@ -213,7 +245,7 @@ let
     done
     cd ..
 
-    for i in var etc opt; do
+    for i in etc opt; do
       if [ -d "${staticUsrProfileTarget}/$i" ]; then
         cp -rsHf "${staticUsrProfileTarget}/$i" "$i"
       fi
@@ -223,18 +255,20 @@ let
         ln -s "$i"
       fi
     done
+
+    popd
   '';
 
 in runCommandLocal "${name}-fhs" {
+  inherit nativeBuildInputs;
   passthru = {
-    inherit args multiPaths targetPaths;
+    inherit args baseTargetPaths targetPaths baseMultiPaths ldconfig isMultiBuild;
   };
 } ''
   mkdir -p $out
-  cd $out
+  pushd $out
+
   ${setupTargetProfile}
-  cd $out
   ${extraBuildCommands}
-  cd $out
   ${lib.optionalString isMultiBuild extraBuildCommandsMulti}
 ''

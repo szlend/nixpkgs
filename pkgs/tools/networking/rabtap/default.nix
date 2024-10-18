@@ -2,16 +2,16 @@
 
 buildGoModule rec {
   pname = "rabtap";
-  version = "1.38.2";
+  version = "1.43";
 
   src = fetchFromGitHub {
     owner = "jandelgado";
     repo = "rabtap";
     rev = "v${version}";
-    sha256 = "sha256-l35MHr7NWBlzKcGSDGjHTwGfnDrOpjeJp9/YAp1Areo=";
+    sha256 = "sha256-OUpDk6nfVbz/KP7vZeZV2JfbCzh/KcuxG015/uxYuEI=";
   };
 
-  vendorSha256 = "sha256-sJFMef9VnU6iKGf9UwEK60axLUBkubFWgI+pWKjaWNU=";
+  vendorHash = "sha256-V7AkqmEbwuW2Ni9b00Zd22ugk9ScGWf5wauHcQwG7b0=";
 
   meta = with lib; {
     description = "RabbitMQ wire tap and swiss army knife";

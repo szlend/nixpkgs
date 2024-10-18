@@ -19,13 +19,13 @@
 
 stdenv.mkDerivation rec {
   pname = "domoticz";
-  version = "2023.1";
+  version = "2024.7";
 
   src = fetchFromGitHub {
     owner = "domoticz";
     repo = pname;
     rev = version;
-    sha256 = "sha256-fXNS7EVMqGM4tYppgG+l/adBt9eyW8RBK3Cs/pb2kg4=";
+    hash = "sha256-D8U1kK3m1zT83YvZ42hGSU9PzBfS1VGr2mxUYbM2vNQ=";
     fetchSubmodules = true;
   };
 
@@ -51,7 +51,6 @@ stdenv.mkDerivation rec {
   ];
 
   cmakeFlags = [
-    "-DCMAKE_BUILD_TYPE=Release"
     "-DUSE_BUILTIN_MQTT=false"
     "-DUSE_BUILTIN_LUA=false"
     "-DUSE_BUILTIN_SQLITE=false"
@@ -86,6 +85,7 @@ stdenv.mkDerivation rec {
     changelog = "https://github.com/domoticz/domoticz/blob/${version}/History.txt";
     license = licenses.gpl3Plus;
     platforms = platforms.all;
-    broken = stdenv.isDarwin; # never built on Hydra https://hydra.nixos.org/job/nixpkgs/staging-next/domoticz.x86_64-darwin
+    broken = stdenv.hostPlatform.isDarwin; # never built on Hydra https://hydra.nixos.org/job/nixpkgs/staging-next/domoticz.x86_64-darwin
+    mainProgram = "domoticz";
   };
 }

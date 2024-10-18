@@ -2,20 +2,20 @@
 , buildGoModule
 , fetchFromGitHub
 , stdenv
-, withSpeech ? !stdenv.isDarwin
+, withSpeech ? !stdenv.hostPlatform.isDarwin
 , makeWrapper
 , espeak-ng
 }:
 
 buildGoModule rec {
   pname = "mob";
-  version = "4.4.5";
+  version = "5.3.1";
 
   src = fetchFromGitHub {
     owner = "remotemobprogramming";
-    repo = pname;
+    repo = "mob";
     rev = "v${version}";
-    sha256 = "sha256-/Kr5K0QkjARWKR8YhDsOQ2CoUzUu5LWUq6smhB0yDCM=";
+    hash = "sha256-+zNlxIvIvPyz0vA9IPaMzP8wfEXwNyRcvp45ohzoxQQ=";
   };
 
   vendorHash = null;
@@ -35,6 +35,7 @@ buildGoModule rec {
 
   meta = with lib; {
     description = "Tool for smooth git handover";
+    mainProgram = "mob";
     homepage = "https://github.com/remotemobprogramming/mob";
     license = licenses.mit;
     maintainers = with maintainers; [ ericdallo ];

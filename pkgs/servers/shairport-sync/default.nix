@@ -28,8 +28,8 @@
 , enablePipewire ? true
 , enableJack ? true
 , enableMetadata ? false
-, enableMpris ? stdenv.isLinux
-, enableDbus ? stdenv.isLinux
+, enableMpris ? stdenv.hostPlatform.isLinux
+, enableDbus ? stdenv.hostPlatform.isLinux
 , enableSoxr ? true
 , enableLibdaemon ? false
 }:
@@ -39,17 +39,28 @@ let
 in
 
 stdenv.mkDerivation rec {
-  version = "4.1.1";
   pname = "shairport-sync";
+  version = "4.3.4";
 
   src = fetchFromGitHub {
-    rev = version;
     repo = "shairport-sync";
     owner = "mikebrady";
-    hash = "sha256-EKt5mH9GmzeR4zdPDFOt26T9STpG1khVrY4DFIv5Maw=";
+    rev = "refs/tags/${version}";
+    hash = "sha256:1y8dh1gdffq38hgy6x1228l51l6p56iaiqlflw7w1dcbgw15llcd";
   };
 
-  nativeBuildInputs = [ autoreconfHook pkg-config ];
+  nativeBuildInputs = [
+    autoreconfHook
+    pkg-config
+    # For glib we want the `dev` output for the same library we are
+    # also linking against, since pkgsHostTarget.glib.dev exposes
+    # some extra tools that are built for build->host execution.
+    # To achieve this, we coerce the output to a string to prevent
+    # mkDerivation's splicing logic from kicking in.
+    "${glib.dev}"
+  ] ++ optional enableAirplay2 [
+    unixtools.xxd
+  ];
 
   buildInputs = [
     openssl
@@ -69,9 +80,8 @@ stdenv.mkDerivation rec {
     libgcrypt
     libuuid
     ffmpeg
-    unixtools.xxd
   ]
-  ++ optional stdenv.isLinux glib;
+  ++ optional stdenv.hostPlatform.isLinux glib;
 
   postPatch = ''
     sed -i -e 's/G_BUS_TYPE_SYSTEM/G_BUS_TYPE_SESSION/g' dbus-service.c
@@ -100,11 +110,14 @@ stdenv.mkDerivation rec {
   ++ optional enableLibdaemon "--with-libdaemon"
   ++ optional enableAirplay2 "--with-airplay-2";
 
-  meta = with lib; {
+  strictDeps = true;
+
+  meta = {
     homepage = "https://github.com/mikebrady/shairport-sync";
     description = "Airtunes server and emulator with multi-room capabilities";
-    license = licenses.mit;
-    maintainers = with maintainers; [ lnl7 jordanisaacs ];
-    platforms = platforms.unix;
+    license = lib.licenses.mit;
+    mainProgram = "shairport-sync";
+    maintainers = with lib.maintainers; [ lnl7 jordanisaacs ];
+    platforms = lib.platforms.unix;
   };
 }

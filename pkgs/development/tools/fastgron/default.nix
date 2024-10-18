@@ -2,13 +2,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "fastgron";
-  version = "0.6.2";
+  version = "0.7.7";
 
   src = fetchFromGitHub {
     owner = "adamritter";
     repo = "fastgron";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-SqJdJnepfX/qHiACjpaTNM+/lApcADCCbcX+BNgXswg=";
+    hash = "sha256-dAfFSQ/UbAovQQr5AnCsyQtq1JkdQjvlG/SbuFnTx0E=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -22,6 +22,7 @@ stdenv.mkDerivation (finalAttrs: {
   meta = with lib; {
     changelog = "https://github.com/adamritter/fastgron/releases/tag/${finalAttrs.src.rev}";
     description = "High-performance JSON to GRON (greppable, flattened JSON) converter";
+    mainProgram = "fastgron";
     homepage = "https://github.com/adamritter/fastgron";
     license = licenses.mit;
     maintainers = with maintainers; [ zowoq ];

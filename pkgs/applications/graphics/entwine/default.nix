@@ -1,6 +1,7 @@
 { lib
 , stdenv
 , fetchFromGitHub
+, gitUpdater
 , cmake
 , pdal
 , curl
@@ -9,13 +10,13 @@
 
 stdenv.mkDerivation rec {
   pname = "entwine";
-  version = "unstable-2022-08-03";
+  version = "3.1.1";
 
   src = fetchFromGitHub {
     owner = "connormanning";
     repo = "entwine";
-    rev = "c776d51fd6ab94705b74f78b26de7f853e6ceeae";
-    sha256 = "sha256-dhYJhXtfMmqQLWuV3Dux/sGTsVxCI7RXR2sPlwIry0g=";
+    rev = version;
+    sha256 = "sha256-1dy5NafKX0E4MwFIggnr7bQIeB1KvqnNaQQUUAs6Bq8=";
   };
 
   buildInputs = [
@@ -28,11 +29,14 @@ stdenv.mkDerivation rec {
     cmake
   ];
 
+  passthru.updateScript = gitUpdater {};
+
   meta = with lib; {
     description = "Point cloud organization for massive datasets";
     homepage = "https://entwine.io/";
     license = licenses.lgpl2Only;
-    maintainers = with maintainers; [ matthewcroughan ];
+    maintainers = with maintainers; teams.geospatial.members ++ [ matthewcroughan ];
     platforms = platforms.linux;
+    mainProgram = "entwine";
   };
 }

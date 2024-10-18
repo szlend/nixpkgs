@@ -5,21 +5,23 @@
 , libffi
 , pkg-config
 , wayland-protocols
+, wayland-scanner
 , wayland
 , xorg
 , darwin
 , nix-update-script
+, alsa-lib
 }:
 
 stdenv.mkDerivation rec {
   pname = "clipboard-jh";
-  version = "0.8.0";
+  version = "0.9.0.1";
 
   src = fetchFromGitHub {
     owner = "Slackadays";
     repo = "clipboard";
     rev = version;
-    hash = "sha256-1HWWrBI96znHctoMhQyO46Jmbg1jXPcvkDdwiWwp4KE=";
+    hash = "sha256-iILtyURYCshicgAV3MWkgMQsXHe7Unj1A08W7tUMU2o=";
   };
 
   postPatch = ''
@@ -29,24 +31,27 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     cmake
     pkg-config
+    wayland-scanner
   ];
 
-  buildInputs = lib.optionals stdenv.isLinux [
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
     libffi
     wayland-protocols
     wayland
     xorg.libX11
-  ] ++ lib.optionals stdenv.isDarwin [
+    alsa-lib
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.AppKit
   ];
 
+  cmakeBuildType = "MinSizeRel";
+
   cmakeFlags = [
-    "-DCMAKE_BUILD_TYPE='MinSizeRel'"
     "-Wno-dev"
     "-DINSTALL_PREFIX=${placeholder "out"}"
   ];
 
-  postFixup = lib.optionalString stdenv.isLinux ''
+  postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
     patchelf $out/bin/cb --add-rpath $out/lib
   '';
 

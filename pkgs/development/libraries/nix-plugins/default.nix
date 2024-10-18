@@ -2,18 +2,21 @@
 
 stdenv.mkDerivation rec {
   pname = "nix-plugins";
-  version = "10.0.0";
+  version = "15.0.0";
 
   src = fetchFromGitHub {
     owner = "shlevy";
     repo = "nix-plugins";
     rev = version;
-    hash = "sha256-7Lo+YxpiRz0+ZLFDvYMJWWK2j0CyPDRoP1wAc+OaPJY=";
+    hash = "sha256-C4VqKHi6nVAHuXVhqvTRRyn0Bb619ez4LzgUWPH1cbM=";
   };
 
   nativeBuildInputs = [ cmake pkg-config ];
 
-  buildInputs = [ nix boost ];
+  buildInputs = [
+    nix
+    boost
+  ];
 
   meta = {
     description = "Collection of miscellaneous plugins for the nix expression language";

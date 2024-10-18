@@ -1,19 +1,26 @@
 { lib
 , python3
-, python3Packages
 , fetchFromGitHub
 , systemd
 , xrandr
 , installShellFiles
-, desktop-file-utils }:
+, desktop-file-utils
+}:
 
 python3.pkgs.buildPythonApplication rec {
   pname = "autorandr";
-  version = "1.13.3";
+  version = "1.15";
   format = "other";
 
+  src = fetchFromGitHub {
+    owner = "phillipberndt";
+    repo = "autorandr";
+    rev = "refs/tags/${version}";
+    hash = "sha256-8FMfy3GCN4z/TnfefU2DbKqV3W35I29/SuGGqeOrjNg";
+  };
+
   nativeBuildInputs = [ installShellFiles desktop-file-utils ];
-  propagatedBuildInputs = [ python3Packages.packaging ];
+  propagatedBuildInputs = with python3.pkgs; [ packaging ];
 
   buildPhase = ''
     substituteInPlace autorandr.py \
@@ -34,7 +41,8 @@ python3.pkgs.buildPythonApplication rec {
     # see https://github.com/phillipberndt/autorandr/issues/197
     installShellCompletion --cmd autorandr \
         --bash contrib/bash_completion/autorandr \
-        --zsh contrib/zsh_completion/_autorandr
+        --zsh contrib/zsh_completion/_autorandr \
+        --fish contrib/fish_completion/autorandr.fish
 
     make install TARGETS='autostart_config' PREFIX=$out DESTDIR=$out
 
@@ -56,18 +64,12 @@ python3.pkgs.buildPythonApplication rec {
     runHook postInstall
   '';
 
-  src = fetchFromGitHub {
-    owner = "phillipberndt";
-    repo = "autorandr";
-    rev = "refs/tags/${version}";
-    sha256 = "sha256-3zWYOOVYpj+s7VKagnbI55MNshM5WtbCFD6q9tRCzes=";
-  };
-
   meta = with lib; {
     homepage = "https://github.com/phillipberndt/autorandr/";
     description = "Automatically select a display configuration based on connected devices";
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ coroa globin ];
+    maintainers = with maintainers; [ coroa ];
     platforms = platforms.unix;
+    mainProgram = "autorandr";
   };
 }

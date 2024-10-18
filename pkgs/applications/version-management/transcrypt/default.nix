@@ -1,20 +1,18 @@
-{ lib, stdenv, fetchFromGitHub, git, makeWrapper, openssl, coreutils, util-linux, gnugrep, gnused, gawk }:
+{ lib, stdenv, fetchFromGitHub, git, makeWrapper, openssl, coreutils, util-linux, gnugrep, gnused, gawk, testers, transcrypt }:
 
 stdenv.mkDerivation rec {
   pname = "transcrypt";
-  version = "1.1.0";
+  version = "2.3.0";
 
   src = fetchFromGitHub {
     owner = "elasticdog";
     repo = "transcrypt";
     rev = "v${version}";
-    sha256 = "1dkr69plk16wllk5bzlkchrzw63pk239dgbjhrb3mb61i065jdam";
+    sha256 = "sha256-hevKqs0JKsRI2qTRzWAAuMotiBX6dGF0ZmypBco2l6g=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
   buildInputs = [ git openssl coreutils util-linux gnugrep gnused gawk ];
-
-  patches = [ ./helper-scripts_depspathprefix.patch ];
 
   installPhase = ''
     install -m 755 -D transcrypt $out/bin/transcrypt
@@ -31,6 +29,12 @@ stdenv.mkDerivation rec {
     EOF
     chmod +x $out/bin/transcrypt-depspathprefix
   '';
+
+  passthru.tests.version = testers.testVersion {
+    package = transcrypt;
+    command = "transcrypt --version";
+    version = "transcrypt ${version}";
+  };
 
   meta = with lib; {
     description = "Transparently encrypt files within a Git repository";

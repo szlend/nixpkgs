@@ -10,16 +10,16 @@
 }:
 rustPlatform.buildRustPackage rec {
   pname = "watershot";
-  version = "0.1.2";
+  version = "0.2.0";
 
   src = fetchFromGitHub {
     owner = "Kirottu";
     repo = "watershot";
     rev = "v${version}";
-    hash = "sha256-8GqO7Y0d+AoYr3Us3FEfNobrQNSw7XyGwmZz5HkVvDg=";
+    hash = "sha256-QX6BxK26kcrg0yKJA7M+Qlr3WwLaykBquI6UK8wVtX4=";
   };
 
-  cargoHash = "sha256-yJD7c/I3rwzczcrxbD8sinzP7bjMzhWWAVcCFCsTdeo=";
+  cargoHash = "sha256-481E5/mUeeoaZ0N//tRWCyV8/sRRP6VdB06gB1whgzU=";
 
   nativeBuildInputs = [ pkg-config wayland makeWrapper ];
 
@@ -32,7 +32,8 @@ rustPlatform.buildRustPackage rec {
 
   meta = with lib; {
     platforms = with platforms; linux;
-    description = "A simple wayland native screenshot tool";
+    description = "Simple wayland native screenshot tool";
+    mainProgram = "watershot";
     homepage = "https://github.com/Kirottu/watershot";
     license = licenses.gpl3Only;
     maintainers = with maintainers; [ lord-valen ];

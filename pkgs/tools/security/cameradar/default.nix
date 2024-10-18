@@ -16,7 +16,7 @@ buildGoModule rec {
     sha256 = "sha256-GOqmz/aiOLGMfs9rQBIEQSgBycPzhu8BohcAc2U+gBw=";
   };
 
-  vendorSha256 = "sha256-AIi57DWMvAKl0PhuwHO/0cHoDKk5e0bJsqHYBka4NiU=";
+  vendorHash = "sha256-AIi57DWMvAKl0PhuwHO/0cHoDKk5e0bJsqHYBka4NiU=";
 
   nativeBuildInputs = [
     pkg-config
@@ -35,6 +35,7 @@ buildGoModule rec {
   meta = with lib; {
     description = "RTSP stream access tool";
     homepage = "https://github.com/Ullaakut/cameradar";
+    changelog = "https://github.com/Ullaakut/cameradar/releases/tag/v${version}";
     license = with licenses; [ mit ];
     maintainers = with maintainers; [ fab ];
     # Upstream issue, doesn't build with latest curl, see

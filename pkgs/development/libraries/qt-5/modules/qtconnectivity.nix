@@ -2,8 +2,12 @@
 
 qtModule {
   pname = "qtconnectivity";
-  qtInputs = [ qtbase qtdeclarative ];
-  buildInputs = lib.optional stdenv.isLinux bluez;
-  propagatedBuildInputs = lib.optionals stdenv.isDarwin [ IOBluetooth ];
+  buildInputs = lib.optional stdenv.hostPlatform.isLinux bluez;
+  propagatedBuildInputs = [
+    qtbase
+    qtdeclarative
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    IOBluetooth
+  ];
   outputs = [ "out" "dev" "bin" ];
 }

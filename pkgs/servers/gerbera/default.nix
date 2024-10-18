@@ -1,6 +1,7 @@
 { lib
 , stdenv
 , fetchFromGitHub
+, fetchpatch
 , cmake
 , pkg-config
 , nixosTests
@@ -74,6 +75,16 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-j5J0u0zIjHY2kP5P8IzN2h+QQSCwsel/iTspad6V48s=";
   };
 
+  patches = [
+    # Can be removed on the next bump, see:
+    # https://github.com/gerbera/gerbera/pull/2840.
+    (fetchpatch {
+      name = "gerbera-fmt10.patch";
+      url = "https://github.com/gerbera/gerbera/commit/37957aac0aea776e6f843af2358916f81056a405.patch";
+      hash = "sha256-U7dyFGEbelVZeHYX/4fLOC0k+9pUKZ8qP/LIVXWCMcU=";
+    })
+  ];
+
   postPatch = lib.optionalString enableMysql ''
     substituteInPlace cmake/FindMySQL.cmake \
       --replace /usr/include/mysql ${lib.getDev libmysqlclient}/include/mariadb \
@@ -101,6 +112,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://docs.gerbera.io/";
+    changelog = "https://github.com/gerbera/gerbera/releases/tag/v${version}";
     description = "UPnP Media Server for 2020";
     longDescription = ''
       Gerbera is a Mediatomb fork.
@@ -110,5 +122,6 @@ stdenv.mkDerivation rec {
     license = licenses.gpl2Only;
     maintainers = with maintainers; [ ardumont ];
     platforms = platforms.linux;
+    mainProgram = "gerbera";
   };
 }

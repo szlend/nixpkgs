@@ -2,26 +2,29 @@
 , buildGoModule
 , fetchFromGitHub
 , installShellFiles
+, testers
+, k0sctl
 }:
 
 buildGoModule rec {
   pname = "k0sctl";
-  version = "0.15.2";
+  version = "0.19.0";
 
   src = fetchFromGitHub {
     owner = "k0sproject";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-pti52JlnIxinKg2DxNfLewoJuhMohsAVmHgvR2N5shg=";
+    hash = "sha256-86MLQdXc10bvDFeq3ImD19ytjVPVD19eJzicIo6oJZc=";
   };
 
-  vendorSha256 = "sha256-K4/sIHWVe1Wj8LJgrqfoOg1hHXvH3HEgU5vq82tzMSk=";
+  vendorHash = "sha256-eKim5F8bKC1UOY+lOo0NSHOzXuMOcnBjkjm3/vDkGEM=";
 
   ldflags = [
     "-s"
     "-w"
     "-X github.com/k0sproject/k0sctl/version.Environment=production"
-    "-X github.com/k0sproject/k0sctl/version.Version=${version}"
+    "-X github.com/carlmjohnson/versioninfo.Version=v${version}" # Doesn't work currently: https://github.com/carlmjohnson/versioninfo/discussions/12
+    "-X github.com/carlmjohnson/versioninfo.Revision=v${version}"
   ];
 
   nativeBuildInputs = [ installShellFiles ];
@@ -33,10 +36,18 @@ buildGoModule rec {
     done
   '';
 
+  passthru.tests.version = testers.testVersion {
+    package = k0sctl;
+    command = "k0sctl version";
+    # See https://github.com/carlmjohnson/versioninfo/discussions/12
+    version = "version: (devel)\ncommit: v${version}\n";
+  };
+
   meta = with lib; {
-    description = "A bootstrapping and management tool for k0s clusters.";
+    description = "Bootstrapping and management tool for k0s clusters";
     homepage = "https://k0sproject.io/";
     license = licenses.asl20;
-    maintainers = with maintainers; [ nickcao ];
+    mainProgram = "k0sctl";
+    maintainers = with maintainers; [ nickcao qjoly ];
   };
 }

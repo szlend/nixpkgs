@@ -12,11 +12,11 @@
 
 stdenv.mkDerivation rec {
   pname = "movit";
-  version = "1.6.3";
+  version = "1.7.1";
 
   src = fetchurl {
     url = "https://movit.sesse.net/${pname}-${version}.tar.gz";
-    sha256 = "164lm5sg95ca6k546zf775g3s79mgff0az96wl6hbmlrxh4z26gb";
+    sha256 = "sha256-szBztwXwzLasSULPURUVFUB7QLtOmi3QIowcLLH7wRo=";
   };
 
   outputs = [ "out" "dev" ];
@@ -31,7 +31,7 @@ stdenv.mkDerivation rec {
     SDL2
     fftw
     gtest
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.OpenGL
     darwin.libobjc
   ];
@@ -41,7 +41,7 @@ stdenv.mkDerivation rec {
     libepoxy
   ];
 
-  env = lib.optionalAttrs stdenv.isDarwin {
+  env = lib.optionalAttrs stdenv.hostPlatform.isDarwin {
     NIX_LDFLAGS = "-framework OpenGL";
   };
 
@@ -51,7 +51,7 @@ stdenv.mkDerivation rec {
     description = "High-performance, high-quality video filters for the GPU";
     homepage = "https://movit.sesse.net";
     license = licenses.gpl2Plus;
-    maintainers = [ maintainers.goibhniu ];
+    maintainers = [ ];
     platforms = platforms.unix;
   };
 }

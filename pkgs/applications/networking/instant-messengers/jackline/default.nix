@@ -4,20 +4,18 @@ with ocamlPackages;
 
 buildDunePackage rec {
   pname = "jackline";
-  version = "unstable-2023-02-24";
+  version = "unstable-2024-02-28";
 
   minimalOCamlVersion = "4.08";
-
-  duneVersion = "3";
 
   src = fetchFromGitHub {
     owner  = "hannesm";
     repo   = "jackline";
-    rev    = "846be4e7fcddf45e66e0ff5b29fb5a212d6ee8c3";
-    hash = "sha256-/j3VJRx/w9HQUnfoq/4gMWV5oVdRiPGddrgbCDk5y8c=";
+    rev  = "31b90275a5f848cfc8c4f5b75e7d1933bec37852";
+    hash = "sha256-G2jjsc/i9Qgo0TP+ZE4gB/1cjuZ9l8R7e59K2DGD5GY=";
   };
 
-  nativeBuildInpts = [
+  nativeBuildInputs = [
     ppx_sexp_conv
     ppx_deriving
   ];
@@ -25,6 +23,7 @@ buildDunePackage rec {
   buildInputs = [
     erm_xmpp
     tls
+    tls-lwt
     mirage-crypto-pk
     x509
     domain-name
@@ -43,11 +42,13 @@ buildDunePackage rec {
     cstruct
     base64
     happy-eyeballs-lwt
+    ppx_sexp_conv
   ];
 
   meta = with lib; {
     homepage = "https://github.com/hannesm/jackline";
     description = "minimalistic secure XMPP client in OCaml";
+    mainProgram = "jackline";
     license = licenses.bsd2;
     maintainers = with maintainers; [ sternenseemann ];
   };

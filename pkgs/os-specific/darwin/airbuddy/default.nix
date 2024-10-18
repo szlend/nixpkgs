@@ -1,17 +1,17 @@
 { lib
 , stdenvNoCC
 , fetchurl
-, undmg
+, _7zz
 }:
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "airbuddy";
-  version = "2.6.3";
+  version = "2.7.1";
 
   src = fetchurl {
     name = "AirBuddy.dmg";
     url = "https://download.airbuddy.app/WebDownload/AirBuddy_v${finalAttrs.version}.dmg";
-    hash = "sha256-q/Mbkm90ptIkdTLV2KDT9CM2Hsxnkway5Fw0F6d7Tqc=";
+    hash = "sha256-z8iy3kIBO+1HDgmWxXmFHArLdw85CLNSMvMFZfEJAp0=";
   };
 
   dontPatch = true;
@@ -19,7 +19,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dontBuild = true;
   dontFixup = true;
 
-  nativeBuildInputs = [ undmg ];
+  # AirBuddy.dmg is APFS formatted, unpack with 7zz
+  nativeBuildInputs = [ _7zz ];
 
   sourceRoot = "AirBuddy.app";
 

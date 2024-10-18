@@ -1,17 +1,17 @@
-{ lib, buildGoModule, installShellFiles, fetchFromGitHub }:
+{ lib, stdenv, buildGoModule, installShellFiles, fetchFromGitHub }:
 
 buildGoModule rec {
   pname = "gum";
-  version = "0.10.0";
+  version = "0.14.5";
 
   src = fetchFromGitHub {
     owner = "charmbracelet";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-SP8n9PGfn4Oe+3+i7gT4i2WKgO35igPu+86SGp65R7g=";
+    hash = "sha256-moKirTXziVo6ESOsnTUmPkcdBYL/VHaG226+UfM0xAk=";
   };
 
-  vendorSha256 = "sha256-gA545IqG3us0mmWxbw3fu3mFLqJzluH/T6d3ilfnLyM=";
+  vendorHash = "sha256-wjM2ld4go7OQu6XqsSGurjN09Fd5t9FNLvIzgrZEZ1k=";
 
   nativeBuildInputs = [
     installShellFiles
@@ -22,6 +22,7 @@ buildGoModule rec {
   postInstall = ''
     $out/bin/gum man > gum.1
     installManPage gum.1
+  '' + lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd gum \
       --bash <($out/bin/gum completion bash) \
       --fish <($out/bin/gum completion fish) \
@@ -34,5 +35,6 @@ buildGoModule rec {
     changelog = "https://github.com/charmbracelet/gum/releases/tag/v${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ maaslalani ];
+    mainProgram = "gum";
   };
 }

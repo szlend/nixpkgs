@@ -1,17 +1,25 @@
-{ lib, fetchFromGitHub, buildGoModule, installShellFiles, stdenv, testers, gh }:
+{
+  lib,
+  fetchFromGitHub,
+  buildGoModule,
+  installShellFiles,
+  stdenv,
+  testers,
+  gh,
+}:
 
 buildGoModule rec {
   pname = "gh";
-  version = "2.31.0";
+  version = "2.59.0";
 
   src = fetchFromGitHub {
     owner = "cli";
     repo = "cli";
-    rev = "v${version}";
-    hash = "sha256-HZ64Dz2vluRkrwOe1oXwBm/hATsqxlFq4VC9L758cwE=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-QOc99KmcGk9b9uy1/y1FSe0zYE1q0g06k7niqtsMDmY=";
   };
 
-  vendorHash = "sha256-eq/2w16KL2Mrt7jZJStRFosLVpw6qfnGLAhes0iZAdg=";
+  vendorHash = "sha256-Mje0IbvRj6pmOe8s8PX87ntPE+ZZeciLyOP6fmv7PmI=";
 
   nativeBuildInputs = [ installShellFiles ];
 
@@ -21,19 +29,22 @@ buildGoModule rec {
     runHook postBuild
   '';
 
-  installPhase = ''
-    runHook preInstall
-    install -Dm755 bin/gh -t $out/bin
-   '' + lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
-    installManPage share/man/*/*.[1-9]
+  installPhase =
+    ''
+      runHook preInstall
+      install -Dm755 bin/gh -t $out/bin
+    ''
+    + lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+      installManPage share/man/*/*.[1-9]
 
-    installShellCompletion --cmd gh \
-      --bash <($out/bin/gh completion -s bash) \
-      --fish <($out/bin/gh completion -s fish) \
-      --zsh <($out/bin/gh completion -s zsh)
-  '' + ''
-    runHook postInstall
-  '';
+      installShellCompletion --cmd gh \
+        --bash <($out/bin/gh completion -s bash) \
+        --fish <($out/bin/gh completion -s fish) \
+        --zsh <($out/bin/gh completion -s zsh)
+    ''
+    + ''
+      runHook postInstall
+    '';
 
   # most tests require network access
   doCheck = false;
@@ -47,6 +58,7 @@ buildGoModule rec {
     homepage = "https://cli.github.com/";
     changelog = "https://github.com/cli/cli/releases/tag/v${version}";
     license = licenses.mit;
+    mainProgram = "gh";
     maintainers = with maintainers; [ zowoq ];
   };
 }

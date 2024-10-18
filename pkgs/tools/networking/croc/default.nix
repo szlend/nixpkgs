@@ -1,25 +1,27 @@
-{ lib, buildGoModule, fetchFromGitHub, callPackage }:
+{ lib, buildGoModule, fetchFromGitHub, callPackage, nixosTests }:
 
 buildGoModule rec {
   pname = "croc";
-  version = "9.6.4";
+  version = "10.0.13";
 
   src = fetchFromGitHub {
     owner = "schollz";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-ksTKB/UInMHxZT7/B13jVK+w78gUF4KINv2HU1qRPgo=";
+    hash = "sha256-GrdJAXHdkJYB+k2RexcCWhIhxY9UNY9IVJbzlLKDcKA=";
   };
 
-  vendorHash = "sha256-d6fsy0ROKX91YkFW2aC2A+pO7dmcmMkoz076z1XcZtE=";
+  vendorHash = "sha256-gTSc2mDNt7K954GXxUjjxPR0NkZwSTCjQDQ9x57ookw=";
 
   subPackages = [ "." ];
 
   passthru = {
     tests = {
       local-relay = callPackage ./test-local-relay.nix { };
+      inherit (nixosTests) croc;
     };
   };
+
   meta = with lib; {
     description = "Easily and securely send things from one computer to another";
     longDescription = ''
@@ -36,6 +38,7 @@ buildGoModule rec {
     '';
     homepage = "https://github.com/schollz/croc";
     license = licenses.mit;
-    maintainers = with maintainers; [ hugoreeves equirosa SuperSandro2000 ];
+    maintainers = with maintainers; [ equirosa SuperSandro2000 ];
+    mainProgram = "croc";
   };
 }

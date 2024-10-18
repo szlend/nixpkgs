@@ -1,23 +1,26 @@
-{ lib, fetchFromGitHub, rustPlatform }:
+{ lib, stdenv, fetchFromGitHub, rustPlatform, darwin }:
 
 rustPlatform.buildRustPackage rec {
   pname = "ox";
-  version = "0.2.7";
+  version = "0.6.1";
 
   src = fetchFromGitHub {
     owner = "curlpipe";
     repo = pname;
     rev = version;
-    sha256 = "18iffnmvax6mbnhypf7yma98y5q2zlsyp9q18f92fdwz426r33p0";
+    hash = "sha256-37o8Ak+8LPeGny7JBLc2STpRjfWBCwOrRyP3HJbD25o=";
   };
 
-  cargoSha256 = "0m5vglm58myf50vbb7m6gd3srk3n93afg70lz63i2kciqkkwsnjl";
+  cargoHash = "sha256-c7XhMYfhMCxyidZJemnu5f9KwQmPmbun6mrI3v2EpZ4=";
+
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ darwin.apple_sdk.frameworks.AppKit ];
 
   meta = with lib; {
-    description = "An independent Rust text editor that runs in your terminal";
+    description = "Independent Rust text editor that runs in your terminal";
     homepage = "https://github.com/curlpipe/ox";
     changelog = "https://github.com/curlpipe/ox/releases/tag/${version}";
     license = licenses.gpl2Only;
-    maintainers = with maintainers; [ fortuneteller2k ];
+    maintainers = with maintainers; [ moni ];
+    mainProgram = "ox";
   };
 }

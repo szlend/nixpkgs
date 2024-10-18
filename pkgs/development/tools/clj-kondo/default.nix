@@ -1,25 +1,28 @@
-{ lib, buildGraalvmNativeImage, fetchurl }:
+{ lib, buildGraalvmNativeImage, graalvmCEPackages, fetchurl
+}:
 
 buildGraalvmNativeImage rec {
   pname = "clj-kondo";
-  version = "2023.05.26";
+  version = "2024.09.27";
 
   src = fetchurl {
-    url = "https://github.com/clj-kondo/${pname}/releases/download/v${version}/${pname}-${version}-standalone.jar";
-    sha256 = "sha256-YnieYpRTBTnV3/jjcy1m469qH4m8uTeAVt3SG55r2/0=";
+    url =
+      "https://github.com/clj-kondo/${pname}/releases/download/v${version}/${pname}-${version}-standalone.jar";
+    sha256 = "sha256-DrSfL1WazlNd5H0jG6m0S5aED4BLVufr1rGIAyifn6E=";
   };
 
-  extraNativeImageBuildArgs = [
-    "-H:+ReportExceptionStackTraces"
-    "--no-fallback"
-  ];
+  graalvmDrv = graalvmCEPackages.graalvm-ce;
+
+  extraNativeImageBuildArgs =
+    [ "-H:+ReportExceptionStackTraces" "--no-fallback" ];
 
   meta = with lib; {
-    description = "A linter for Clojure code that sparks joy";
+    description = "Linter for Clojure code that sparks joy";
     homepage = "https://github.com/clj-kondo/clj-kondo";
     sourceProvenance = with sourceTypes; [ binaryBytecode ];
     license = licenses.epl10;
-    changelog = "https://github.com/clj-kondo/clj-kondo/blob/v${version}/CHANGELOG.md";
-    maintainers = with maintainers; [ jlesquembre bandresen thiagokokada ];
+    changelog =
+      "https://github.com/clj-kondo/clj-kondo/blob/v${version}/CHANGELOG.md";
+    maintainers = with maintainers; [ jlesquembre bandresen ];
   };
 }

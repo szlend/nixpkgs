@@ -4,6 +4,8 @@
 , makeWrapper
 , rustPlatform
 , tree-sitter
+, gitUpdater
+, versionCheckHook
 }:
 
 let
@@ -32,17 +34,17 @@ let
 in
 rustPlatform.buildRustPackage rec {
   pname = "diffsitter";
-  version = "0.8.0";
+  version = "0.8.4";
 
   src = fetchFromGitHub {
     owner = "afnanenayet";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-KrmK0RJdNJcZGM/7IxDP5IbJMTY3v6MkHA1SQW+U3hw=";
+    hash = "sha256-ta7JcSPEgpJwieYvtZnNMFvsYvz4FuxthhmKMYe2XUE=";
     fetchSubmodules = false;
   };
 
-  cargoHash = "sha256-3HALOoa3QDl9KE2UHxszzDw/VuDLLmjccXQvBBrfrHA=";
+  cargoHash = "sha256-VbdV4dftCxxKLJr9TEuCe9tvSGbc62AUwlDZdaNRNhw=";
 
   buildNoDefaultFeatures = true;
   buildFeatures = [
@@ -52,6 +54,11 @@ rustPlatform.buildRustPackage rec {
   nativeBuildInputs = [
     makeWrapper
   ];
+
+  nativeInstallCheckInputs = [
+    versionCheckHook
+  ];
+  doInstallCheck = true;
 
   postInstall = ''
     # completions are not yet implemented
@@ -71,9 +78,11 @@ rustPlatform.buildRustPackage rec {
   #     tests::diff_hunks_snapshot::_short_python_py_true_expects
   #     tests::diff_hunks_snapshot::_short_rust_rs_true_expects
 
+  passthru.updateScript = gitUpdater { rev-prefix = "v"; };
+
   meta = with lib; {
     homepage = "https://github.com/afnanenayet/diffsitter";
-    description = "A tree-sitter based AST difftool to get meaningful semantic diffs";
+    description = "Tree-sitter based AST difftool to get meaningful semantic diffs";
     license = licenses.mit;
     maintainers = with maintainers; [ bbigras ];
   };

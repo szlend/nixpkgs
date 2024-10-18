@@ -1,6 +1,6 @@
-{ lib, stdenv, fetchFromGitHub, fetchpatch
+{ lib, stdenv, fetchFromGitHub
 , makeWrapper, pkg-config, perl
-, gawk, gnutls, libgcrypt, openresolv, vpnc-scripts
+, gnutls, libgcrypt, vpnc-scripts
 , opensslSupport ? false, openssl # Distributing this is a GPL violation.
 }:
 
@@ -26,6 +26,10 @@ stdenv.mkDerivation {
     "ETCDIR=$(out)/etc/vpnc"
     "SCRIPT_PATH=${vpnc-scripts}/bin/vpnc-script"
   ] ++ lib.optional opensslSupport "OPENSSL_GPL_VIOLATION=yes";
+
+  env = lib.optionalAttrs stdenv.cc.isGNU {
+    NIX_CFLAGS_COMPILE = "-Wno-error=implicit-function-declaration";
+  };
 
   postPatch = ''
     patchShebangs src/makeman.pl

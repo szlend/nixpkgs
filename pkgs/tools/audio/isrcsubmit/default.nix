@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchFromGitHub, python3Packages }:
+{ lib, fetchFromGitHub, python3Packages }:
 
 python3Packages.buildPythonApplication rec {
   pname = "isrcsubmit";
@@ -19,6 +19,6 @@ python3Packages.buildPythonApplication rec {
     description = "Script to submit ISRCs from disc to MusicBrainz";
     license = licenses.gpl3Plus;
     homepage = "http://jonnyjd.github.io/musicbrainz-isrcsubmit/";
-    maintainers = with maintainers; [ ];
+    maintainers = [ ];
   };
 }

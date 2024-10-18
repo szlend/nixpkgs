@@ -1,84 +1,114 @@
 { lib
 , stdenv
-, fetchzip
-, makeWrapper
-, which
+, fetchFromGitHub
+, gitMinimal
+, cacert
+, yarn
+, makeBinaryWrapper
 , nodejs
-, mkYarnPackage
-, fetchYarnDeps
 , python3
 , nixosTests
 }:
 
-mkYarnPackage rec {
+let
+  version = "1.10.0";
+
+  src = fetchFromGitHub {
+    owner = "hedgedoc";
+    repo = "hedgedoc";
+    rev = version;
+    hash = "sha256-cRIpcoD9WzLYxKYpkvhRxUmeyJR5z2QyqApzWvQND+s=";
+  };
+
+  # we cannot use fetchYarnDeps because that doesn't support yarn 2/berry lockfiles
+  offlineCache = stdenv.mkDerivation {
+    name = "hedgedoc-${version}-offline-cache";
+    inherit src;
+
+    nativeBuildInputs = [
+      cacert # needed for git
+      gitMinimal # needed to download git dependencies
+      nodejs # needed for npm to download git dependencies
+      yarn
+    ];
+
+    buildPhase = ''
+      export HOME=$(mktemp -d)
+      yarn config set enableTelemetry 0
+      yarn config set cacheFolder $out
+      yarn config set --json supportedArchitectures.os '[ "linux" ]'
+      yarn config set --json supportedArchitectures.cpu '["arm", "arm64", "ia32", "x64"]'
+      yarn
+    '';
+
+    outputHashMode = "recursive";
+    outputHash = "sha256-RV9xzNVE4//tPVWVaET78ML3ah+hkZ8x6mTAxe5/pdE=";
+  };
+
+in stdenv.mkDerivation {
   pname = "hedgedoc";
-  version = "1.9.7";
+  inherit version src;
 
-  # we use the upstream compiled js files because yarn2nix cannot handle different versions of dependencies
-  # in development and production and the web assets muts be compiled with js-yaml 3 while development
-  # uses js-yaml 4 which breaks the text editor
-  src = fetchzip {
-    url = "https://github.com/hedgedoc/hedgedoc/releases/download/${version}/hedgedoc-${version}.tar.gz";
-    hash = "sha256-tPkhnnKDS5TICsW66YCOy7xWFj5usLyDMbYMYQ3Euoc=";
-  };
+  nativeBuildInputs = [
+    makeBinaryWrapper
+    (python3.withPackages (ps: with ps; [ setuptools ])) # required to build sqlite3 bindings
+    yarn
+  ];
 
-  nativeBuildInputs = [ which makeWrapper ];
-  extraBuildInputs = [ python3 ];
+  buildInputs = [
+    nodejs # for shebangs
+  ];
 
-  packageJSON = ./package.json;
-  yarnFlags = [ "--production" ];
-
-  offlineCache = fetchYarnDeps {
-    yarnLock = src + "/yarn.lock";
-    sha256 = "0qkc26ks33vy00jgpv4445wzgxx1mzi70pkm1l8y9amgd9wf9aig";
-  };
-
-  configurePhase = ''
-    cp -r "$node_modules" node_modules
-    chmod -R u+w node_modules
-  '';
+  dontConfigure = true;
 
   buildPhase = ''
     runHook preBuild
 
-    pushd node_modules/sqlite3
-    export CPPFLAGS="-I${nodejs}/include/node"
-    npm run install --build-from-source --nodedir=${nodejs}/include/node
-    popd
+    export HOME=$(mktemp -d)
+    yarn config set enableTelemetry 0
+    yarn config set cacheFolder ${offlineCache}
+    export npm_config_nodedir=${nodejs} # prevent node-gyp from downloading headers
 
+    yarn --immutable-cache
+    yarn run build
+
+    # Delete scripts that are not useful for NixOS
+    rm bin/{heroku,setup}
     patchShebangs bin/*
 
     runHook postBuild
   '';
 
-  dontInstall = true;
+  installPhase = ''
+    runHook preInstall
 
-  distPhase = ''
-    runHook preDist
+    mkdir -p $out/share/hedgedoc
+    cp -r {app.js,bin,lib,locales,node_modules,package.json,public} $out/share/hedgedoc
 
-    mkdir -p $out
-    cp -R {app.js,bin,lib,locales,node_modules,package.json,public} $out
+    for bin in $out/share/hedgedoc/bin/*; do
+      makeWrapper $bin $out/bin/$(basename $bin) \
+        --set NODE_ENV production \
+        --set NODE_PATH "$out/share/hedgedoc/lib/node_modules"
+    done
+    makeWrapper ${nodejs}/bin/node $out/bin/hedgedoc \
+      --add-flags $out/share/hedgedoc/app.js \
+      --set NODE_ENV production \
+      --set NODE_PATH "$out/share/hedgedoc/lib/node_modules"
 
-    cat > $out/bin/hedgedoc <<EOF
-      #!${stdenv.shell}/bin/sh
-      ${nodejs}/bin/node $out/app.js
-    EOF
-    chmod +x $out/bin/hedgedoc
-    wrapProgram $out/bin/hedgedoc \
-      --set NODE_PATH "$out/lib/node_modules"
-
-    runHook postDist
+    runHook postInstall
   '';
 
   passthru = {
+    inherit offlineCache;
     tests = { inherit (nixosTests) hedgedoc; };
   };
 
-  meta = with lib; {
+  meta = {
     description = "Realtime collaborative markdown notes on all platforms";
-    license = licenses.agpl3;
+    license = lib.licenses.agpl3Only;
     homepage = "https://hedgedoc.org";
-    maintainers = with maintainers; [ SuperSandro2000 ];
-    platforms = platforms.linux;
+    mainProgram = "hedgedoc";
+    maintainers = with lib.maintainers; [ SuperSandro2000 ];
+    platforms = lib.platforms.linux;
   };
 }

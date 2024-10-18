@@ -3,26 +3,27 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "elan";
-  version = "1.4.6";
+  version = "3.1.1-unstable-2024-08-02";
 
   src = fetchFromGitHub {
     owner = "leanprover";
     repo = "elan";
-    rev = "v${version}";
-    sha256 = "sha256-+GCmPT7dtd+XvmJv19XllZ6G4rB0+CYUt+lorr44aEQ=";
+    # commit "chore: update to build with rust 1.80 (leanprover/elan#134)"
+    rev = "97ce78e0e6aecdf3e8d35dbf42b0614302efb250";
+    hash = "sha256-7cwpHMyhpTxYXjZM4xbDK+epvA2kBf7jelvMaPGP1kU=";
   };
 
-  cargoHash = "sha256-iWZutcYyBVujwjMHFUwwE/xDk6o5tPng1ZQ2mHgTbVk=";
+  cargoHash = "sha256-ON5d7ryMKEhkx6dV760msr+y/+4hIwssXUE5Ocaq2W0=";
 
   nativeBuildInputs = [ pkg-config makeWrapper ];
 
   OPENSSL_NO_VENDOR = 1;
   buildInputs = [ curl zlib openssl ]
-    ++ lib.optional stdenv.isDarwin libiconv;
+    ++ lib.optional stdenv.hostPlatform.isDarwin libiconv;
 
   buildFeatures = [ "no-self-update" ];
 
-  patches = lib.optionals stdenv.isLinux [
+  patches = lib.optionals stdenv.hostPlatform.isLinux [
     # Run patchelf on the downloaded binaries.
     # This is necessary because Lean 4 is now dynamically linked.
     (runCommand "0001-dynamically-patchelf-binaries.patch" {
@@ -61,7 +62,9 @@ rustPlatform.buildRustPackage rec {
   meta = with lib; {
     description = "Small tool to manage your installations of the Lean theorem prover";
     homepage = "https://github.com/leanprover/elan";
+    changelog = "https://github.com/leanprover/elan/blob/v${version}/CHANGELOG.md";
     license = with licenses; [ asl20 /* or */ mit ];
     maintainers = with maintainers; [ gebner ];
+    mainProgram = "elan";
   };
 }

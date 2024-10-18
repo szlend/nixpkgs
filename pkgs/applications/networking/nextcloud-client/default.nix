@@ -1,40 +1,40 @@
 { lib
-, mkDerivation
+, stdenv
 , fetchFromGitHub
 , cmake
 , extra-cmake-modules
 , inotify-tools
-, installShellFiles
+, kdePackages
 , libcloudproviders
 , librsvg
 , libsecret
 , openssl
 , pcre
 , pkg-config
+, qt5compat
 , qtbase
 , qtkeychain
+, qtsvg
 , qttools
 , qtwebengine
 , qtwebsockets
-, qtquickcontrols2
-, qtgraphicaleffects
-, plasma5Packages
 , sphinx
 , sqlite
 , xdg-utils
+, wrapQtAppsHook
 }:
 
-mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "nextcloud-client";
-  version = "3.9.0";
+  version = "3.14.1";
 
   outputs = [ "out" "dev" ];
 
   src = fetchFromGitHub {
-    owner = "nextcloud";
+    owner = "nextcloud-releases";
     repo = "desktop";
-    rev = "v${version}";
-    sha256 = "sha256-XcQYttd5dl2TCbBxOlRBg8/mEiHekoxayPi81ot7N7o=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-bUqHegW38NQJn4TnEQt9wRJFqR6fbLpvQvmWF3akekc=";
   };
 
   patches = [
@@ -46,7 +46,7 @@ mkDerivation rec {
   postPatch = ''
     for file in src/libsync/vfs/*/CMakeLists.txt; do
       substituteInPlace $file \
-        --replace "PLUGINDIR" "KDE_INSTALL_PLUGINDIR"
+        --replace-fail "PLUGINDIR" "KDE_INSTALL_PLUGINDIR"
     done
   '';
 
@@ -56,21 +56,22 @@ mkDerivation rec {
     extra-cmake-modules
     librsvg
     sphinx
+    wrapQtAppsHook
   ];
 
   buildInputs = [
     inotify-tools
+    kdePackages.kio
     libcloudproviders
     libsecret
     openssl
     pcre
-    plasma5Packages.kio
+    qt5compat
     qtbase
     qtkeychain
+    qtsvg
     qttools
     qtwebengine
-    qtquickcontrols2
-    qtgraphicaleffects
     qtwebsockets
     sqlite
   ];
@@ -84,7 +85,7 @@ mkDerivation rec {
   cmakeFlags = [
     "-DBUILD_UPDATER=off"
     "-DCMAKE_INSTALL_LIBDIR=lib" # expected to be prefix-relative by build code setting RPATH
-    "-DNO_SHIBBOLETH=1" # allows to compile without qtwebkit
+    "-DMIRALL_VERSION_SUFFIX=" # remove git suffix from version
   ];
 
   postBuild = ''
@@ -92,7 +93,8 @@ mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "Nextcloud themed desktop client";
+    changelog = "https://github.com/nextcloud/desktop/releases/tag/v${version}";
+    description = "Desktop sync client for Nextcloud";
     homepage = "https://nextcloud.com";
     license = licenses.gpl2Plus;
     maintainers = with maintainers; [ kranzes SuperSandro2000 ];

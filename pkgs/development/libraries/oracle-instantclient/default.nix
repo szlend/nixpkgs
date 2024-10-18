@@ -99,12 +99,12 @@ stdenv.mkDerivation {
   inherit pname version srcs;
 
   buildInputs = [ stdenv.cc.cc.lib ]
-    ++ optional stdenv.isLinux libaio
+    ++ optional stdenv.hostPlatform.isLinux libaio
     ++ optional odbcSupport unixODBC;
 
   nativeBuildInputs = [ makeWrapper unzip ]
-    ++ optional stdenv.isLinux autoPatchelfHook
-    ++ optional stdenv.isDarwin fixDarwinDylibNames;
+    ++ optional stdenv.hostPlatform.isLinux autoPatchelfHook
+    ++ optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
 
   outputs = [ "out" "dev" "lib" ];
 
@@ -125,7 +125,7 @@ stdenv.mkDerivation {
     ln -sfn $out/bin/sqlplus $out/bin/sqlplus64
   '';
 
-  postFixup = optionalString stdenv.isDarwin ''
+  postFixup = optionalString stdenv.hostPlatform.isDarwin ''
     for exe in "$out/bin/"* ; do
       if [ ! -L "$exe" ]; then
         install_name_tool -add_rpath "$lib/lib" "$exe"
@@ -143,7 +143,7 @@ stdenv.mkDerivation {
     sourceProvenance = with sourceTypes; [ binaryBytecode ];
     license = licenses.unfree;
     platforms = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" ];
-    maintainers = with maintainers; [ flokli dylanmtaylor ];
+    maintainers = with maintainers; [ dylanmtaylor ];
     hydraPlatforms = [ ];
   };
 }

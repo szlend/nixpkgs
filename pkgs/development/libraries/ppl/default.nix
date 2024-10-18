@@ -13,15 +13,22 @@ stdenv.mkDerivation {
 
   patches = [(fetchpatch {
     name = "clang5-support.patch";
-    url = "https://git.sagemath.org/sage.git/plain/build/pkgs/ppl/patches/clang5-support.patch?h=9.2";
+    url = "https://raw.githubusercontent.com/sagemath/sage/9.2/build/pkgs/ppl/patches/clang5-support.patch";
     sha256 = "1zj90hm25pkgvk4jlkfzh18ak9b98217gbidl3731fdccbw6hr87";
   })];
+
+  postPatch = lib.optionalString stdenv.cc.isClang ''
+    substituteInPlace src/PIP_Tree.cc \
+      --replace "std::auto_ptr" "std::unique_ptr"
+    substituteInPlace src/Powerset_inlines.hh src/Pointset_Powerset_inlines.hh \
+      --replace "std::mem_fun_ref" "std::mem_fn"
+  '';
 
   nativeBuildInputs = [ perl gnum4 ];
   propagatedBuildInputs = [ gmpxx ];
 
   configureFlags = [ "--disable-watchdog" ] ++
-    lib.optionals stdenv.isDarwin [
+    lib.optionals stdenv.hostPlatform.isDarwin [
       "CPPFLAGS=-fexceptions"
       "--disable-ppl_lcdd" "--disable-ppl_lpsol" "--disable-ppl_pips"
     ];
@@ -34,7 +41,7 @@ stdenv.mkDerivation {
   enableParallelBuilding = true;
 
   meta = {
-    description = "The Parma Polyhedra Library";
+    description = "Parma Polyhedra Library";
 
     longDescription = ''
       The Parma Polyhedra Library (PPL) provides numerical abstractions

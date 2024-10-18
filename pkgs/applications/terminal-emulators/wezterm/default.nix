@@ -32,17 +32,19 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "wezterm";
-  version = "20230408-112425-69ae8472";
+  version = "20240203-110809-5046fc22";
 
   src = fetchFromGitHub {
     owner = "wez";
     repo = pname;
     rev = version;
     fetchSubmodules = true;
-    hash = "sha256-Uk6I/JtSkGCQGG95DDD1hsu40X00/k5d44WP3OJ+rn4=";
+    hash = "sha256-Az+HlnK/lRJpUSGm5UKyma1l2PaBKNCGFiaYnLECMX8=";
   };
 
   postPatch = ''
+    cp ${./Cargo.lock} Cargo.lock
+
     echo ${version} > .tag
 
     # tests are failing with: Unable to exchange encryption keys
@@ -52,8 +54,7 @@ rustPlatform.buildRustPackage rec {
   cargoLock = {
     lockFile = ./Cargo.lock;
     outputHashes = {
-      "image-0.24.5" = "sha256-fTajVwm88OInqCPZerWcSAm1ga46ansQ3EzAmbT58Js=";
-      "xcb-imdkit-0.2.0" = "sha256-QOT9HLlA26DVPUF4ViKH2ckexUsu45KZMdJwoUhW+hA=";
+      "xcb-imdkit-0.3.0" = "sha256-fTpJ6uNhjmCWv7dZqVgYuS2Uic36XNYTbqlaly5QBjI=";
     };
   };
 
@@ -62,12 +63,12 @@ rustPlatform.buildRustPackage rec {
     ncurses # tic for terminfo
     pkg-config
     python3
-  ] ++ lib.optional stdenv.isDarwin perl;
+  ] ++ lib.optional stdenv.hostPlatform.isDarwin perl;
 
   buildInputs = [
     fontconfig
     zlib
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     libX11
     libxcb
     libxkbcommon
@@ -77,7 +78,7 @@ rustPlatform.buildRustPackage rec {
     xcbutilimage
     xcbutilkeysyms
     xcbutilwm # contains xcb-ewmh among others
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     Cocoa
     CoreGraphics
     Foundation
@@ -88,7 +89,7 @@ rustPlatform.buildRustPackage rec {
 
   buildFeatures = [ "distro-defaults" ];
 
-  env.NIX_LDFLAGS = lib.optionalString stdenv.isDarwin "-framework System";
+  env.NIX_LDFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-framework System";
 
   postInstall = ''
     mkdir -p $out/nix-support
@@ -107,12 +108,12 @@ rustPlatform.buildRustPackage rec {
     install -Dm644 assets/wezterm-nautilus.py -t $out/share/nautilus-python/extensions
   '';
 
-  preFixup = lib.optionalString stdenv.isLinux ''
+  preFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
     patchelf \
       --add-needed "${libGL}/lib/libEGL.so.1" \
       --add-needed "${vulkan-loader}/lib/libvulkan.so.1" \
       $out/bin/wezterm-gui
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     mkdir -p "$out/Applications"
     OUT_APP="$out/Applications/WezTerm.app"
     cp -r assets/macos/WezTerm.app "$OUT_APP"
@@ -124,7 +125,8 @@ rustPlatform.buildRustPackage rec {
   passthru = {
     tests = {
       all-terminfo = nixosTests.allTerminfo;
-      terminal-emulators = nixosTests.terminal-emulators.wezterm;
+      # the test is commented out in nixos/tests/terminal-emulators.nix
+      #terminal-emulators = nixosTests.terminal-emulators.wezterm;
     };
     terminfo = runCommand "wezterm-terminfo"
       {
@@ -139,6 +141,7 @@ rustPlatform.buildRustPackage rec {
     description = "GPU-accelerated cross-platform terminal emulator and multiplexer written by @wez and implemented in Rust";
     homepage = "https://wezfurlong.org/wezterm";
     license = licenses.mit;
+    mainProgram = "wezterm";
     maintainers = with maintainers; [ SuperSandro2000 mimame ];
   };
 }

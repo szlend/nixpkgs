@@ -2,14 +2,16 @@
 
 buildGoModule rec {
   pname = "s5";
-  version = "0.1.12";
+  version = "0.1.15";
 
   src = fetchFromGitHub {
     owner = "mvisonneau";
     repo = pname;
     rev = "v${version}";
-    sha256 = "003l4v7d671rvw7q32fxhxv3qazw6v8v9ch7hmyy9lvwkc7x6dlm";
+    hash = "sha256-QQMnzDRWdW0awwNx2vqtzrOW9Ua7EmJ9YFznQoK33J0=";
   };
+
+  vendorHash = "sha256-axcZ4XzgsPVU9at/g3WS8Hv92P2hmZRb+tUfw+h9iH0=";
 
   subPackages = [ "cmd/${pname}" ];
 
@@ -17,11 +19,11 @@ buildGoModule rec {
     "-X main.version=v${version}"
   ];
 
-  vendorSha256 = "TrCIUeY0B+BsWNaUkDTEgrEaWfJKnID2mafj3ink+i8=";
   doCheck = true;
 
   meta = with lib; {
     description = "cipher/decipher text within a file";
+    mainProgram = "s5";
     homepage = "https://github.com/mvisonneau/s5";
     license = licenses.asl20;
     platforms = platforms.unix ++ platforms.darwin;

@@ -5,13 +5,13 @@
 
 stdenv.mkDerivation rec {
   pname = "tbox";
-  version = "1.7.3";
+  version = "1.7.6";
 
   src = fetchFromGitHub {
     owner = "tboox";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-6SqMvwxKSiJO7Z33xx7cJoECu5AJ1gWF8ZsiERWx8DU=";
+    hash = "sha256-cwpZ7F8WzT/46HrckHe0Aug2mxirCkNA68aCxg/FcsE=";
   };
 
   configureFlags = [
@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "A glib-like multi-platform c library";
+    description = "Glib-like multi-platform c library";
     homepage = "https://docs.tboox.org";
     license = licenses.asl20;
     platforms = platforms.linux;
