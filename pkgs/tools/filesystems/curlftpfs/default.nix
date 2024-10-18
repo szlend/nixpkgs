@@ -14,14 +14,16 @@ stdenv.mkDerivation rec {
     # it is known to cause problems. Search online for "rpl_malloc" and
     # "rpl_realloc" to find out more.
     ./fix-rpl_malloc.patch
+    ./suse-bug-580609.patch
+    ./suse-bug-955687.patch
   ];
 
   nativeBuildInputs = [ autoreconfHook pkg-config ];
   buildInputs = [ fuse curl glib zlib ];
 
-  CFLAGS = lib.optionalString stdenv.isDarwin "-D__off_t=off_t";
+  CFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-D__off_t=off_t";
 
-  postPatch = lib.optionalString stdenv.isDarwin ''
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
     # Fix the build on macOS with macFUSE installed. Needs autoreconfHook for
     # this change to effect
     substituteInPlace configure.ac --replace \
@@ -33,6 +35,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "Filesystem for accessing FTP hosts based on FUSE and libcurl";
+    mainProgram = "curlftpfs";
     homepage = "https://curlftpfs.sourceforge.net";
     license = licenses.gpl2Only;
     platforms = platforms.unix;

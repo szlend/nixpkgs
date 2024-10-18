@@ -13,9 +13,9 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ cmake ];
   buildInputs = [ libGLU libGL libX11 libXi ];
 
-  sourceRoot = "liquidfun/Box2D/";
+  sourceRoot = "liquidfun/Box2D";
 
-  preConfigurePhases = "preConfigure";
+  preConfigurePhases = [ "preConfigure" ];
 
   preConfigure = ''
     sed -i Box2D/Common/b2Settings.h -e 's@b2_maxPolygonVertices .*@b2_maxPolygonVertices 15@'

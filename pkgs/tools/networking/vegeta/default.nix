@@ -5,17 +5,17 @@
 
 buildGoModule rec {
   pname = "vegeta";
-  version = "12.8.4";
-  rev = "e04d9c0df8177e8633bff4afe7b39c2f3a9e7dea";
+  version = "12.12.0";
+  rev = "03ca49e9b419c106db29d687827c4c823d8b8ece";
 
   src = fetchFromGitHub {
     owner = "tsenart";
     repo = "vegeta";
     rev = "v${version}";
-    sha256 = "sha256-FAb7nf6jZju95YEZR1GjPnfbsA5M8NcIKQyc8cgEgWs=";
+    hash = "sha256-nTtQ/BB5rU+0k4dPRCmukCRNI0iFTjHIJiSTN0cNR+Q=";
   };
 
-  vendorSha256 = "sha256-v9Hu9eQJSmm4Glt49F7EN40rKjrg4acyll9Bfgey+Mw=";
+  vendorHash = "sha256-0Ho1HYckFHaWEE6Ti3fIL/t0hBj5MnKOd4fOZx+LYiE=";
 
   subPackages = [ "." ];
 
@@ -36,5 +36,6 @@ buildGoModule rec {
     changelog = "https://github.com/tsenart/vegeta/releases/tag/${src.rev}";
     license = licenses.mit;
     maintainers = with maintainers; [ mmahut ];
+    mainProgram = "vegeta";
   };
 }

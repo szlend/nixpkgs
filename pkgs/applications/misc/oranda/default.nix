@@ -2,43 +2,49 @@
 , rustPlatform
 , fetchFromGitHub
 , pkg-config
+, tailwindcss
 , oniguruma
-, openssl
 , stdenv
 , darwin
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "oranda";
-  version = "0.1.0";
+  version = "0.6.5";
 
   src = fetchFromGitHub {
     owner = "axodotdev";
     repo = "oranda";
     rev = "v${version}";
-    hash = "sha256-bhMScPxf1svC6C8MvSHsVFrNzJYCkcR4mPJzK4OIoOU=";
+    hash = "sha256-FVd8NQVtzlZsDY40ZMJDdaX+6Q5jUxZHUq2v+kDFVOk=";
   };
 
-  cargoHash = "sha256-Zan5dTW/2k4rOl20lQwJWnzIiytKF2i+1oEW4o3k/vQ=";
+  cargoHash = "sha256-48qDAgHf1tGUwhQWqEi4LQQmSi9PplTlgjVd7/yxZZc=";
 
   nativeBuildInputs = [
     pkg-config
+    tailwindcss
   ];
 
   buildInputs = [
     oniguruma
-    openssl
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.CoreServices
+    darwin.apple_sdk.frameworks.SystemConfiguration
   ];
 
   # requires internet access
   checkFlags = [
     "--skip=build"
+    "--skip=integration"
   ];
 
   env = {
     RUSTONIG_SYSTEM_LIBONIG = true;
+    ORANDA_USE_TAILWIND_BINARY = true;
+  } // lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+    # without this, tailwindcss fails with OpenSSL configuration error
+    OPENSSL_CONF = "";
   };
 
   meta = with lib; {
@@ -47,5 +53,6 @@ rustPlatform.buildRustPackage rec {
     changelog = "https://github.com/axodotdev/oranda/blob/${src.rev}/CHANGELOG.md";
     license = with licenses; [ asl20 mit ];
     maintainers = with maintainers; [ figsoda ];
+    mainProgram = "oranda";
   };
 }

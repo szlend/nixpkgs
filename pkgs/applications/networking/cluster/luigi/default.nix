@@ -2,14 +2,19 @@
 
 python3.pkgs.buildPythonApplication rec {
   pname = "luigi";
-  version = "3.0.2";
+  version = "3.5.2";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b4b1ccf086586d041d7e91e68515d495c550f30e4d179d63863fea9ccdbb78eb";
+    hash = "sha256-0AD+am6nfJN2Z0/oegRawAw/z36+hBRlWgZjCqnbURE=";
   };
 
-  propagatedBuildInputs = with python3.pkgs; [ python-dateutil tornado python-daemon boto3 ];
+  build-system = [ python3.pkgs.setuptools ];
+
+  dependencies = with python3.pkgs; [ python-dateutil tornado python-daemon tenacity ];
+
+  pythonImportsCheck = [ "luigi" ];
 
   # Requires tox, hadoop, and google cloud
   doCheck = false;

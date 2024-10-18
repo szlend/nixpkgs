@@ -6,8 +6,6 @@
 with lib;
 
 {
-  environment.noXlibs = mkDefault true;
-
   documentation.enable = mkDefault false;
 
   documentation.doc.enable = mkDefault false;
@@ -18,7 +16,20 @@ with lib;
 
   documentation.nixos.enable = mkDefault false;
 
+  # Perl is a default package.
+  environment.defaultPackages = mkDefault [ ];
+
+  environment.stub-ld.enable = mkDefault false;
+
+  # The lessopen package pulls in Perl.
+  programs.less.lessopen = mkDefault null;
+
+  # This pulls in nixos-containers which depends on Perl.
+  boot.enableContainers = mkDefault false;
+
   programs.command-not-found.enable = mkDefault false;
+
+  programs.ssh.setXAuthLocation = mkDefault false;
 
   services.logrotate.enable = mkDefault false;
 

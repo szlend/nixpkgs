@@ -2,13 +2,13 @@
 
 stdenv.mkDerivation rec {
   pname = "lynis";
-  version = "3.0.8";
+  version = "3.1.2";
 
   src = fetchFromGitHub {
     owner = "CISOfy";
     repo = pname;
     rev = version;
-    sha256 = "sha256-fPQX/Iz+dc3nF3xMPt0bek4JC2XSHe4aC4O0tZwLf6Y=";
+    sha256 = "sha256-K3+E3ODXti88wGE3trxZYTKPe7tYfPI85C/5jXea2uw=";
   };
 
   nativeBuildInputs = [ installShellFiles makeWrapper ];
@@ -30,6 +30,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "Security auditing tool for Linux, macOS, and UNIX-based systems";
+    mainProgram = "lynis";
     homepage = "https://cisofy.com/lynis/";
     license = licenses.gpl3Only;
     platforms = platforms.unix;

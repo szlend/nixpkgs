@@ -1,24 +1,25 @@
 { lib, stdenv, fetchFromGitHub, glfw, freetype, openssl, makeWrapper, upx, boehmgc, xorg, binaryen, darwin }:
 
 let
-  version = "weekly.2023.19";
+  version = "0.4.8";
   ptraceSubstitution = ''
     #include <sys/types.h>
     #include <sys/ptrace.h>
   '';
-  # Required for bootstrap.
+  # vc is the V compiler's source translated to C (needed for boostrap).
+  # So we fix its rev to correspond to the V version.
   vc = stdenv.mkDerivation {
     pname = "v.c";
-    version = "unstable-2023-05-14";
+    version = "0.4.8";
     src = fetchFromGitHub {
       owner = "vlang";
       repo = "vc";
-      rev = "f7c2b5f2a0738d0d236161c9de9f31dd0280ac86";
-      sha256 = "sha256-xU3TvyNgc0o4RCsHtoC6cZTNaue2yuAiolEOvP37TKA=";
+      rev = "54beb1f416b404a06b894e6883a0e2368d80bc3e";
+      hash = "sha256-hofganRnWPRCjjsItwF2BKam4dCqzMCrjgWSjZLSrlo=";
     };
 
     # patch the ptrace reference for darwin
-    installPhase = lib.optionalString stdenv.isDarwin ''
+    installPhase = lib.optionalString stdenv.hostPlatform.isDarwin ''
       substituteInPlace v.c \
         --replace "#include <sys/ptrace.h>" "${ptraceSubstitution}"
     '' + ''
@@ -30,8 +31,8 @@ let
   markdown = fetchFromGitHub {
     owner = "vlang";
     repo = "markdown";
-    rev = "6e970bd0a7459ad7798588f1ace4aa46c5e789a2";
-    hash = "sha256-hFf7c8ZNMU1j7fgmDakuO7tBVr12Wq0dgQddJnkMajE=";
+    rev = "0c280130cb7ec410b7d21810d1247956c15b72fc";
+    hash = "sha256-Fmhkrg9DBiWxInostNp+WfA3V5GgEIs5+KIYrqZosqY=";
   };
   boehmgcStatic = boehmgc.override {
     enableStatic = true;
@@ -45,7 +46,7 @@ stdenv.mkDerivation {
     owner = "vlang";
     repo = "v";
     rev = version;
-    sha256 = "sha256-fHn1z2q3LmSycCOa1ii4DoHvbEW4uJt3Psq3/VuZNVQ=";
+    hash = "sha256-V4f14TcuKW8unzlo6i/tE6MzSb3HAll478OU2LxiTPQ=";
   };
 
   propagatedBuildInputs = [ glfw freetype openssl ]
@@ -55,9 +56,9 @@ stdenv.mkDerivation {
 
   buildInputs = [
     binaryen
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.Cocoa
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     xorg.libX11
     xorg.libXau
     xorg.libXdmcp
@@ -76,11 +77,6 @@ stdenv.mkDerivation {
     cp -r ${boehmgcStatic}/lib/* ./thirdparty/tcc/lib
   '';
 
-  # vcreate_test.v requires git, so we must remove it when building the tools.
-  preInstall = ''
-    mv cmd/tools/vcreate/vcreate_test.v $HOME/vcreate_test.v
-  '';
-
   installPhase = ''
     runHook preInstall
 
@@ -97,20 +93,16 @@ stdenv.mkDerivation {
     $out/lib/v -v $out/lib/cmd/tools/vdoc
     $out/lib/v -v $out/lib/cmd/tools/vast
     $out/lib/v -v $out/lib/cmd/tools/vvet
+    $out/lib/v -v $out/lib/cmd/tools/vcreate
 
     runHook postInstall
-  '';
-
-  # Return vcreate_test.v and vtest.v, so the user can use it.
-  postInstall = ''
-    cp $HOME/vcreate_test.v $out/lib/cmd/tools/vcreate_test.v
   '';
 
   meta = with lib; {
     homepage = "https://vlang.io/";
     description = "Simple, fast, safe, compiled language for developing maintainable software";
     license = licenses.mit;
-    maintainers = with maintainers; [ Madouura ];
+    maintainers = with maintainers; [ Madouura delta231 ];
     mainProgram = "v";
     platforms = platforms.all;
   };

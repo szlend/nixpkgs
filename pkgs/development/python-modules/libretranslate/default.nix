@@ -1,42 +1,52 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, argostranslate
-, flask
-, flask-swagger
-, flask-swagger-ui
-, flask-limiter
-, flask-babel
-, flask-session
-, waitress
-, expiringdict
-, ltpycld2
-, morfessor
-, appdirs
-, apscheduler
-, translatehtml
-, argos-translate-files
-, requests
-, redis
-, prometheus-client
-, polib
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  hatchling,
+  argostranslate,
+  flask,
+  flask-swagger,
+  flask-swagger-ui,
+  flask-limiter,
+  flask-babel,
+  flask-session,
+  waitress,
+  expiringdict,
+  langdetect,
+  lexilang,
+  ltpycld2,
+  morfessor,
+  appdirs,
+  apscheduler,
+  translatehtml,
+  argos-translate-files,
+  requests,
+  redis,
+  prometheus-client,
+  polib,
+  python,
 }:
 
 buildPythonPackage rec {
   pname = "libretranslate";
-  version = "1.3.11";
-
-  format = "setuptools";
+  version = "1.6.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "LibreTranslate";
     repo = "LibreTranslate";
     rev = "refs/tags/v${version}";
-    hash = "sha256-S2J7kcoZFHOjVm2mb3TblWf9/FzkxZEB3h27BCaPYgY=";
+    hash = "sha256-c/MbO8KST2QnP32Y2FfXjJcfh6O7hqQFcZOn1U0FqRM=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [
+    hatchling
+  ];
+
+  pythonRelaxDeps = true;
+
+  dependencies = [
     argostranslate
     flask
     flask-swagger
@@ -46,6 +56,8 @@ buildPythonPackage rec {
     flask-session
     waitress
     expiringdict
+    langdetect
+    lexilang
     ltpycld2
     morfessor
     appdirs
@@ -58,25 +70,15 @@ buildPythonPackage rec {
     polib
   ];
 
-  postPatch = ''
-    substituteInPlace requirements.txt  \
-      --replace "==" ">="
-
-    substituteInPlace setup.py  \
-      --replace "'pytest-runner'" ""
-  '';
-
   postInstall = ''
     # expose static files to be able to serve them via web-server
     mkdir -p $out/share/libretranslate
-    ln -s $out/lib/python*/site-packages/libretranslate/static $out/share/libretranslate/static
+    ln -s $out/${python.sitePackages}/libretranslate/static $out/share/libretranslate/static
   '';
 
   doCheck = false; # needs network access
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   # required for import check to work (argostranslate)
   env.HOME = "/tmp";

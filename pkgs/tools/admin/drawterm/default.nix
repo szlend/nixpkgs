@@ -1,6 +1,7 @@
 { stdenv
 , lib
-, fetchgit
+, fetchFrom9Front
+, unstableGitUpdater
 , installShellFiles
 , makeWrapper
 , xorg
@@ -13,18 +14,22 @@
 , wlr-protocols
 , pulseaudio
 , config
+, nixosTests
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "drawterm";
-  version = "unstable-2023-06-27";
+  version = "0-unstable-2024-10-04";
 
-  src = fetchgit {
-    url = "git://git.9front.org/plan9front/drawterm";
-    rev = "36debf46ac184a22c6936345d22e4cfad995948c";
-    sha256 = "ebqw1jqeRC0FWeUIO/HaEovuwzU6+B48TjZbVJXByvA=";
+  src = fetchFrom9Front {
+    owner = "plan9front";
+    repo = "drawterm";
+    rev = "d7620e8d528a87a3d6cf7285a839d52d4f705771";
+    hash = "sha256-v84kvlLKUGR6SY+DPD9fVUivkE56txrMU0dlph2c7bM=";
   };
 
+  enableParallelBuilding = true;
+  strictDeps = true;
   nativeBuildInputs = [ installShellFiles ] ++ {
     linux = [ pkg-config wayland-scanner ];
     unix = [ makeWrapper ];
@@ -47,17 +52,22 @@ stdenv.mkDerivation rec {
       mv drawterm drawterm.bin
       install -Dm755 -t $out/bin/ drawterm.bin
       makeWrapper ${pulseaudio}/bin/padsp $out/bin/drawterm --add-flags $out/bin/drawterm.bin
-     '';
-  }."${config}" or (throw "unsupported CONF")  + ''
-      installManPage drawterm.1
+    '';
+  }."${config}" or (throw "unsupported CONF") + ''
+    installManPage drawterm.1
   '';
 
+  passthru = {
+    updateScript = unstableGitUpdater { shallowClone = false; };
+    tests = nixosTests.drawterm;
+  };
 
   meta = with lib; {
-    description = "Connect to Plan 9 CPU servers from other operating systems.";
+    description = "Connect to Plan 9 CPU servers from other operating systems";
     homepage = "https://drawterm.9front.org/";
     license = licenses.mit;
     maintainers = with maintainers; [ luc65r moody ];
     platforms = platforms.linux;
+    mainProgram = "drawterm";
   };
 }

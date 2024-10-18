@@ -7,13 +7,13 @@
 , enableSqlite ? true
 }: python3.pkgs.buildPythonApplication rec {
   pname = "mautrix-googlechat";
-  version = "unstable-2023-01-25";
+  version = "0.5.2";
 
   src = fetchFromGitHub {
     owner = "mautrix";
     repo = "googlechat";
-    rev = "e2eb528745466468f059c506c22e500e0cd832aa";
-    sha256 = "sha256-FNlEHzuy89RuFUwZPmVA+4AmpQHGD+18BguGC6qBdBM=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-4H+zUH0GEQ5e/9Bv0BVdf1/pXulx2ihZrhJ+jl/db+U=";
   };
 
   patches = [
@@ -32,7 +32,7 @@
     install -D mautrix_googlechat/example-config.yaml $out/$baseConfigPath
   '';
 
-  passthru.optional-dependencies = with python3.pkgs; {
+  optional-dependencies = with python3.pkgs; {
     e2be = [
       python-olm
       pycryptodome
@@ -54,19 +54,20 @@
     ruamel-yaml
     commonmark
     python-magic
-    protobuf3
-    mautrix
-  ] ++ lib.optionals enableE2be passthru.optional-dependencies.e2be
-  ++ lib.optionals enableMetrics passthru.optional-dependencies.metrics
-  ++ lib.optionals enableSqlite passthru.optional-dependencies.sqlite;
+    protobuf
+    (mautrix.override { withOlm = enableE2be; })
+  ] ++ lib.optionals enableE2be optional-dependencies.e2be
+  ++ lib.optionals enableMetrics optional-dependencies.metrics
+  ++ lib.optionals enableSqlite optional-dependencies.sqlite;
 
   doCheck = false;
 
   meta = with lib; {
     homepage = "https://github.com/mautrix/googlechat";
-    description = "A Matrix-Google Chat puppeting bridge";
+    description = "Matrix-Google Chat puppeting bridge";
     license = licenses.agpl3Plus;
     platforms = platforms.linux;
     maintainers = with maintainers; [ arcnmx ];
+    mainProgram = "mautrix-googlechat";
   };
 }

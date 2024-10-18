@@ -6,46 +6,73 @@
 }:
 let
   py = python3.override {
+    self = py;
     packageOverrides = final: prev: {
-      django = prev.django_4;
+      django = prev.django_5;
     };
   };
 in
 py.pkgs.buildPythonApplication rec {
   pname = "healthchecks";
-  version = "2.8.1";
+  version = "3.6";
   format = "other";
 
   src = fetchFromGitHub {
     owner = "healthchecks";
     repo = pname;
     rev = "refs/tags/v${version}";
-    sha256 = "sha256-lJ0AZJpznet2YKPIyMOx5ZdETZB8de5vp7sydfndxZg=";
+    sha256 = "sha256-aKt9L3ZgZ8HffcNNJaR+hAI38raWuLp2q/6+rvkl2pM=";
   };
 
   propagatedBuildInputs = with py.pkgs; [
+    aiosmtpd
     apprise
-    cron-descriptor
     cronsim
     django
     django-compressor
+    django-stubs-ext
     fido2
     minio
+    oncalendar
     psycopg2
     pycurl
+    pydantic
     pyotp
     segno
     statsd
     whitenoise
   ];
 
+  secrets = [
+    "DB_PASSWORD"
+    "DISCORD_CLIENT_SECRET"
+    "EMAIL_HOST_PASSWORD"
+    "LINENOTIFY_CLIENT_SECRET"
+    "MATRIX_ACCESS_TOKEN"
+    "PD_APP_ID"
+    "PUSHBULLET_CLIENT_SECRET"
+    "PUSHOVER_API_TOKEN"
+    "S3_SECRET_KEY"
+    "SECRET_KEY"
+    "SLACK_CLIENT_SECRET"
+    "TELEGRAM_TOKEN"
+    "TRELLO_APP_KEY"
+    "TWILIO_AUTH"
+  ];
+
   localSettings = writeText "local_settings.py" ''
     import os
+
     STATIC_ROOT = os.getenv("STATIC_ROOT")
-    SECRET_KEY_FILE = os.getenv("SECRET_KEY_FILE")
-    if SECRET_KEY_FILE:
-        with open(SECRET_KEY_FILE, "r") as file:
-            SECRET_KEY = file.readline()
+
+    ${lib.concatLines (map
+      (secret: ''
+        ${secret}_FILE = os.getenv("${secret}_FILE")
+        if ${secret}_FILE:
+            with open(${secret}_FILE, "r") as file:
+                ${secret} = file.readline()
+      '')
+      secrets)}
   '';
 
   installPhase = ''
@@ -66,7 +93,7 @@ py.pkgs.buildPythonApplication rec {
 
   meta = with lib; {
     homepage = "https://github.com/healthchecks/healthchecks";
-    description = "A cron monitoring tool written in Python & Django ";
+    description = "Cron monitoring tool written in Python & Django";
     license = licenses.bsd3;
     maintainers = with maintainers; [ phaer ];
   };

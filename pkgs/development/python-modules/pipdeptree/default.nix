@@ -1,46 +1,45 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, diff-cover
-, graphviz
-, hatchling
-, hatch-vcs
-, pytest-mock
-, pytestCheckHook
-, pip
-, virtualenv
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
+  diff-cover,
+  graphviz,
+  hatchling,
+  hatch-vcs,
+  packaging,
+  pytest-mock,
+  pytestCheckHook,
+  pip,
+  virtualenv,
 }:
 
 buildPythonPackage rec {
   pname = "pipdeptree";
-  version = "2.9.3";
-  format = "pyproject";
+  version = "2.23.1";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
     owner = "tox-dev";
     repo = "pipdeptree";
     rev = "refs/tags/${version}";
-    hash = "sha256-CNz/TxIxaRzBzlylLgWWW7xom65tK7ZnGtwpMsTDqVk=";
+    hash = "sha256-yEiehHcJcVC0hjb9NFgsrSxmAsxNki8HNGKk8dEk75s=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
-
-  nativeBuildInputs = [
+  build-system = [
     hatchling
     hatch-vcs
   ];
 
-  propagatedBuildInput = [
+  dependencies = [
     pip
+    packaging
   ];
 
-  passthru.optional-dependencies = {
-    graphviz = [
-      graphviz
-    ];
+  optional-dependencies = {
+    graphviz = [ graphviz ];
   };
 
   nativeCheckInputs = [
@@ -48,10 +47,13 @@ buildPythonPackage rec {
     pytest-mock
     pytestCheckHook
     virtualenv
-  ] ++ lib.flatten (builtins.attrValues passthru.optional-dependencies);
+  ] ++ lib.flatten (builtins.attrValues optional-dependencies);
 
-  pythonImportsCheck = [
-    "pipdeptree"
+  pythonImportsCheck = [ "pipdeptree" ];
+
+  disabledTests = [
+    # Don't run console tests
+    "test_console"
   ];
 
   meta = with lib; {
@@ -60,5 +62,6 @@ buildPythonPackage rec {
     changelog = "https://github.com/tox-dev/pipdeptree/releases/tag/${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ charlesbaynham ];
+    mainProgram = "pipdeptree";
   };
 }

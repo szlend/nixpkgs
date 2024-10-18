@@ -4,6 +4,7 @@
 , writeShellScript
 , fetchFromGitHub
 , fetchpatch
+, nixosTests
 
 , freetype
 , libjpeg
@@ -38,7 +39,7 @@
 
 , xdg-user-dirs
 
-, addOpenGLRunpath
+, addDriverRunpath
 
 # Whether to pre-compile Python 2 bytecode for performance.
 , compilePy2Bytecode ? false
@@ -107,17 +108,41 @@ let
   ];
 in stdenv.mkDerivation {
   pname = "darling";
-  version = "unstable-2023-05-02";
+  version = "unstable-2024-02-03";
 
   src = fetchFromGitHub {
     owner = "darlinghq";
     repo = "darling";
-    rev = "557e7e9dece394a3f623825679474457e5b64fd0";
+    rev = "25afbc76428c39c3909e9efcf5caef1140425211";
     fetchSubmodules = true;
-    hash = "sha256-SOoLaV7wg33qRHPQXkdMvrY++CvoG85kwd6IU6DkYa0=";
+    hash = "sha256-z9IMgc5hH2Upn8wHl1OgP42q9HTSkeHnxB3N812A+Kc=";
+    # Remove 500MB of dependency test files to get under Hydra output limit
+    postFetch = ''
+      rm -r $out/src/external/openjdk/test
+      rm -r $out/src/external/libmalloc/tests
+      rm -r $out/src/external/libarchive/libarchive/tar/test
+    '';
   };
 
   outputs = [ "out" "sdk" ];
+
+  patches = [
+    # Fix 'clang: error: no such file or directory: .../signal/mach_excUser.c'
+    # https://github.com/darlinghq/darling/issues/1511
+    # https://github.com/darlinghq/darling/commit/f46eb721c11d32addd807f092f4b3a6ea515bb6d
+    (fetchpatch {
+      url = "https://github.com/darlinghq/darling/commit/f46eb721c11d32addd807f092f4b3a6ea515bb6d.patch?full_index=1";
+      hash = "sha256-FnLcHnK4cNto+E3OQSxE3iK+FHSU8y459FcpMvrzd6o=";
+    })
+
+    # Fix compatibility with ffmpeg_7
+    # https://github.com/darlinghq/darling/pull/1537
+    # https://github.com/darlinghq/darling/commit/9655d5598c87dcb22c54a83cc7741b77cb47a1b0
+    (fetchpatch {
+      url = "https://github.com/darlinghq/darling/commit/9655d5598c87dcb22c54a83cc7741b77cb47a1b0.patch?full_index=1";
+      hash = "sha256-ogMo4SRRwiOhaVJ+OS8BVolGDa7vGKyR9bdGiOiCuRc=";
+    })
+  ];
 
   postPatch = ''
     # We have to be careful - Patching everything indiscriminately
@@ -217,15 +242,19 @@ in stdenv.mkDerivation {
       exit 1
     fi
 
-    patchelf --add-rpath "${lib.makeLibraryPath wrappedLibs}:${addOpenGLRunpath.driverLink}/lib" \
+    patchelf --add-rpath "${lib.makeLibraryPath wrappedLibs}:${addDriverRunpath.driverLink}/lib" \
       $out/libexec/darling/usr/libexec/darling/mldr
   '';
+
+  passthru.tests.nixos = nixosTests.darling;
 
   meta = with lib; {
     description = "Open-source Darwin/macOS emulation layer for Linux";
     homepage = "https://www.darlinghq.org";
+    changelog = "https://github.com/darlinghq/darling/releases";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ zhaofengli ];
     platforms = [ "x86_64-linux" ];
+    mainProgram = "darling";
   };
 }

@@ -1,12 +1,10 @@
 { stdenv
 , lib
 , fetchFromGitLab
-, fetchpatch
 , meson
 , ninja
 , pkg-config
 , gettext
-, itstool
 , libxml2
 , glib
 , shared-mime-info
@@ -14,7 +12,7 @@
 
 stdenv.mkDerivation rec {
   pname = "shared-mime-info";
-  version = "2.2";
+  version = "2.4";
 
   outputs = [ "out" "dev" ];
 
@@ -23,7 +21,7 @@ stdenv.mkDerivation rec {
     owner = "xdg";
     repo = pname;
     rev = version;
-    sha256 = "sha256-QrRe/DcjpTMejHXDSOLbjpJywod8qIjP6/leTZ21rhE=";
+    hash = "sha256-5eyMkfSBUOD7p8woIYTgz5C/L8uQMXyr0fhL0l23VMA=";
   };
 
   nativeBuildInputs = [
@@ -46,7 +44,7 @@ stdenv.mkDerivation rec {
   ];
 
   meta = with lib; {
-    description = "A database of common MIME types";
+    description = "Database of common MIME types";
     homepage = "http://freedesktop.org/wiki/Software/shared-mime-info";
     license = licenses.gpl2Plus;
     platforms = platforms.unix;

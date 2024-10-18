@@ -11,23 +11,23 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "autodock-vina";
-  version = "1.2.3";
+  version = "1.2.5";
 
   src = fetchFromGitHub {
     owner = "ccsb-scripps";
     repo = "autodock-vina";
     rev = "refs/tags/v${finalAttrs.version}";
-    hash = "sha256-oOpwhRmpS5WfnuqxkjxGsGtrofPxUt8bH9ggzm5rrR8=";
+    hash = "sha256-yguUMEX0tn75wKrPKyqlCYbBFaEwC5b1s3k9xept1Fw=";
   };
 
-  sourceRoot =
-    if stdenv.isDarwin
-    then "source/build/mac/release"
-    else "source/build/linux/release";
+  sourceRoot = "${finalAttrs.src.name}/build/${
+    if stdenv.hostPlatform.isDarwin then "mac"
+    else "linux"
+  }/release";
 
   buildInputs = [
     boost'
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     glibc.static
   ];
 

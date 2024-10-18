@@ -1,7 +1,6 @@
 { lib
 , stdenv
 , fetchzip
-, fetchpatch
 , makeWrapper
 , nixosTests
 , pkg-config
@@ -11,8 +10,6 @@
 , pcre
 , perlPackages
 , python3
-, xz
-, zlib
 , catch2
 # recommended dependencies
 , withHwloc ? true
@@ -21,9 +18,9 @@
 , curl
 , withCurses ? true
 , ncurses
-, withCap ? stdenv.isLinux
+, withCap ? stdenv.hostPlatform.isLinux
 , libcap
-, withUnwind ? stdenv.isLinux
+, withUnwind ? stdenv.hostPlatform.isLinux
 , libunwind
 # optional dependencies
 , withBrotli ? false
@@ -50,21 +47,12 @@
 
 stdenv.mkDerivation rec {
   pname = "trafficserver";
-  version = "9.1.4";
+  version = "9.2.5";
 
   src = fetchzip {
     url = "mirror://apache/trafficserver/trafficserver-${version}.tar.bz2";
-    sha256 = "sha256-+iq+z+1JE6JE6OLcUwRRAe2/EISqb6Ax6pNm8GcB7bc=";
+    hash = "sha256-RwhTI31LyupkAbXHsNrjcJqUjVoVpX3/2Ofxl2NdasU=";
   };
-
-  patches = [
-    # Adds support for NixOS
-    # https://github.com/apache/trafficserver/pull/7697
-    (fetchpatch {
-      url = "https://github.com/apache/trafficserver/commit/19d3af481cf74c91fbf713fc9d2f8b138ed5fbaf.diff";
-      sha256 = "0z1ikgpp00rzrrcqh97931586yn9wbksgai9xlkcjd5cg8gq0150";
-    })
-  ];
 
   # NOTE: The upstream README indicates that flex is needed for some features,
   # but it actually seems to be unnecessary as of this commit[1]. The detection
@@ -76,7 +64,7 @@ stdenv.mkDerivation rec {
   # [2]: https://github.com/apache/trafficserver/blob/3fd2c60/configure.ac#L742-L788
   nativeBuildInputs = [ makeWrapper pkg-config file python3 ]
     ++ (with perlPackages; [ perl ExtUtilsMakeMaker ])
-    ++ lib.optionals stdenv.isLinux [ linuxHeaders ];
+    ++ lib.optionals stdenv.hostPlatform.isLinux [ linuxHeaders ];
 
   buildInputs = [
     openssl
@@ -107,10 +95,10 @@ stdenv.mkDerivation rec {
       tools/check-unused-dependencies
 
     substituteInPlace configure --replace '/usr/bin/file' '${file}/bin/file'
-  '' + lib.optionalString stdenv.isLinux ''
+  '' + lib.optionalString stdenv.hostPlatform.isLinux ''
     substituteInPlace configure \
       --replace '/usr/include/linux' '${linuxHeaders}/include/linux'
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     # 'xcrun leaks' probably requires non-free XCode
     substituteInPlace iocore/net/test_certlookup.cc \
       --replace 'xcrun leaks' 'true'

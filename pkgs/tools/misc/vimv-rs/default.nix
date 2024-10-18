@@ -2,17 +2,17 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "vimv-rs";
-  version = "3.0.0";
+  version = "3.1.0";
 
   src = fetchCrate {
     inherit version;
     crateName = "vimv";
-    hash = "sha256-DpdozP/xaMoRAl8YMj5BmhNedGFhVzscM/eFOcVt+Lk=";
+    hash = "sha256-jbRsgEsRYF5hlvo0jEB4jhy5jzCAXNzOsNWWyh4XULQ=";
   };
 
-  cargoHash = "sha256-zKJ8A36/ibAiznm3bK2JSHVRItIAqQ4YFDxvjcZLn3g=";
+  cargoHash = "sha256-rYQxIttuGBGEkYkFtSBl8ce1I/Akm6FxeITJcaIeP6M=";
 
-  buildInputs = lib.optionals stdenv.isDarwin [ Foundation ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ Foundation ];
 
   meta = with lib; {
     description = "Command line utility for batch-renaming files";

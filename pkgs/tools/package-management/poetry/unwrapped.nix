@@ -9,12 +9,9 @@
 , cleo
 , crashtest
 , dulwich
-, filelock
-, html5lib
+, fastjsonschema
 , installer
-, jsonschema
 , keyring
-, lockfile
 , packaging
 , pexpect
 , pkginfo
@@ -27,51 +24,55 @@
 , shellingham
 , tomlkit
 , trove-classifiers
-, urllib3
 , virtualenv
 , xattr
 , tomli
 , importlib-metadata
-, cachy
 , deepdiff
-, flatdict
 , pytestCheckHook
 , httpretty
 , pytest-mock
 , pytest-xdist
-, pythonAtLeast
+, darwin
 }:
 
 buildPythonPackage rec {
   pname = "poetry";
-  version = "1.4.2";
-  format = "pyproject";
+  version = "1.8.4";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
     owner = "python-poetry";
-    repo = pname;
+    repo = "poetry";
     rev = "refs/tags/${version}";
-    hash = "sha256-AiRQFZA5+M1niTzj1RO2lx0QFOMmSzpQo1gzauyTblg=";
+    hash = "sha256-pk57Jxf4hkMKLn1pOa9BtHLwLJ6qmXc55TqQN5Vr2k8=";
   };
+
+  build-system = [
+    poetry-core
+  ];
 
   nativeBuildInputs = [
     installShellFiles
   ];
 
-  propagatedBuildInputs = [
+  pythonRelaxDeps = [
+    "dulwich"
+    "keyring"
+    "virtualenv"
+  ];
+
+  dependencies = [
     build
     cachecontrol
     cleo
     crashtest
     dulwich
-    filelock
-    html5lib
+    fastjsonschema
     installer
-    jsonschema
     keyring
-    lockfile
     packaging
     pexpect
     pkginfo
@@ -84,9 +85,8 @@ buildPythonPackage rec {
     shellingham
     tomlkit
     trove-classifiers
-    urllib3
     virtualenv
-  ] ++ lib.optionals (stdenv.isDarwin) [
+  ] ++ lib.optionals (stdenv.hostPlatform.isDarwin) [
     xattr
   ] ++ lib.optionals (pythonOlder "3.11") [
     tomli
@@ -102,48 +102,35 @@ buildPythonPackage rec {
   '';
 
   nativeCheckInputs = [
-    cachy
     deepdiff
-    flatdict
     pytestCheckHook
     httpretty
     pytest-mock
     pytest-xdist
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    darwin.ps
   ];
 
   preCheck = (''
     export HOME=$TMPDIR
-  '' + lib.optionalString (stdenv.isDarwin && stdenv.isAarch64) ''
+  '' + lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) ''
     # https://github.com/python/cpython/issues/74570#issuecomment-1093748531
     export no_proxy='*';
   '');
 
-  postCheck = lib.optionalString (stdenv.isDarwin && stdenv.isAarch64) ''
+  postCheck = lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) ''
     unset no_proxy
   '';
 
   disabledTests = [
-    # touches network
-    "git"
-    "solver"
-    "load"
-    "vcs"
-    "prereleases_if_they_are_compatible"
-    "test_executor"
-    # requires git history to work correctly
-    "default_with_excluded_data"
-    # toml ordering has changed
-    "lock"
-    # fs permission errors
     "test_builder_should_execute_build_scripts"
-    # poetry.installation.chef.ChefBuildError: Backend 'poetry.core.masonry.api' is not available.
-    "test_prepare_sdist"
-    "test_prepare_directory"
-    "test_prepare_directory_with_extensions"
-    "test_prepare_directory_editable"
-  ] ++ lib.optionals (pythonAtLeast "3.10") [
-    # RuntimeError: 'auto_spec' might be a typo; use unsafe=True if this is intended
-    "test_info_setup_complex_pep517_error"
+    "test_env_system_packages_are_relative_to_lib"
+    "test_executor_known_hashes"
+    "test_install_warning_corrupt_root"
+  ];
+
+  pytestFlagsArray = [
+    "-m 'not network'"
   ];
 
   # Allow for package to use pep420's native namespaces
@@ -162,5 +149,6 @@ buildPythonPackage rec {
     description = "Python dependency management and packaging made easy";
     license = licenses.mit;
     maintainers = with maintainers; [ jakewaksbaum dotlambda ];
+    mainProgram = "poetry";
   };
 }

@@ -1,25 +1,26 @@
-{ fetchFromGitHub, lib, rustPlatform }:
+{ lib, fetchFromGitHub, rustPlatform }:
 
 rustPlatform.buildRustPackage rec {
   pname = "mask";
-  version = "0.11.3";
+  version = "0.11.6";
 
   src = fetchFromGitHub {
     owner = "jacobdeichert";
     repo = pname;
-    rev = "v${version}";
-    sha256 = "sha256-mPnykI3scTBzGjDa8nawWYRvZBkq74/t5WMbMbs3zVE=";
+    rev = "mask/${version}";
+    hash = "sha256-xGD23pso5iS+9dmfTMNtR6YqUqKnzJTzMl+OnRGpL3g=";
   };
 
-  cargoSha256 = "sha256-h58MA3F4UA4gp64UPnK6Tvlvr4PFvrVKmjp48lZjH68=";
+  cargoHash = "sha256-bhf6+nUxg4yIQIjiQYFdtPPF1crFVsofHdEsIOpiH2Q=";
 
   # tests require mask to be installed
   doCheck = false;
 
   meta = with lib; {
-    description = "A CLI task runner defined by a simple markdown file";
+    description = "CLI task runner defined by a simple markdown file";
+    mainProgram = "mask";
     homepage = "https://github.com/jacobdeichert/mask";
-    changelog = "https://github.com/jacobdeichert/mask/blob/v${version}/CHANGELOG.md";
+    changelog = "https://github.com/jacobdeichert/mask/blob/mask/${version}/CHANGELOG.md";
     license = licenses.mit;
     maintainers = with maintainers; [ figsoda ];
   };

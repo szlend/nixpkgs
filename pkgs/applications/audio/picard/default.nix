@@ -1,35 +1,40 @@
 { lib
-, python3Packages
+, python312Packages
 , fetchFromGitHub
-, gettext
+
 , chromaprint
+, gettext
 , qt5
+
 , enablePlayback ? true
 , gst_all_1
 }:
 
 let
-  pythonPackages = python3Packages;
-  pyqt5 = if enablePlayback then
-    pythonPackages.pyqt5_with_qtmultimedia
-  else
-    pythonPackages.pyqt5
-  ;
+  pythonPackages = python312Packages;
+  pyqt5 =
+    if enablePlayback then
+      pythonPackages.pyqt5-multimedia
+    else
+      pythonPackages.pyqt5;
 in
 pythonPackages.buildPythonApplication rec {
   pname = "picard";
-  version = "2.8.5";
+  # nix-update --commit picard --version-regex 'release-(.*)'
+  version = "2.12.3";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "metabrainz";
-    repo = pname;
+    repo = "picard";
     rev = "refs/tags/release-${version}";
-    sha256 = "sha256-ukqlAXGaqX89U77cM9Ux0RYquT31Ho8ri1Ue7S3+MwQ=";
+    hash = "sha256-ysHOiX8b9tlUaQDGl4qHUVLrLUF9MUDc4+vOQB76cj4=";
   };
 
   nativeBuildInputs = [
     gettext
     qt5.wrapQtAppsHook
+    pythonPackages.pytestCheckHook
   ] ++ lib.optionals (pyqt5.multimediaEnabled) [
     gst_all_1.gst-libav
     gst_all_1.gst-plugins-base
@@ -37,6 +42,7 @@ pythonPackages.buildPythonApplication rec {
     gst_all_1.gst-vaapi
     gst_all_1.gstreamer
   ];
+
   buildInputs = [
     qt5.qtbase
     qt5.qtwayland
@@ -46,31 +52,37 @@ pythonPackages.buildPythonApplication rec {
 
   propagatedBuildInputs = with pythonPackages; [
     chromaprint
-    python-dateutil
     discid
     fasteners
-    mutagen
-    pyqt5
     markdown
+    mutagen
     pyjwt
+    pyqt5
+    python-dateutil
     pyyaml
   ];
+
+  setupPyGlobalFlags = [ "build" "--disable-autoupdate" "--localedir=$out/share/locale" ];
+
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+  doCheck = true;
 
   # In order to spare double wrapping, we use:
   preFixup = ''
     makeWrapperArgs+=("''${qtWrapperArgs[@]}")
-  ''
-  + lib.optionalString (pyqt5.multimediaEnabled) ''
+  '' + lib.optionalString (pyqt5.multimediaEnabled) ''
     makeWrapperArgs+=(--prefix GST_PLUGIN_SYSTEM_PATH_1_0 : "$GST_PLUGIN_SYSTEM_PATH_1_0")
-  ''
-  ;
+  '';
 
-  meta = with lib; {
-    homepage = "https://picard.musicbrainz.org/";
-    changelog = "https://picard.musicbrainz.org/changelog/";
-    description = "The official MusicBrainz tagger";
-    maintainers = with maintainers; [ ehmry ];
-    license = licenses.gpl2Plus;
-    platforms = platforms.all;
+  meta = {
+    homepage = "https://picard.musicbrainz.org";
+    changelog = "https://picard.musicbrainz.org/changelog";
+    description = "Official MusicBrainz tagger";
+    mainProgram = "picard";
+    license = lib.licenses.gpl2Plus;
+    platforms = lib.platforms.all;
+    maintainers = with lib.maintainers; [ doronbehar ];
   };
 }

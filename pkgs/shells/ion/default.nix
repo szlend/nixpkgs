@@ -34,11 +34,11 @@ rustPlatform.buildRustPackage rec {
     ./build-script.patch
   ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.Security
   ];
 
-  checkFlags = lib.optionals stdenv.isDarwin [
+  checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
     # test assumes linux
     "--skip=binary::completer::tests::filename_completion"
   ];
@@ -49,6 +49,7 @@ rustPlatform.buildRustPackage rec {
 
   meta = with lib; {
     description = "Modern system shell with simple (and powerful) syntax";
+    mainProgram = "ion";
     homepage = "https://gitlab.redox-os.org/redox-os/ion";
     license = licenses.mit;
     maintainers = with maintainers; [ dywedir ];

@@ -20,17 +20,18 @@ python3Packages.buildPythonApplication rec {
     poetry-core
   ];
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace 'rich = "^10.1.0"' 'rich = "*"' \
-      --replace 'PyYAML = "^5.4.1"' 'PyYAML = "*"'
-  '';
+  pythonRelaxDeps = [
+    "rich"
+    "more-itertools"
+    "PyYAML"
+  ];
 
   meta = with lib; {
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
     description = "Piston api tool";
     homepage = "https://github.com/Shivansh-007/piston-cli";
     license = licenses.mit;
     maintainers = with maintainers; [ ethancedwards8 ];
+    mainProgram = "piston";
   };
 }

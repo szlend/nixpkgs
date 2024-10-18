@@ -1,21 +1,32 @@
-{ lib, buildGoModule, fetchFromGitHub, nixosTests, nix-update-script }:
-buildGoModule rec {
+{ lib, buildGo122Module, fetchFromGitHub, nixosTests, nix-update-script }:
+# Does not build with Go 1.23
+# FIXME: check again for next release
+buildGo122Module rec {
   pname = "mimir";
-  version = "2.9.0";
+  version = "2.13.0";
 
   src = fetchFromGitHub {
     rev = "${pname}-${version}";
     owner = "grafana";
     repo = pname;
-    sha256 = "sha256-6URhofT5zJZX2eFx7fNPrFOWF7Po3ChlmVHGTpvG24c=";
+    hash = "sha256-XBCwc3jpLx8uj+UitFsoIAWVgC/2G8rgjOqrrLLyYdM=";
   };
 
-  vendorSha256 = null;
+  vendorHash = null;
 
   subPackages = [
     "cmd/mimir"
     "cmd/mimirtool"
-  ];
+  ] ++ (map (pathName: "tools/${pathName}") [
+    "compaction-planner"
+    "copyblocks"
+    "copyprefix"
+    "delete-objects"
+    "list-deduplicated-blocks"
+    "listblocks"
+    "markblocks"
+    "undelete-blocks"
+  ]);
 
   passthru = {
     updateScript = nix-update-script {
@@ -26,15 +37,16 @@ buildGoModule rec {
     };
   };
 
-  ldflags = let t = "github.com/grafana/mimir/pkg/util/version";
-  in [
-    ''-extldflags "-static"''
-    "-s"
-    "-w"
-    "-X ${t}.Version=${version}"
-    "-X ${t}.Revision=unknown"
-    "-X ${t}.Branch=unknown"
-  ];
+  ldflags =
+    let t = "github.com/grafana/mimir/pkg/util/version";
+    in [
+      ''-extldflags "-static"''
+      "-s"
+      "-w"
+      "-X ${t}.Version=${version}"
+      "-X ${t}.Revision=unknown"
+      "-X ${t}.Branch=unknown"
+    ];
 
   meta = with lib; {
     description =

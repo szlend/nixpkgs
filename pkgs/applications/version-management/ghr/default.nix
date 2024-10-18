@@ -7,16 +7,16 @@
 
 buildGoModule rec {
   pname = "ghr";
-  version = "0.16.0";
+  version = "0.17.0";
 
   src = fetchFromGitHub {
     owner = "tcnksm";
     repo = "ghr";
     rev = "v${version}";
-    sha256 = "sha256-aD1HEdoAPFFpJL++fLZIk+pIs+qDNYbTGDMlcRjV6M4=";
+    sha256 = "sha256-Is0D8tElv86s++NV6upu8RXvce65uPWQGIOl0Ftxf/M=";
   };
 
-  vendorSha256 = "sha256-pqwJPo3ZhsXU1RF4BKPOWQS71+9EitSSTE1+sKlc9+s=";
+  vendorHash = "sha256-gVDZgV7EF4LrCDX25tGpECecLi8IgstpzCOGfJ5+rhA=";
 
   # Tests require a Github API token, and networking
   doCheck = false;
@@ -31,6 +31,7 @@ buildGoModule rec {
     homepage = "https://github.com/tcnksm/ghr";
     description = "Upload multiple artifacts to GitHub Release in parallel";
     license = licenses.mit;
-    maintainers = [ maintainers.ivar ];
+    maintainers = [ ];
+    mainProgram = "ghr";
   };
 }

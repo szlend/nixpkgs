@@ -1,18 +1,20 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{ lib, buildGo122Module, fetchFromGitHub }:
 
-buildGoModule rec {
+# Does not build with Go 1.23
+# FIXME: check again for next release
+buildGo122Module rec {
   pname = "tempo";
-  version = "2.1.1";
+  version = "2.6.0";
 
   src = fetchFromGitHub {
     owner = "grafana";
     repo = "tempo";
     rev = "v${version}";
     fetchSubmodules = true;
-    sha256 = "sha256-gnQAldqfxJk8kbXAyX1VQXddCnSBWnvc3wesYoYI7wI=";
+    hash = "sha256-jWoGKY+kC9VAK7jPFaGMJQkC/JeAiUjzqKhE2XjuJio=";
   };
 
-  vendorSha256 = null;
+  vendorHash = null;
 
   subPackages = [
     "cmd/tempo-cli"
@@ -34,10 +36,9 @@ buildGoModule rec {
   doCheck = false;
 
   meta = with lib; {
-    description = "A high volume, minimal dependency trace storage";
+    description = "High volume, minimal dependency trace storage";
     license = licenses.asl20;
     homepage = "https://grafana.com/oss/tempo/";
     maintainers = with maintainers; [ willibutz ];
-    platforms = platforms.linux;
   };
 }

@@ -2,11 +2,9 @@
 , stdenv
 , autoconf
 , automake
-, bash
 , curl
 , fetchFromGitHub
 , fetchMavenArtifact
-, fetchurl
 , fetchpatch
 , git
 , jdk8
@@ -57,7 +55,7 @@ let
     ];
     hamcrest = [
       (fetchMavenArtifact {
-        url = "https://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar";
+        url = "mirror://maven/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar";
         groupId = "org.hamcrest";
         artifactId = "hamcrest-core";
         version = "1.3";
@@ -349,5 +347,6 @@ in stdenv.mkDerivation rec {
       binaryBytecode  # maven dependencies
     ];
     maintainers = [ ];
+    mainProgram = "tsdb";
   };
 }

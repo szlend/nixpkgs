@@ -64,15 +64,28 @@ let
     systemd
   ];
 
+  version = "2024.4";
+
+  selectSystem = attrs: attrs.${stdenv.hostPlatform.system} or (throw "Unsupported system: ${stdenv.hostPlatform.system}");
+
+  platform = selectSystem {
+    x86_64-linux = "amd64";
+    aarch64-linux = "arm64";
+  };
+
+  hash = selectSystem {
+    x86_64-linux = "sha256-bsXlOzqGr37AZhEij68Fy2/3Lk50J7A3jHV0re5U6j0=";
+    aarch64-linux = "sha256-6OBCqOnSkXBntFGxXicPU7GSb9+a5WN4rYExgDa08/I=";
+  };
 in
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "mullvad-vpn";
-  version = "2023.4";
+  inherit version;
 
   src = fetchurl {
-    url = "https://github.com/mullvad/mullvadvpn-app/releases/download/${version}/MullvadVPN-${version}_amd64.deb";
-    sha256 = "sha256-7NoifrX1/3pUJHTYK+2dVos/oFsKiYwyhCGi07SsEhM=";
+    url = "https://github.com/mullvad/mullvadvpn-app/releases/download/${version}/MullvadVPN-${version}_${platform}.deb";
+    inherit hash;
   };
 
   nativeBuildInputs = [
@@ -109,10 +122,15 @@ stdenv.mkDerivation rec {
     wrapProgram $out/bin/mullvad-daemon \
         --set-default MULLVAD_RESOURCE_DIR "$out/share/mullvad/resources"
 
+    wrapProgram $out/bin/mullvad-gui \
+      --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--enable-features=UseOzonePlatform --ozone-platform=wayland}}"
+
     sed -i "s|Exec.*$|Exec=$out/bin/mullvad-vpn $U|" $out/share/applications/mullvad-vpn.desktop
 
     runHook postInstall
   '';
+
+  passthru.updateScript = ./update.sh;
 
   meta = with lib; {
     homepage = "https://github.com/mullvad/mullvadvpn-app";
@@ -120,7 +138,7 @@ stdenv.mkDerivation rec {
     changelog = "https://github.com/mullvad/mullvadvpn-app/blob/${version}/CHANGELOG.md";
     sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     license = licenses.gpl3Only;
-    platforms = [ "x86_64-linux" ];
+    platforms = [ "x86_64-linux" "aarch64-linux" ];
     maintainers = with maintainers; [ Br1ght0ne ymarkus ataraxiasjel ];
   };
 

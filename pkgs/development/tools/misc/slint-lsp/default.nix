@@ -21,22 +21,22 @@
 
 let
   rpathLibs = [ fontconfig libGL xorg.libxcb xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi ]
-    ++ lib.optionals stdenv.isLinux [ libxkbcommon wayland ];
+    ++ lib.optionals stdenv.hostPlatform.isLinux [ libxkbcommon wayland ];
 in
 rustPlatform.buildRustPackage rec {
   pname = "slint-lsp";
-  version = "1.1.0";
+  version = "1.5.1";
 
   src = fetchCrate {
     inherit pname version;
-    sha256 = "sha256-YVOxzxkvvW2pFDsYdDM2uiK6kIam+EP/BOF+Vs+RM2g=";
+    hash = "sha256-wqAcHBHWtYavAakHLhHHCI+Yercgdtzo1EAOilsZOK0=";
   };
 
-  cargoHash = "sha256-Nt8t4nyfwxyX8mugQy4La3Y+nertJg9MFE1ROePISSg=";
+  cargoHash = "sha256-XjVXhXoGEhxWc+LZa0EsPiw3Gq2pg03YjKONTptSQvA=";
 
   nativeBuildInputs = [ cmake pkg-config fontconfig ];
   buildInputs = rpathLibs ++ [ xorg.libxcb.dev ]
-    ++ lib.optionals stdenv.isDarwin [
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
     AppKit
     CoreGraphics
     CoreServices
@@ -46,7 +46,7 @@ rustPlatform.buildRustPackage rec {
     OpenGL
   ];
 
-  postInstall = lib.optionalString stdenv.isLinux  ''
+  postInstall = lib.optionalString stdenv.hostPlatform.isLinux  ''
     patchelf --set-rpath ${lib.makeLibraryPath rpathLibs} $out/bin/slint-lsp
   '';
 
@@ -54,6 +54,7 @@ rustPlatform.buildRustPackage rec {
 
   meta = with lib; {
     description = "Language Server Protocol (LSP) for Slint UI language";
+    mainProgram = "slint-lsp";
     homepage = "https://slint-ui.com/";
     changelog = "https://github.com/slint-ui/slint/blob/v${version}/CHANGELOG.md";
     license = with licenses; [ gpl3Plus ];

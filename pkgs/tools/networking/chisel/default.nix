@@ -5,21 +5,21 @@
 
 buildGoModule rec {
   pname = "chisel";
-  version = "1.8.1";
+  version = "1.10.1";
 
   src = fetchFromGitHub {
     owner = "jpillora";
     repo = pname;
     rev = "refs/tags/v${version}";
-    hash = "sha256-N2voSclNH7lGbUkZo2gkrEb6XoA5f0BzNgAzQs1lOKQ=";
+    hash = "sha256-b3r4D/P7D3kfIyMd1s/ntciY04qMrvSTru9+HjAOrnA=";
   };
 
-  vendorHash = "sha256-p/5g4DLoUhEPFBtAbMiIgc6O4eAfbiqBjCqYkyUHy70=";
+  vendorHash = "sha256-+11Pd/QCxoLLkeazmU9/vnPBaB2MZXmx4cEZRDnyRcQ=";
 
   ldflags = [
     "-s"
     "-w"
-    "-X github.com/jpillora/chisel/share.BuildVersion=${version}"
+    "-X=github.com/jpillora/chisel/share.BuildVersion=${version}"
   ];
 
   # Tests require access to the network

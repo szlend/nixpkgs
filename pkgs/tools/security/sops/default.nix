@@ -1,27 +1,43 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
+  installShellFiles,
+  nix-update-script,
+}:
 
 buildGoModule rec {
   pname = "sops";
-  version = "3.7.3";
+  version = "3.9.1";
 
   src = fetchFromGitHub {
-    rev = "v${version}";
-    owner = "mozilla";
+    owner = "getsops";
     repo = pname;
-    sha256 = "sha256-wN1ksLwD4G+fUhvCe+jahh1PojPk6L6tnx1rsc7dz+M=";
+    rev = "v${version}";
+    hash = "sha256-j16hSTi7fwlMu8hwHqCR0lW22VSf0swIVTF81iUYl2k=";
   };
 
-  vendorSha256 = "sha256-8IaE+vhVZkc9QDR6+/3eOSsuf3SYF2upNcCifbqtx14=";
+  vendorHash = "sha256-40YESkLSKL/zFBI7ccz0ilrl9ATr74YpvRNrOpzJDew=";
 
-  ldflags = [ "-s" "-w" ];
+  subPackages = [ "cmd/sops" ];
 
-  doCheck = false;
+  ldflags = [ "-s" "-w" "-X github.com/getsops/sops/v3/version.Version=${version}" ];
+
+  passthru.updateScript = nix-update-script { };
+
+  nativeBuildInputs = [ installShellFiles ];
+
+  postInstall = ''
+    installShellCompletion --cmd sops --bash ${./bash_autocomplete}
+    installShellCompletion --cmd sops --zsh ${./zsh_autocomplete}
+  '';
 
   meta = with lib; {
-    homepage = "https://github.com/mozilla/sops";
-    description = "Mozilla sops (Secrets OPerationS) is an editor of encrypted files";
-    changelog = "https://github.com/mozilla/sops/raw/v${version}/CHANGELOG.rst";
-    maintainers = [ maintainers.marsam ];
+    homepage = "https://getsops.io/";
+    description = "Simple and flexible tool for managing secrets";
+    changelog = "https://github.com/getsops/sops/blob/v${version}/CHANGELOG.rst";
+    mainProgram = "sops";
+    maintainers = with maintainers; [ Scrumplex mic92 ];
     license = licenses.mpl20;
   };
 }

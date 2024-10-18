@@ -1,39 +1,53 @@
-{ lib
-, fetchFromGitHub
-, python3Packages
-, nixosTests
+{
+  fetchFromGitHub,
+  fetchpatch2,
+  lib,
+  nixosTests,
+  python3Packages,
 }:
 
 python3Packages.buildPythonApplication rec {
   pname = "xandikos";
-  version = "0.2.8";
+  version = "0.2.11";
+  pyproject = true;
+
+  disabled = python3Packages.pythonOlder "3.9";
 
   src = fetchFromGitHub {
     owner = "jelmer";
     repo = "xandikos";
-    rev = "v${version}";
-    sha256 = "sha256-KDDk0QSOjwivJFz3vLk+g4vZMlSuX2FiOgHJfDJkpwg=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-cBsceJ6tib8OYx5L2Hv2AqRS+ADRSLIuJGIULNpAmEI=";
   };
 
-  propagatedBuildInputs = with python3Packages; [
+  patches = [
+    (fetchpatch2 {
+      name = "fix-compatibility-with-icalendar-v6.patch";
+      url = "https://github.com/jelmer/xandikos/commit/ae8924c374ed86b2efde5bfbc75e56f6d8318086.patch";
+      excludes = [ "requirements.txt" ];
+      hash = "sha256-PCKo5C6Ejw9ZsFFLAMw1ZtMoCq9gJxR65K7CM6RUYwU=";
+    })
+  ];
+
+  build-system = with python3Packages; [
+    setuptools
+  ];
+
+  dependencies = with python3Packages; [
     aiohttp
+    aiohttp-openmetrics
     dulwich
     defusedxml
     icalendar
     jinja2
     multidict
-    prometheus-client
+    pytz
+    vobject
   ];
 
   passthru.tests.xandikos = nixosTests.xandikos;
 
   nativeCheckInputs = with python3Packages; [ pytestCheckHook ];
-  disabledTests = [
-    # these tests are failing due to the following error:
-    # TypeError: expected str, bytes or os.PathLike object, not int
-    "test_iter_with_etag"
-    "test_iter_with_etag_missing_uid"
-  ];
 
   meta = with lib; {
     description = "Lightweight CalDAV/CardDAV server";
@@ -41,5 +55,6 @@ python3Packages.buildPythonApplication rec {
     license = licenses.gpl3Plus;
     changelog = "https://github.com/jelmer/xandikos/blob/v${version}/NEWS";
     maintainers = with maintainers; [ _0x4A6F ];
+    mainProgram = "xandikos";
   };
 }

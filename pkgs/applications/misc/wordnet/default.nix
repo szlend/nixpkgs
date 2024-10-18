@@ -10,13 +10,16 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ makeWrapper ];
   buildInputs = [ tcl tk ]
-    ++ lib.optionals stdenv.isDarwin [ Cocoa ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ Cocoa ];
 
   hardeningDisable = [ "format" ];
 
   patchPhase = ''
     sed "13i#define USE_INTERP_RESULT 1" -i src/stubs.c
   '';
+
+  # Fails the build on clang-16 and on upcoming gcc-14.
+  env.NIX_CFLAGS_COMPILE = "-Wno-error=implicit-int";
 
   # Needs the path to `tclConfig.sh' and `tkConfig.sh'.
   configureFlags = [

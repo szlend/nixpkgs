@@ -24,13 +24,13 @@
 , networkmanager
 }: stdenv.mkDerivation rec {
   pname = "tlp";
-  version = "1.5.0";
+  version = "1.7.0";
 
   src = fetchFromGitHub {
     owner = "linrunner";
     repo = "TLP";
     rev = version;
-    sha256 = "sha256-hHel3BVMzTYfE59kxxADnm8tqtUFntqS3RzmJSZlWjM=";
+    hash = "sha256-kjtszDLlnIkBi3yU/AyGSV8q7QBuZbDhsqJ8AvULb0M=";
   };
 
   # XXX: See patch files for relevant explanations.
@@ -100,7 +100,6 @@
         $out/share/tlp/tlp-pcilist
         $out/share/tlp/tlp-readconfs
         $out/share/tlp/tlp-usblist
-        $out/share/tlp/tpacpi-bat
       )
       for f in "''${fixup_perl[@]}"; do
         wrapProgram "$f" --prefix PATH : "${paths}"
@@ -127,7 +126,9 @@
     description = "Advanced Power Management for Linux";
     homepage =
       "https://linrunner.de/en/tlp/docs/tlp-linux-advanced-power-management.html";
+    changelog = "https://github.com/linrunner/TLP/releases/tag/${version}";
     platforms = platforms.linux;
+    mainProgram = "tlp";
     maintainers = with maintainers; [ abbradar lovesegfault ];
     license = licenses.gpl2Plus;
   };

@@ -2,11 +2,11 @@
 
 qtModule {
   pname = "qtwebview";
-  qtInputs = [ qtdeclarative qtwebengine ];
-  buildInputs = lib.optionals stdenv.isDarwin [
+  propagatedBuildInputs = [ qtdeclarative qtwebengine ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [
     CoreFoundation
     WebKit
   ];
   outputs = [ "out" "dev" "bin" ];
-  NIX_LDFLAGS = lib.optionalString stdenv.isDarwin "-framework CoreFoundation -framework WebKit";
+  NIX_LDFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-framework CoreFoundation -framework WebKit";
 }

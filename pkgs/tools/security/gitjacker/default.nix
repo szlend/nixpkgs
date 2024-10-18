@@ -16,13 +16,13 @@ buildGoModule rec {
     sha256 = "sha256-rEn9FpcRfEt2yGepIPEAO9m8JeVb+nMhYMBWhC/barc=";
   };
 
-  vendorSha256 = null;
+  vendorHash = null;
 
   propagatedBuildInputs = [ git ];
 
   nativeCheckInputs = [ git ];
 
-  doCheck = !stdenv.isDarwin;
+  doCheck = !stdenv.hostPlatform.isDarwin;
 
   preCheck = ''
     export PATH=$TMPDIR/usr/bin:$PATH
@@ -30,6 +30,7 @@ buildGoModule rec {
 
   meta = with lib; {
     description = "Leak git repositories from misconfigured websites";
+    mainProgram = "gitjacker";
     longDescription = ''
       Gitjacker downloads git repositories and extracts their contents
       from sites where the .git directory has been mistakenly uploaded.

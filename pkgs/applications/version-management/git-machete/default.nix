@@ -6,19 +6,17 @@
 , installShellFiles
 , git
 , nix-update-script
-, testers
-, git-machete
 }:
 
 buildPythonApplication rec {
   pname = "git-machete";
-  version = "3.17.6";
+  version = "3.29.3";
 
   src = fetchFromGitHub {
     owner = "virtuslab";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-o3Z1xPu5RcspU4m3Bb6ydZkXOMgOMJPN/+TLekwe/wI=";
+    hash = "sha256-3GXTdIXITZeDqe6gxwOCaFXwITYYfXTy57H2AHA5Zyc=";
   };
 
   nativeBuildInputs = [ installShellFiles ];
@@ -27,6 +25,12 @@ buildPythonApplication rec {
     git
     pytest-mock
     pytestCheckHook
+  ];
+
+  disabledTests = [
+    # Requires fully functioning shells including zsh modules and bash
+    # completion.
+    "completion_e2e"
   ];
 
   postInstall = ''
@@ -49,5 +53,6 @@ buildPythonApplication rec {
     changelog = "https://github.com/VirtusLab/git-machete/releases/tag/v${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ blitz ];
+    mainProgram = "git-machete";
   };
 }

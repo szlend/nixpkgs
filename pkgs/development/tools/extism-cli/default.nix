@@ -1,37 +1,43 @@
-{ lib, stdenvNoCC, fetchFromGitHub, python3, makeBinaryWrapper }:
+{
+  lib
+, buildGoModule
+, fetchFromGitHub
+, installShellFiles
+}:
 
-stdenvNoCC.mkDerivation rec {
+buildGoModule rec {
   pname = "extism-cli";
-  version = "0.1.0";
+  version = "1.5.4";
 
   src = fetchFromGitHub {
     owner = "extism";
     repo = "cli";
-    rev = "97935786166e82154266b82410028482800e6061";
-    sha256 = "sha256-LRzXuZQt5h3exw43UXUwLVIhveYVFw/SQ2YtHI9ZnWc=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-zC03cvvotRIiW4IiVTwffgMYLDrCp72pgMJHoJk5L0Q=";
   };
 
-  buildInputs = [ python3 ];
-  nativeBuildInputs = [ makeBinaryWrapper ];
+  vendorHash = "sha256-n4Ue2TSG0zbC2uqXiNakqWQjxhbOgXnC2Y7EKP2BM8Q=";
 
-  installPhase = ''
-    runHook preInstall
+  nativeBuildInputs = [ installShellFiles ];
 
-    install -D -m 755 ./extism_cli/__init__.py "$out/bin/extism"
+  subPackages = [ "./extism" ];
 
-    # The extism cli tries by default to install a library and header into /usr/local which does not work on NixOS.
-    # Pass a reasonable writable directory which can still be overwritten with another --prefix argument.
-    wrapProgram "$out/bin/extism" \
-      --add-flags '--prefix $HOME/.local'
+  doCheck = false; # Tests require network access
 
-    runHook postInstall
+  postInstall = ''
+    local INSTALL="$out/bin/extism"
+    installShellCompletion --cmd extism \
+      --bash <($out/bin/extism completion bash) \
+      --fish <($out/bin/extism completion fish) \
+      --zsh <($out/bin/extism completion zsh)
   '';
 
   meta = with lib; {
-    description = "The extism CLI is used to manage Extism installations";
+    description = "Extism CLI is used to manage Extism installations";
     homepage = "https://github.com/extism/cli";
     license = licenses.bsd3;
-    maintainers = with maintainers; [ borlaag ];
+    maintainers = with maintainers; [ zshipko ];
+    mainProgram = "extism";
     platforms = platforms.all;
   };
 }

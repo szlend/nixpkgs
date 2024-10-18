@@ -4,11 +4,11 @@
 
 stdenv.mkDerivation rec {
   pname = "fasmg";
-  version = "j27m";
+  version = "kd3c";
 
   src = fetchzip {
     url = "https://flatassembler.net/fasmg.${version}.zip";
-    sha256 = "0qmklb24n3r0my2risid8r61pi88gqrvm1c0xvyd0bp1ans6d7zd";
+    sha256 = "sha256-duxune/UjXppKf/yWp7y85rpBn4EIC6JcZPNDhScsEA=";
     stripRoot = false;
   };
 
@@ -32,7 +32,7 @@ stdenv.mkDerivation rec {
         bin = "source/macos/fasmg";
         asm = "source/macos/fasmg.asm";
       };
-    }.${system} or (throw "Unsopported system: ${system}");
+    }.${system} or (throw "Unsupported system: ${system}");
 
   in ''
     chmod +x ${path.bin}
@@ -50,6 +50,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "x86(-64) macro assembler to binary, MZ, PE, COFF, and ELF";
+    mainProgram = "fasmg";
     homepage = "https://flatassembler.net";
     license = licenses.bsd3;
     maintainers = with maintainers; [ orivej luc65r ];

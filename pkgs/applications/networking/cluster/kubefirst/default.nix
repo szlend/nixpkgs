@@ -1,25 +1,34 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{ lib
+, buildGoModule
+, fetchFromGitHub
+}:
 
 buildGoModule rec {
   pname = "kubefirst";
-  version = "2.2.0";
+  version = "2.5.11";
 
   src = fetchFromGitHub {
-    owner = "kubefirst";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-6vtuMUTlMOgdUqoCidSKg5liOQWfM+cppUXwX4YYGGA=";
+    owner = "konstructio";
+    repo = "kubefirst";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-paGb/Ifslj2XsXhY99ETXs72s3vSXAUqTeGPg+Nviho=";
   };
 
-  vendorHash = "sha256-4q/r6LR97uX6QZQN6Y7NCf1ilcGjorIUGIvhTVfkeZg=";
+  vendorHash = "sha256-tOCVDp9oClfeBsyZ6gv6HoGPjZByoxxAceV/wxQeBSA=";
 
-  ldflags = [ "-s" "-w" "-X github.com/kubefirst/runtime/configs.K1Version=v${version}"];
+  ldflags = [
+    "-s"
+    "-w"
+    "-X=github.com/konstructio/kubefirst-api/configs.K1Version=v${version}"
+  ];
 
   doCheck = false;
 
   meta = with lib; {
-    description = "The Kubefirst CLI creates instant GitOps platforms that integrate some of the best tools in cloud native from scratch.";
-    homepage = "https://github.com/kubefirst/kubefirst/";
+    description = "Tool to create instant GitOps platforms that integrate some of the best tools in cloud native from scratch";
+    mainProgram = "kubefirst";
+    homepage = "https://github.com/konstructio/kubefirst/";
+    changelog = "https://github.com/konstructio/kubefirst/releases/tag/v${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ qjoly ];
   };

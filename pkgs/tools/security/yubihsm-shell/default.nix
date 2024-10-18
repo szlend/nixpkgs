@@ -16,13 +16,13 @@
 
 stdenv.mkDerivation rec {
   pname = "yubihsm-shell";
-  version = "2.4.0";
+  version = "2.5.0";
 
   src = fetchFromGitHub {
     owner = "Yubico";
     repo = "yubihsm-shell";
     rev = version;
-    hash = "sha256-zWhvECPdZnrbSAVPDVZk54SWHVkd/HEQxS3FgXoqXHY=";
+    hash = "sha256-QTDFL/UTnnG0TuojJ0eVKw8fNEqZz86CXWb6uHvzUbs=";
   };
 
   postPatch = ''
@@ -47,16 +47,23 @@ stdenv.mkDerivation rec {
     libedit
     curl
     openssl
-  ] ++ lib.optionals stdenv.isLinux [
-    pcsclite
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
+    pcsclite.dev
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.PCSC
     libiconv
   ];
 
-  cmakeFlags = lib.optionals stdenv.isDarwin [
+  preBuild = lib.optionalString stdenv.hostPlatform.isLinux ''
+    NIX_CFLAGS_COMPILE="$(pkg-config --cflags libpcsclite) $NIX_CFLAGS_COMPILE"
+  '';
+
+  cmakeFlags = lib.optionals stdenv.hostPlatform.isDarwin [
     "-DDISABLE_LTO=ON"
   ];
+
+  # causes redefinition of _FORTIFY_SOURCE
+  hardeningDisable = [ "fortify3" ];
 
   meta = with lib; {
     description = "yubihsm-shell and libyubihsm";

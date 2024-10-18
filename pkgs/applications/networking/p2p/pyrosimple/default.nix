@@ -1,53 +1,35 @@
 { lib
 , stdenv
-, python3Packages
+, fetchFromGitHub
 , nix-update-script
 , pyrosimple
+, python3
 , testers
-, fetchPypi
-, buildPythonPackage
-, pythonRelaxDepsHook
-, poetry-core
-, bencode-py
-, apscheduler
-, jinja2
-, python-daemon
-, importlib-resources
-, parsimonious
-, prometheus-client
-, prompt-toolkit
-, requests
-, shtab
-, inotify
-, withInotify ? stdenv.isLinux
-, python-box
-, tomli
-, tomli-w
+, withInotify ? stdenv.hostPlatform.isLinux
 }:
 
-let
- pname = "pyrosimple";
- version = "2.8.0";
-in buildPythonPackage {
-  inherit pname version;
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-K0QjEcGzROlSWuUHWqUbcOdKccrHex2SlwPAmsmIbaQ=";
-  };
-
+python3.pkgs.buildPythonApplication rec {
+  pname = "pyrosimple";
+  version = "2.14.0";
   format = "pyproject";
 
-  nativeBuildInputs = [
-    poetry-core
-    pythonRelaxDepsHook
-  ];
+  src = fetchFromGitHub {
+    owner = "kannibalox";
+    repo = pname;
+    rev = "refs/tags/v${version}";
+    hash = "sha256-lEtyt7i8MyL2VffxNFQkL9RkmGeo6Nof0AOQwf6BUSE=";
+  };
 
   pythonRelaxDeps = [
+    "prometheus-client"
     "python-daemon"
   ];
 
-  propagatedBuildInputs = [
+  nativeBuildInputs = with python3.pkgs; [
+    poetry-core
+  ];
+
+  propagatedBuildInputs = with python3.pkgs; [
     bencode-py
     apscheduler
     jinja2
@@ -59,9 +41,14 @@ in buildPythonPackage {
     requests
     shtab
     python-box
-    tomli
     tomli-w
+  ] ++ lib.optionals (pythonOlder "3.11") [
+    tomli
   ] ++ lib.optional withInotify inotify;
+
+  nativeCheckInputs = with python3.pkgs; [
+    pytestCheckHook
+  ];
 
   passthru = {
     updateScript = nix-update-script { };
@@ -72,12 +59,10 @@ in buildPythonPackage {
   };
 
   meta = with lib; {
+    description = "RTorrent client";
     homepage = "https://kannibalox.github.io/pyrosimple/";
-    description = "A rTorrent client and Python 3 fork of the pyrocore tools";
-    license = licenses.gpl3Plus;
     changelog = "https://github.com/kannibalox/pyrosimple/blob/v${version}/CHANGELOG.md";
-    platforms = platforms.all;
+    license = licenses.gpl3Plus;
     maintainers = with maintainers; [ ne9z vamega ];
   };
-
 }

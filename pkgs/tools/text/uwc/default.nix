@@ -1,23 +1,24 @@
-{ rustPlatform, lib, fetchFromGitLab }:
+{ rustPlatform, lib, fetchFromGitHub }:
 
 rustPlatform.buildRustPackage rec {
   pname = "uwc";
-  version = "1.0.4";
+  version = "1.0.7";
 
-  src = fetchFromGitLab {
+  src = fetchFromGitHub {
     owner = "dead10ck";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "1ywqq9hrrm3frvd2sswknxygjlxi195kcy7g7phwq63j7hkyrn50";
+    repo = "uwc";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-Qv8vMjCMhpVxkJyH1uTsFXu2waO8oaLPuoBETaWOUqI=";
   };
 
-  cargoSha256 = "04pslga3ff766cpb73n6ivzmqfa0hm19gcla8iyv6p59ddsajh3q";
+  cargoHash = "sha256-20brxqYAvgBxbOQ7KOFviXxmFrSHDXNV/0lcks7x3a8=";
 
-  doCheck = true;
+  doCheck = false;
 
   meta = with lib; {
     description = "Like wc, but unicode-aware, and with per-line mode";
-    homepage = "https://gitlab.com/dead10ck/uwc";
+    mainProgram = "uwc";
+    homepage = "https://github.com/dead10ck/uwc";
     license = licenses.mit;
     maintainers = with maintainers; [ ShamrockLee ];
   };

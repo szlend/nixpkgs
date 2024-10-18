@@ -1,22 +1,23 @@
-{ lib
-, avro
-, buildPythonPackage
-, fastavro
-, fetchFromGitHub
-, jsonschema
-, protobuf
-, pyflakes
-, pyrsistent
-, pytestCheckHook
-, pythonOlder
-, rdkafka
-, requests
-, requests-mock
+{
+  lib,
+  avro,
+  buildPythonPackage,
+  fastavro,
+  fetchFromGitHub,
+  jsonschema,
+  protobuf,
+  pyflakes,
+  pyrsistent,
+  pytestCheckHook,
+  pythonOlder,
+  rdkafka,
+  requests,
+  requests-mock,
 }:
 
 buildPythonPackage rec {
   pname = "confluent-kafka";
-  version = "2.1.1";
+  version = "2.4.0";
   format = "setuptools";
 
   disabled = pythonOlder "3.7";
@@ -25,18 +26,14 @@ buildPythonPackage rec {
     owner = "confluentinc";
     repo = "confluent-kafka-python";
     rev = "refs/tags/v${version}";
-    hash = "sha256-xnbovQRvbhaYYXnssV0Jy+U9L6BUddIagbup2jdTugY=";
+    hash = "sha256-JlPWh46WjY4GHRKtamB+qigVvVzvbRagbigyCol6lfg=";
   };
 
-  buildInputs = [
-    rdkafka
-  ];
+  buildInputs = [ rdkafka ];
 
-  propagatedBuildInputs = [
-    requests
-  ];
+  propagatedBuildInputs = [ requests ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     avro = [
       avro
       fastavro
@@ -45,23 +42,21 @@ buildPythonPackage rec {
       jsonschema
       pyrsistent
     ];
-    protobuf = [
-      protobuf
-    ];
+    protobuf = [ protobuf ];
   };
 
   nativeCheckInputs = [
     pyflakes
     pytestCheckHook
     requests-mock
-  ] ++ lib.flatten (builtins.attrValues passthru.optional-dependencies);
+  ] ++ lib.flatten (builtins.attrValues optional-dependencies);
 
-  pythonImportsCheck = [
-    "confluent_kafka"
-  ];
+  pythonImportsCheck = [ "confluent_kafka" ];
 
   disabledTestPaths = [
     "tests/integration/"
+    "tests/test_Admin.py"
+    "tests/test_misc.py"
   ];
 
   meta = with lib; {

@@ -1,26 +1,27 @@
-{ lib
-, stdenv
-, borgbackup
-, coreutils
-, python3Packages
-, fetchPypi
-, systemd
-, enableSystemd ? lib.meta.availableOn stdenv.hostPlatform systemd
-, installShellFiles
-, borgmatic
-, testers
+{
+  borgbackup,
+  borgmatic,
+  coreutils,
+  enableSystemd ? lib.meta.availableOn stdenv.hostPlatform systemd,
+  fetchPypi,
+  installShellFiles,
+  lib,
+  python3Packages,
+  stdenv,
+  systemd,
+  testers,
+  nixosTests,
 }:
-
 python3Packages.buildPythonApplication rec {
   pname = "borgmatic";
-  version = "1.7.14";
+  version = "1.8.14";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-rABJfdrV+D2v6yHpAbzj/0MSGc9bo49pwXEC45Mmmlk=";
+    hash = "sha256-WYs7wiwZ1TvTdeUpWv7FbREXWfdGcYRarP4FXFOfp0Y=";
   };
 
-  nativeCheckInputs = with python3Packages; [ flexmock pytestCheckHook pytest-cov ];
+  nativeCheckInputs = with python3Packages; [ flexmock pytestCheckHook pytest-cov ] ++ optional-dependencies.apprise;
 
   # - test_borgmatic_version_matches_news_version
   # The file NEWS not available on the pypi source, and this test is useless
@@ -34,10 +35,15 @@ python3Packages.buildPythonApplication rec {
     borgbackup
     colorama
     jsonschema
-    ruamel-yaml
+    packaging
     requests
+    ruamel-yaml
     setuptools
   ];
+
+  optional-dependencies = {
+    apprise = [ python3Packages.apprise ];
+  };
 
   postInstall = ''
     installShellCompletion --cmd borgmatic \
@@ -54,13 +60,18 @@ python3Packages.buildPythonApplication rec {
                --replace "sleep " "${coreutils}/bin/sleep "
   '';
 
-  passthru.tests.version = testers.testVersion { package = borgmatic; };
+  passthru.tests = {
+    version = testers.testVersion { package = borgmatic; };
+    inherit (nixosTests) borgmatic;
+  };
 
-  meta = with lib; {
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
     description = "Simple, configuration-driven backup software for servers and workstations";
     homepage = "https://torsion.org/borgmatic/";
-    license = licenses.gpl3Plus;
-    platforms = platforms.linux;
-    maintainers = with maintainers; [ imlonghao ];
+    license = lib.licenses.gpl3Plus;
+    platforms = lib.platforms.all;
+    maintainers = with lib.maintainers; [ imlonghao x123 ];
   };
 }

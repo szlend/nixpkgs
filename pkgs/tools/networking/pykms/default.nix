@@ -4,6 +4,7 @@
 , writeText
 , writeShellScript
 , sqlite
+, nixosTests
 }:
 let
   pypkgs = python3.pkgs;
@@ -43,7 +44,7 @@ pypkgs.buildPythonApplication rec {
     hash = "sha256-9KiMbS0uKTbWSZVIv5ziIeR9c8+EKfKd20yPmjCX7GQ=";
   };
 
-  sourceRoot = "source/py-kms";
+  sourceRoot = "${src.name}/py-kms";
 
   propagatedBuildInputs = with pypkgs; [ systemd pytz tzlocal dnspython ];
 
@@ -82,6 +83,8 @@ pypkgs.buildPythonApplication rec {
 
     runHook postInstall
   '';
+
+  passthru.tests = { inherit (nixosTests) pykms; };
 
   meta = with lib; {
     description = "Windows KMS (Key Management Service) server written in Python";

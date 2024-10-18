@@ -8,16 +8,16 @@
 
 buildGoModule rec {
   pname = "nwg-dock";
-  version = "0.3.4";
+  version = "0.4.1";
 
   src = fetchFromGitHub {
     owner = "nwg-piotr";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-4cyhE9CJz/4omvzucLuTR4QLQnd5iVANCG/BI6Sdhq8=";
+    sha256 = "sha256-ZR72QMftR6bWCieJHW3k46Ujdn/W5fulGxYKoNPiPfE=";
   };
 
-  vendorHash = "sha256-WDygnKdldZda4GadfStHWsDel1KLdzjVjw0RxmnFPRE=";
+  vendorHash = "sha256-paRcBQwg2uGouMRX5XF++OyN8Y0JyucXLN0G5O0j3qA=";
 
   ldflags = [ "-s" "-w" ];
 
@@ -30,5 +30,6 @@ buildGoModule rec {
     license = licenses.mit;
     platforms = platforms.linux;
     maintainers = with maintainers; [ dit7ya ];
+    mainProgram = "nwg-dock";
   };
 }

@@ -1,30 +1,31 @@
-{ lib, stdenv, buildNpmPackage, fetchFromGitHub, vscode }:
+{ lib, stdenv, buildNpmPackage, fetchFromGitHub, unzip, vscodium, vscode-extensions }:
 
 buildNpmPackage rec {
   pname = "vscode-langservers-extracted";
-  version = "4.7.0";
+  version = "4.10.0";
 
-  src = fetchFromGitHub {
-    owner = "hrsh7th";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-RLRDEHfEJ2ckn0HTMu0WbMK/o9W20Xwm+XI6kCq57u8=";
-  };
+  srcs =  [
+    (fetchFromGitHub {
+      owner = "hrsh7th";
+      repo = "vscode-langservers-extracted";
+      rev = "v${version}";
+      hash = "sha256-3m9+HZY24xdlLcFKY/5DfvftqprwLJk0vve2ZO1aEWk=";
+    })
+    vscodium.src
+  ];
 
-  npmDepsHash = "sha256-QhiSj/DigsI4Bfwmk3wG4lDQOWuDDduc/sfJlXiEoGE=";
+  sourceRoot = "source";
 
-  postPatch = ''
-    # TODO: Add vscode-eslint as a dependency
-    # Eliminate the vscode-eslint bin
-    sed -i '/^\s*"vscode-eslint-language-server":.*bin\//d' package.json package-lock.json
-  '';
+  npmDepsHash = "sha256-XGlFtmikUrnnWXsAYzTqw2K7Y2O0bUtYug0xXFIASBQ=";
+
+  nativeBuildInputs = [ unzip ];
 
   buildPhase =
     let
       extensions =
-        if stdenv.isDarwin
-        then "${vscode}/Applications/Visual\\ Studio\\ Code.app/Contents/Resources/app/extensions"
-        else "${vscode}/lib/vscode/resources/app/extensions";
+        if stdenv.hostPlatform.isDarwin
+        then "../VSCodium.app/Contents/Resources/app/extensions"
+        else "../resources/app/extensions";
     in
     ''
       npx babel ${extensions}/css-language-features/server/dist/node \
@@ -33,13 +34,12 @@ buildNpmPackage rec {
         --out-dir lib/html-language-server/node/
       npx babel ${extensions}/json-language-features/server/dist/node \
         --out-dir lib/json-language-server/node/
-      npx babel ${extensions}/markdown-language-features/server/dist/node \
-        --out-dir lib/markdown-language-server/node/
-      mv lib/markdown-language-server/node/workerMain.js lib/markdown-language-server/node/main.js
+      cp -r ${vscode-extensions.dbaeumer.vscode-eslint}/share/vscode/extensions/dbaeumer.vscode-eslint/server/out \
+        lib/eslint-language-server
     '';
 
   meta = with lib; {
-    description = "HTML/CSS/JSON/ESLint language servers extracted from vscode.";
+    description = "HTML/CSS/JSON/ESLint language servers extracted from vscode";
     homepage = "https://github.com/hrsh7th/vscode-langservers-extracted";
     license = licenses.mit;
     maintainers = with maintainers; [ lord-valen ];

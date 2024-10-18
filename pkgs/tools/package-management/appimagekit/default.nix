@@ -12,12 +12,12 @@ let
     owner = "AppImage";
     repo = "AppImageKit";
     rev = "8bbf694455d00f48d835f56afaa1dabcd9178ba6";
-    sha256 = "sha256-pqg+joomC5CI9WdKP/h/XKPsruMgZEaIOjPLOqnNPZw=";
+    hash = "sha256-pqg+joomC5CI9WdKP/h/XKPsruMgZEaIOjPLOqnNPZw=";
     fetchSubmodules = true;
   };
 
   # squashfuse adapted to nix from cmake experession in "${appimagekit_src}/lib/libappimage/cmake/dependencies.cmake"
-  appimagekit_squashfuse = squashfuse.overrideAttrs (attrs: rec {
+  appimagekit_squashfuse = squashfuse.overrideAttrs rec {
     pname = "squashfuse";
     version = "unstable-2016-10-09";
 
@@ -61,7 +61,7 @@ let
       cp -v ./.libs/*.a $out/lib
       cp -v ./*.h $out/include
     '';
-  });
+  };
 
 in stdenv.mkDerivation rec {
   pname = "appimagekit";
@@ -117,7 +117,7 @@ in stdenv.mkDerivation rec {
   };
 
   meta = with lib; {
-    description = "A tool to package desktop applications as AppImages";
+    description = "Tool to package desktop applications as AppImages";
     longDescription = ''
       AppImageKit is an implementation of the AppImage format that
       provides tools such as appimagetool and appimaged for handling

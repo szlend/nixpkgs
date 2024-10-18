@@ -13,12 +13,12 @@ stdenv.mkDerivation rec {
     sha256 = "11r5ag2l5xn4pr7ycicm30w9c3ldn9yiqj1sqnjc79csxl2vrcfw";
   };
 
-  sourceRoot = "source/host";
+  sourceRoot = "${src.name}/host";
 
   nativeBuildInputs = [ cmake pkg-config ];
   buildInputs = [ libbtbb libpcap libusb1 bluez ];
 
-  cmakeFlags = lib.optionals stdenv.isLinux [
+  cmakeFlags = lib.optionals stdenv.hostPlatform.isLinux [
     "-DINSTALL_UDEV_RULES=TRUE"
     "-DUDEV_RULES_PATH=etc/udev/rules.d"
     "-DUDEV_RULES_GROUP=${udevGroup}"

@@ -10,7 +10,7 @@
 , pkg-config
 , portaudio
 , which
-, pulseaudioSupport ? config.pulseaudio or stdenv.isLinux
+, pulseaudioSupport ? config.pulseaudio or stdenv.hostPlatform.isLinux
 }:
 
 stdenv.mkDerivation (finalAttrs: {
@@ -19,7 +19,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchFromGitHub {
     owner = "espeak-ng";
-    repo = finalAttrs.pname;
+    repo = "pcaudiolib";
     rev = finalAttrs.version;
     hash = "sha256-ZG/HBk5DHaZP/H3M01vDr3M2nP9awwsPuKpwtalz3EE=";
   };
@@ -35,10 +35,14 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     portaudio
   ]
-  ++ lib.optional stdenv.isLinux alsa-lib
+  ++ lib.optional stdenv.hostPlatform.isLinux alsa-lib
   ++ lib.optional pulseaudioSupport libpulseaudio;
 
-  preConfigure = ''
+  # touch ChangeLog to avoid below error on darwin:
+  # Makefile.am: error: required file './ChangeLog.md' not found
+  preConfigure = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    touch ChangeLog
+  '' + ''
     ./autogen.sh
   '';
 
@@ -48,6 +52,5 @@ stdenv.mkDerivation (finalAttrs: {
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ aske ];
     platforms = platforms.unix;
-    badPlatforms = platforms.darwin;
   };
 })

@@ -5,22 +5,23 @@
 
 buildGoModule rec {
   pname = "terrascan";
-  version = "1.18.1";
+  version = "1.19.9";
 
   src = fetchFromGitHub {
     owner = "accurics";
     repo = pname;
     rev = "refs/tags/v${version}";
-    hash = "sha256-w0ZOkPw8Y6Z1hyZecZfjd/YrTP8v6S0jNhgNzLjMRrY=";
+    hash = "sha256-4XIhmUUOSROwEPSB+DcMOfG5+q/pmWkVUwKGrWVcNtM=";
   };
 
-  vendorHash = "sha256-0WkOIgIA1fKn2SeS5QFeLGCGMstdlkU+eDRUVAs3ETA=";
+  vendorHash = "sha256-yQien8v7Ru+JWLou9QfyKZAR2ENMHO2aF2vzuWyQcjY=";
 
   # Tests want to download a vulnerable Terraform project
   doCheck = false;
 
   meta = with lib; {
     description = "Detect compliance and security violations across Infrastructure";
+    mainProgram = "terrascan";
     longDescription = ''
       Detect compliance and security violations across Infrastructure as Code to
       mitigate risk before provisioning cloud native infrastructure. It contains

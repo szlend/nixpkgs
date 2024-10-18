@@ -1,32 +1,36 @@
-{ lib, stdenv
-, fetchFromGitHub
-, perl
-, python3
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  perl,
+  python3,
 
-# Enable BLAS interface with 64-bit integer width.
-, blas64 ? false
+  # Enable BLAS interface with 64-bit integer width.
+  blas64 ? false,
 
-# Target architecture. "amd64" compiles kernels for all Zen
-# generations. To build kernels for specific Zen generations,
-# use "zen", "zen2", or "zen3".
-, withArchitecture ? "amd64"
+  # Target architecture. "amdzen" compiles kernels for all Zen
+  # generations. To build kernels for specific Zen generations,
+  # use "zen", "zen2", "zen3", or "zen4".
+  withArchitecture ? "amdzen",
 
-# Enable OpenMP-based threading.
-, withOpenMP ? true
+  # Enable OpenMP-based threading.
+  withOpenMP ? true,
 }:
 
 let
   threadingSuffix = lib.optionalString withOpenMP "-mt";
   blasIntSize = if blas64 then "64" else "32";
-in stdenv.mkDerivation rec {
+
+in
+stdenv.mkDerivation rec {
   pname = "amd-blis";
-  version = "3.0";
+  version = "5.0";
 
   src = fetchFromGitHub {
     owner = "amd";
     repo = "blis";
     rev = version;
-    hash = "sha256-bbbeo1yOKse9pzbsB6lQ7pULKdzu3G7zJzTUgPXiMZY=";
+    hash = "sha256-E6JmV4W0plFJfOAPK1Vn7qkmFalwl6OjqSpxYnhAPmw=";
   };
 
   inherit blas64;
@@ -46,16 +50,16 @@ in stdenv.mkDerivation rec {
   configureFlags = [
     "--enable-cblas"
     "--blas-int-size=${blasIntSize}"
-  ] ++ lib.optionals withOpenMP [ "--enable-threading=openmp" ]
-    ++ [ withArchitecture ];
+  ] ++ lib.optionals withOpenMP [ "--enable-threading=openmp" ] ++ [ withArchitecture ];
 
   postPatch = ''
     patchShebangs configure build/flatten-headers.py
   '';
 
   postInstall = ''
-    ln -s $out/lib/libblis${threadingSuffix}.so.3 $out/lib/libblas.so.3
-    ln -s $out/lib/libblis${threadingSuffix}.so.3 $out/lib/libcblas.so.3
+    ls $out/lib
+    ln -s $out/lib/libblis${threadingSuffix}.so $out/lib/libblas.so.3
+    ln -s $out/lib/libblis${threadingSuffix}.so $out/lib/libcblas.so.3
     ln -s $out/lib/libblas.so.3 $out/lib/libblas.so
     ln -s $out/lib/libcblas.so.3 $out/lib/libcblas.so
   '';

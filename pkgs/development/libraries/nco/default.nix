@@ -1,37 +1,62 @@
-{ lib, stdenv, fetchFromGitHub, netcdf, netcdfcxx4, gsl, udunits, antlr2, which, curl, flex, coreutils, libtool }:
+{ antlr2
+, coreutils
+, curl
+, fetchFromGitHub
+, flex
+, gsl
+, lib
+, libtool
+, netcdf
+, netcdfcxx4
+, stdenv
+, udunits
+, which
+}:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "nco";
-  version = "5.1.6";
+  version = "5.2.8";
 
   src = fetchFromGitHub {
     owner = "nco";
     repo = "nco";
-    rev = version;
-    sha256 = "sha256-h5HL3fe3pdj48UeL5TKunSr7PvKf26AOOOcQh77W9sk=";
+    rev = finalAttrs.version;
+    hash = "sha256-FTaXgBmDlQv75roeJo4dJyJCpzOj9ilJo2hdxDnyjno=";
   };
 
-  nativeBuildInputs = [ flex which antlr2 ];
+  nativeBuildInputs = [
+    antlr2
+    flex
+    which
+  ];
 
-  buildInputs = [ netcdf netcdfcxx4 gsl udunits curl coreutils ];
+  buildInputs = [
+    coreutils
+    curl
+    gsl
+    netcdf
+    netcdfcxx4
+    udunits
+  ];
 
   postPatch = ''
     substituteInPlace src/nco/nco_fl_utl.c \
       --replace "/bin/cp" "${coreutils}/bin/cp"
+
     substituteInPlace src/nco/nco_fl_utl.c \
       --replace "/bin/mv" "${coreutils}/bin/mv"
   '';
 
-  makeFlags = lib.optionals stdenv.isDarwin [ "LIBTOOL=${libtool}/bin/libtool" ];
+  makeFlags = lib.optionals stdenv.hostPlatform.isDarwin [ "LIBTOOL=${libtool}/bin/libtool" ];
 
   enableParallelBuilding = true;
 
-  meta = with lib; {
+  meta = {
     description = "NetCDF Operator toolkit";
-    longDescription = "The NCO (netCDF Operator) toolkit manipulates and analyzes data stored in netCDF-accessible formats, including DAP, HDF4, and HDF5";
     homepage = "https://nco.sourceforge.net/";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ bzizou ];
-    platforms = platforms.unix;
+    license = lib.licenses.bsd3;
+    longDescription = "The NCO (netCDF Operator) toolkit manipulates and analyzes data stored in netCDF-accessible formats, including DAP, HDF4, and HDF5";
+    maintainers = with lib.maintainers; [ bzizou ];
+    platforms = lib.platforms.unix;
   };
-}
+})

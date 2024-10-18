@@ -2,20 +2,21 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "oxker";
-  version = "0.3.1";
+  version = "0.7.2";
 
   src = fetchCrate {
     inherit pname version;
-    sha256 = "sha256-35MHq2G2L7yfz+W9uUaRb8fpEp/h0bt2HtK615XwZG8=";
+    hash = "sha256-Qh/mUEfCvrOrUHJ1kEWb3BLBmMyP/MzUyfFoB+eYj9w=";
   };
 
-  cargoHash = "sha256-goIb8BoHSF0g/OWmeZtha+qKlcvLTqwMmYcD2uYUI7E=";
+  cargoHash = "sha256-VYA5Y6CjhKx3MgQ0pyOO7vw44cKykRjlgUZopgR9pYo=";
 
   meta = with lib; {
-    description = "A simple tui to view & control docker containers";
+    description = "Simple tui to view & control docker containers";
     homepage = "https://github.com/mrjackwills/oxker";
     changelog = "https://github.com/mrjackwills/oxker/blob/v${version}/CHANGELOG.md";
     license = licenses.mit;
     maintainers = with maintainers; [ siph ];
+    mainProgram = "oxker";
   };
 }
