@@ -1,56 +1,48 @@
-{ lib
-, boto3
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, jsonschema
-, mock
-, parameterized
-, pydantic
-, pytest-env
-, pytest-rerunfailures
-, pytest-xdist
-, pytestCheckHook
-, pythonOlder
-, pyyaml
-, typing-extensions
+{
+  lib,
+  boto3,
+  buildPythonPackage,
+  fetchFromGitHub,
+  jsonschema,
+  parameterized,
+  pydantic,
+  pytest-env,
+  pytest-rerunfailures,
+  pytest-xdist,
+  pytestCheckHook,
+  pyyaml,
+  requests,
+  setuptools,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "aws-sam-translator";
-  version = "1.60.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "1.110.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "aws";
     repo = "serverless-application-model";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-exVB1STX8OsFnQ0pzSuR3O/FrvG2GR5MdZa8tZ9IJvI=";
+    tag = "v${version}";
+    hash = "sha256-Zn+6cDyDZSsV9V+zAA8BOPs4aKl0j3dF92/azGYG+OI=";
   };
 
-  propagatedBuildInputs = [
+  postPatch = ''
+    # don't try to use --cov or fail on new warnings
+    rm pytest.ini
+  '';
+
+  pythonRelaxDeps = [ "pydantic" ];
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     boto3
     jsonschema
     pydantic
     typing-extensions
   ];
-
-  patches = [
-    (fetchpatch {
-      # relax typing-extenions dependency
-      url = "https://github.com/aws/serverless-application-model/commit/d1c26f7ad9510a238ba570d511d5807a81379d0a.patch";
-      hash = "sha256-nh6MtRgi0RrC8xLkLbU6/Ec0kYtxIG/fgjn/KLiAM0E=";
-    })
-  ];
-
-  postPatch = ''
-    substituteInPlace requirements/base.txt \
-      --replace "jsonschema~=3.2" "jsonschema>=3.2"
-    substituteInPlace pytest.ini \
-      --replace " --cov samtranslator --cov-report term-missing --cov-fail-under 95" ""
-  '';
 
   nativeCheckInputs = [
     parameterized
@@ -59,18 +51,30 @@ buildPythonPackage rec {
     pytest-xdist
     pytestCheckHook
     pyyaml
+    requests
   ];
 
-  doCheck = false; # tests fail in weird ways
+  preCheck = ''
+    export AWS_DEFAULT_REGION=us-east-1
+  '';
 
-  pythonImportsCheck = [
-    "samtranslator"
+  enabledTestPaths = [
+    "tests"
   ];
 
-  meta = with lib; {
+  disabledTestMarks = [
+    "slow"
+  ];
+
+  __darwinAllowLocalNetworking = true;
+
+  pythonImportsCheck = [ "samtranslator" ];
+
+  meta = {
     description = "Python library to transform SAM templates into AWS CloudFormation templates";
-    homepage = "https://github.com/awslabs/serverless-application-model";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ ];
+    homepage = "https://github.com/aws/serverless-application-model";
+    changelog = "https://github.com/aws/serverless-application-model/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
 }

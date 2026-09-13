@@ -1,35 +1,37 @@
-{ lib, fetchurl, buildDunePackage, ocaml, csexp, sexplib0 }:
+# Version can be selected with the 'version' argument, see generic.nix.
+{
+  lib,
+  buildDunePackage,
+  ocaml,
+  csexp,
+  sexplib0,
+  callPackage,
+  ...
+}@args:
 
-# for compat with ocaml-lsp
-let source =
-  if lib.versionAtLeast ocaml.version "4.13"
-  then {
-    version = "0.21.0";
-    sha256 = "sha256-KhgX9rxYH/DM6fCqloe4l7AnJuKrdXSe6Y1XY3BXMy0=";
-  } else {
-    version = "0.20.0";
-    sha256 = "sha256-JtmNCgwjbCyUE4bWqdH5Nc2YSit+rekwS43DcviIfgk=";
-  };
+let
+  # for compat with ocaml-lsp
+  version_arg = if lib.versionAtLeast ocaml.version "4.13" then { } else { version = "0.20.0"; };
+
+  inherit (callPackage ./generic.nix (args // version_arg)) src version;
+
 in
-
-buildDunePackage rec {
+buildDunePackage {
   pname = "ocamlformat-rpc-lib";
-  inherit (source) version;
+  inherit src version;
 
-  src = fetchurl {
-    url = "https://github.com/ocaml-ppx/ocamlformat/releases/download/${version}/ocamlformat-${version}.tbz";
-    inherit (source) sha256;
-  };
+  propagatedBuildInputs = [
+    csexp
+    sexplib0
+  ];
 
-  minimalOCamlVersion = "4.08";
-  duneVersion = "3";
-
-  propagatedBuildInputs = [ csexp sexplib0 ];
-
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/ocaml-ppx/ocamlformat";
     description = "Auto-formatter for OCaml code (RPC mode)";
-    license = licenses.mit;
-    maintainers = with maintainers; [ Zimmi48 marsam Julow ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      Zimmi48
+      Julow
+    ];
   };
 }

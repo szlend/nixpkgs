@@ -1,45 +1,73 @@
-{ lib
-, brotli
-, brotlicffi
-, buildPythonPackage
-, certifi
-, cryptography
-, fetchPypi
-, idna
-, isPyPy
-, mock
-, pyopenssl
-, pysocks
-, pytest-freezegun
-, pytest-timeout
-, pytestCheckHook
-, python-dateutil
-, tornado
-, trustme
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  isPyPy,
+
+  # build-system
+  hatchling,
+  hatch-vcs,
+
+  # optional-dependencies
+  backports-zstd,
+  brotli,
+  brotlicffi,
+  h2,
+  pysocks,
+
+  # tests
+  httpx,
+  pyopenssl,
+  pytestCheckHook,
+  pytest-socket,
+  pytest-timeout,
+  quart,
+  quart-trio,
+  tornado,
+  trio,
+  trustme,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "urllib3";
-  version = "1.26.14";
-  format = "setuptools";
+  version = "2.7.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-B2kHv4/TVc3ndyhHExZiWk0vfnE8El9RlTu1s+7PT3I=";
+  src = fetchFromGitHub {
+    owner = "urllib3";
+    repo = "urllib3";
+    tag = finalAttrs.version;
+    hash = "sha256-iN59MS5gKgDxe2v4ILrZ/1y7wV4yB1tFs4ATKppYAAk=";
   };
 
-  # FIXME: remove backwards compatbility hack
-  propagatedBuildInputs = passthru.optional-dependencies.brotli
-    ++ passthru.optional-dependencies.socks;
+  build-system = [
+    hatchling
+    hatch-vcs
+  ];
+
+  optional-dependencies = {
+    brotli = if isPyPy then [ brotlicffi ] else [ brotli ];
+    h2 = [ h2 ];
+    socks = [ pysocks ];
+    zstd = [ backports-zstd ];
+  };
 
   nativeCheckInputs = [
-    python-dateutil
-    mock
-    pytest-freezegun
+    httpx
+    pyopenssl
+    pytest-socket
     pytest-timeout
     pytestCheckHook
+    quart
+    quart-trio
     tornado
+    trio
     trustme
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
+
+  disabledTestMarks = [
+    "requires_network"
   ];
 
   # Tests in urllib3 are mostly timeout-based instead of event-based and
@@ -55,37 +83,21 @@ buildPythonPackage rec {
   # Still, failures can occur and for that reason tests are disabled.
   doCheck = false;
 
+  passthru.tests.pytest = finalAttrs.finalPackage.overrideAttrs (_: {
+    doInstallCheck = true;
+  });
+
   preCheck = ''
     export CI # Increases LONG_TIMEOUT
   '';
 
-  pythonImportsCheck = [
-    "urllib3"
-  ];
+  pythonImportsCheck = [ "urllib3" ];
 
-  passthru.optional-dependencies = {
-    brotli = if isPyPy then [
-      brotlicffi
-    ] else [
-      brotli
-    ];
-    # Use carefully since pyopenssl is not supported aarch64-darwin
-    secure = [
-      certifi
-      cryptography
-      idna
-      pyopenssl
-    ];
-    socks = [
-      pysocks
-    ];
+  meta = {
+    description = "Powerful, user-friendly HTTP client for Python";
+    homepage = "https://github.com/urllib3/urllib3";
+    changelog = "https://github.com/urllib3/urllib3/blob/${finalAttrs.src.tag}/CHANGES.rst";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-
-  meta = with lib; {
-    description = "Powerful, sanity-friendly HTTP client for Python";
-    homepage = "https://github.com/shazow/urllib3";
-    changelog = "https://github.com/urllib3/urllib3/blob/${version}/CHANGES.rst";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
-  };
-}
+})

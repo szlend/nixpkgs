@@ -1,50 +1,59 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, gitpython
-, click
-, ordered-set
-, pythonOlder
-, pillow
-, sortedcollections
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+  setuptools-dso,
+
+  # dependencies
+  click,
+  ordered-set,
+  pillow,
+  sortedcollections,
 }:
 
 buildPythonPackage rec {
   pname = "tilequant";
-  version = "0.4.1.post0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.2.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "SkyTemple";
-    repo = pname;
-    rev = version;
-    hash = "sha256-7vU/AYnX7deOH3PjrseRIj9BUJMWzDlwR3UcMpBRyfc=";
+    repo = "tilequant";
+    tag = version;
+    # Fetch tilequant source files
     fetchSubmodules = true;
+    hash = "sha256-XYSdhRHx+TGDg24ujNedI0CwWUa1IE089jrvv6nHFXA=";
   };
 
-  buildInputs = [
-    gitpython
+  build-system = [
+    setuptools
+    setuptools-dso
   ];
 
-  propagatedBuildInputs = [
+  pythonRelaxDeps = [
+    "click"
+  ];
+  dependencies = [
     click
     ordered-set
     pillow
     sortedcollections
+    setuptools-dso
   ];
 
   doCheck = false; # there are no tests
 
-  pythonImportsCheck = [
-    "skytemple_tilequant"
-  ];
+  pythonImportsCheck = [ "tilequant" ];
 
-  meta = with lib; {
+  meta = {
     description = "Tool for quantizing image colors using tile-based palette restrictions";
     homepage = "https://github.com/SkyTemple/tilequant";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ marius851000 xfix ];
+    changelog = "https://github.com/SkyTemple/tilequant/releases/tag/${version}";
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ marius851000 ];
+    mainProgram = "tilequant";
   };
 }

@@ -1,52 +1,63 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, django
-, factory_boy
-, mock
-, pygments
-, pytest-django
-, pytestCheckHook
-, shortuuid
-, vobject
-, werkzeug
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  aiosmtpd,
+  django,
+
+  # tests
+  factory-boy,
+  mock,
+  pip,
+  postgresql,
+  pygments,
+  pytestCheckHook,
+  pytest-cov-stub,
+  pytest-django,
+  shortuuid,
+  vobject,
+  werkzeug,
 }:
 
 buildPythonPackage rec {
   pname = "django-extensions";
-  version = "3.2.1";
+  version = "4.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-i8A/FMba1Lc3IEBzefP3Uu23iGcDGYqo5bNv+u6hKQI=";
+    owner = "django-extensions";
+    repo = "django-extensions";
+    tag = version;
+    hash = "sha256-WgO/bDe4anQCc1q2Gdq3W70yDqDgmsvn39Qf9ZNVXuE=";
   };
 
-  patches = [
-    (fetchpatch {
-      # pygments 2.14 compat for tests
-      url = "https://github.com/django-extensions/django-extensions/commit/61ebfe38f8fca9225b41bec5418e006e6a8815e1.patch";
-      hash = "sha256-+sxaQMmKi/S4IlfHqARPGhaqc+F1CXUHVFyeU/ArW2U=";
-    })
+  patches = lib.optionals (lib.versionAtLeast django.version "6.0") [
+    # Fix some tests when run with Django 6
+    # see https://github.com/django-extensions/django-extensions/pull/1979
+    ./django_6-compat.diff
   ];
 
-  postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "--cov=django_extensions --cov-report html --cov-report term" ""
-  '';
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    aiosmtpd
     django
   ];
 
   __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
-    factory_boy
+    factory-boy
     mock
+    pip
+    postgresql
     pygments # not explicitly declared in setup.py, but some tests require it
+    pytest-cov-stub
     pytest-django
     pytestCheckHook
     shortuuid
@@ -55,13 +66,14 @@ buildPythonPackage rec {
   ];
 
   disabledTestPaths = [
-    # requires network access
-    "tests/management/commands/test_pipchecker.py"
+    # https://github.com/django-extensions/django-extensions/issues/1871
+    "tests/test_dumpscript.py"
   ];
 
-  meta = with lib; {
-    description = "A collection of custom extensions for the Django Framework";
+  meta = {
+    changelog = "https://github.com/django-extensions/django-extensions/releases/tag/${src.tag}";
+    description = "Collection of custom extensions for the Django Framework";
     homepage = "https://github.com/django-extensions/django-extensions";
-    license = licenses.mit;
+    license = lib.licenses.mit;
   };
 }

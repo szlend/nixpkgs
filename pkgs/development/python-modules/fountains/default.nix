@@ -1,42 +1,34 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, setuptools
-, bitlist
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  bitlist,
 }:
 
 buildPythonPackage rec {
   pname = "fountains";
-  version = "2.1.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "3.0.1";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-gYVguXMVrXxra/xy+R4RXVk9yDGKiKE8u3qWUk8sjt4=";
+    hash = "sha256-gGYmHvlD9cmivPtM/2sKW36FvUzk5FxYBgZfLUX2lIg=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
-    bitlist
-  ];
+  dependencies = [ bitlist ];
 
   # Module has no test
   doCheck = false;
 
-  pythonImportsCheck = [
-    "fountains"
-  ];
+  pythonImportsCheck = [ "fountains" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python library for generating and embedding data for unit testing";
     homepage = "https://github.com/reity/fountains";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

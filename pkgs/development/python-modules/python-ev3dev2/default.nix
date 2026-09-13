@@ -1,13 +1,15 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, python
-, pillow
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  python,
+  pillow,
 }:
 
 buildPythonPackage rec {
   pname = "python-ev3dev2";
   version = "2.1.0";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "ev3dev";
@@ -28,10 +30,10 @@ buildPythonPackage rec {
     ${python.interpreter} -W ignore::ResourceWarning tests/api_tests.py
   '';
 
-  meta = with lib; {
+  meta = {
     description = "Python language bindings for ev3dev";
     homepage = "https://github.com/ev3dev/ev3dev-lang-python";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ emilytrau ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ emilytrau ];
   };
 }

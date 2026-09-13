@@ -1,28 +1,32 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pyyaml
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  pyyaml,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pyngrok";
-  version = "6.0.0";
+  version = "8.1.2";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-3YqHlEuOKFcuPRJr+yyBopSFlFdfUjfu/TZRrgtIcVU=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-O1OD7H3EZGrA0EZDXrWMbNHLyaytcObe4BKwXcJbBwo=";
   };
 
-  propagatedBuildInputs = [
-    pyyaml
-  ];
+  build-system = [ setuptools ];
+
+  dependencies = [ pyyaml ];
 
   pythonImportsCheck = [ "pyngrok" ];
 
-  meta = with lib; {
+  meta = {
+    description = "Python wrapper for ngrok";
     homepage = "https://github.com/alexdlaird/pyngrok";
-    description = "A Python wrapper for ngrok";
-    license = licenses.mit;
-    maintainers = with maintainers; [ wegank ];
+    changelog = "https://github.com/alexdlaird/pyngrok/blob/${finalAttrs.version}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ wegank ];
   };
-}
+})

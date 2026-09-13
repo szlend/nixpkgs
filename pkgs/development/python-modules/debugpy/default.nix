@@ -1,45 +1,51 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, pythonAtLeast
-, fetchFromGitHub
-, substituteAll
-, gdb
-, django
-, flask
-, gevent
-, psutil
-, pytest-timeout
-, pytest-xdist
-, pytestCheckHook
-, requests
-, llvmPackages
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  pythonAtLeast,
+  fetchFromGitHub,
+  replaceVars,
+  gdb,
+  lldb,
+  setuptools,
+  pytestCheckHook,
+  pytest-xdist,
+  pytest-timeout,
+  pytest-retry,
+  importlib-metadata,
+  psutil,
+  untangle,
+  django,
+  flask,
+  gevent,
+  numpy,
+  requests,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "debugpy";
-  version = "1.6.7";
-  format = "setuptools";
-
-  # Currently doesn't support 3.11:
-  # https://github.com/microsoft/debugpy/issues/1107
-  disabled = pythonOlder "3.7" || pythonAtLeast "3.11";
+  version = "1.8.21";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "microsoft";
     repo = "debugpy";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-porQTFvcLaIkvhWPM4vWR0ohlcFRkRwSLpQJNg25Tj4=";
+    tag = "v${version}";
+
+    # Upstream uses .gitattributes to inject information about the revision
+    # hash and the refname into `src/debugpy/_version.py`, see:
+    #
+    # - https://git-scm.com/docs/gitattributes#_export_subst and
+    # - https://github.com/microsoft/debugpy/blob/v1.8.17/src/debugpy/_version.py#L24-L30
+    postFetch = ''
+      sed -i 's/git_refnames = "[^"]*"/git_refnames = " (tag: ${src.tag})"/' "$out/src/debugpy/_version.py"
+    '';
+
+    hash = "sha256-7XM476tfL6QLCHB1kwlbN/dmlgnjuTE+ulQ9yOHfgEE=";
   };
 
   patches = [
-    # Use nixpkgs version instead of versioneer
-    (substituteAll {
-      src = ./hardcode-version.patch;
-      inherit version;
-    })
-
     # Fix importing debugpy in:
     # - test_nodebug[module-launch(externalTerminal)]
     # - test_nodebug[module-launch(integratedTerminal)]
@@ -49,85 +55,108 @@ buildPythonPackage rec {
     # To avoid this issue, debugpy should be installed using python.withPackages:
     # python.withPackages (ps: with ps; [ debugpy ])
     ./fix-test-pythonpath.patch
-  ] ++ lib.optionals stdenv.isLinux [
+
+    # Attach pid tests are disabled by default on windows & macos,
+    # but are also flaky on linux:
+    # - https://github.com/NixOS/nixpkgs/issues/262000
+    # - https://github.com/NixOS/nixpkgs/issues/251045
+    ./skip-attach-pid-tests.patch
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
     # Hard code GDB path (used to attach to process)
-    (substituteAll {
-      src = ./hardcode-gdb.patch;
+    (replaceVars ./hardcode-gdb.patch {
       inherit gdb;
     })
-  ] ++ lib.optionals stdenv.isDarwin [
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     # Hard code LLDB path (used to attach to process)
-    (substituteAll {
-      src = ./hardcode-lldb.patch;
-      inherit (llvmPackages) lldb;
+    (replaceVars ./hardcode-lldb.patch {
+      inherit lldb;
     })
   ];
 
-  # Remove pre-compiled "attach" libraries and recompile for host platform
-  # Compile flags taken from linux_and_mac/compile_linux.sh & linux_and_mac/compile_mac.sh
-  preBuild = ''(
-    set -x
-    cd src/debugpy/_vendored/pydevd/pydevd_attach_to_process
-    rm *.so *.dylib *.dll *.exe *.pdb
-    ${stdenv.cc}/bin/c++ linux_and_mac/attach.cpp -Ilinux_and_mac -fPIC -nostartfiles ${{
-      "x86_64-linux"   = "-shared -o attach_linux_amd64.so";
-      "i686-linux"     = "-shared -o attach_linux_x86.so";
-      "aarch64-linux"  = "-shared -o attach_linux_arm64.so";
-      "x86_64-darwin"  = "-std=c++11 -lc -D_REENTRANT -dynamiclib -o attach_x86_64.dylib";
-      "i686-darwin"    = "-std=c++11 -lc -D_REENTRANT -dynamiclib -o attach_x86.dylib";
-      "aarch64-darwin" = "-std=c++11 -lc -D_REENTRANT -dynamiclib -o attach_arm64.dylib";
-    }.${stdenv.hostPlatform.system} or (throw "Unsupported system: ${stdenv.hostPlatform.system}")}
-  )'';
+  # Compile attach library for host platform
+  # Derived from linux_and_mac/compile_linux.sh & linux_and_mac/compile_mac.sh
+  preBuild = ''
+    (
+      set -x
+      cd src/debugpy/_vendored/pydevd/pydevd_attach_to_process
+      $CXX linux_and_mac/attach.cpp -Ilinux_and_mac -std=c++11 -fPIC -nostartfiles ${
+        {
+          "x86_64-linux" = "-shared -o attach_linux_amd64.so";
+          "i686-linux" = "-shared -o attach_linux_x86.so";
+          "aarch64-linux" = "-shared -o attach_linux_arm64.so";
+          "riscv64-linux" = "-shared -o attach_linux_riscv64.so";
+          "aarch64-darwin" = "-D_REENTRANT -dynamiclib -lc -o attach.dylib";
+        }
+        .${stdenv.hostPlatform.system} or (throw "Unsupported system: ${stdenv.hostPlatform.system}")
+      }
+    )
+  '';
+
+  build-system = [ setuptools ];
+
+  # Disable tests for unmaintained versions of python
+  doCheck = pythonAtLeast "3.11";
 
   nativeCheckInputs = [
+    ## Used to run the tests:
+    pytestCheckHook
+    pytest-xdist
+    pytest-timeout
+    pytest-retry
+
+    ## Used by test helpers:
+    importlib-metadata
+    psutil
+    untangle
+
+    ## Used in Python code that is run/debugged by the tests:
     django
     flask
     gevent
-    psutil
-    pytest-timeout
-    pytest-xdist
-    pytestCheckHook
+    numpy
     requests
+    typing-extensions
   ];
 
-  preCheck = ''
-    # Scale default timeouts by a factor of 4 to avoid flaky builds
-    # https://github.com/microsoft/debugpy/pull/1286 if merged would
-    # allow us to disable the timeouts altogether
-    export DEBUGPY_PROCESS_SPAWN_TIMEOUT=60
-    export DEBUGPY_PROCESS_EXIT_TIMEOUT=20
-  '' + lib.optionalString (stdenv.isDarwin && stdenv.isAarch64) ''
+  preCheck = lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) ''
     # https://github.com/python/cpython/issues/74570#issuecomment-1093748531
     export no_proxy='*';
   '';
 
-  postCheck = lib.optionalString (stdenv.isDarwin && stdenv.isAarch64) ''
+  postCheck = lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) ''
     unset no_proxy
   '';
 
-  # Override default arguments in pytest.ini
-  pytestFlagsArray = [
-    "--timeout=0"
+  disabledTests = [
+    # hanging test (flaky)
+    "test_systemexit"
+  ];
+
+  disabledTestPaths = lib.optionals stdenv.hostPlatform.isDarwin [
+    # ConnectionResetError: [Errno 54] Connection reset by peer
+    "tests/debugpy/test_breakpoints.py::test_error_in_condition[program-attach_connect(cli)-]"
+    "tests/debugpy/test_breakpoints.py::test_error_in_condition[program-attach_connect(cli)-NameError]"
   ];
 
   # Fixes hanging tests on Darwin
   __darwinAllowLocalNetworking = true;
 
-  disabledTests = [
-    # https://github.com/microsoft/debugpy/issues/1241
-    "test_flask_breakpoint_multiproc"
-  ];
+  pythonImportsCheck = [ "debugpy" ];
 
-  pythonImportsCheck = [
-    "debugpy"
-  ];
-
-  meta = with lib; {
-    description = "An implementation of the Debug Adapter Protocol for Python";
+  meta = {
+    description = "Implementation of the Debug Adapter Protocol for Python";
     homepage = "https://github.com/microsoft/debugpy";
-    changelog = "https://github.com/microsoft/debugpy/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ kira-bruneau ];
-    platforms = [ "x86_64-linux" "i686-linux" "aarch64-linux" "x86_64-darwin" "i686-darwin" "aarch64-darwin" ];
+    changelog = "https://github.com/microsoft/debugpy/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ kira-bruneau ];
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+      "aarch64-linux"
+      "aarch64-darwin"
+      "riscv64-linux"
+    ];
   };
 }

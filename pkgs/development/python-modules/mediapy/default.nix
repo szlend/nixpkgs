@@ -1,34 +1,62 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, ipython
-, matplotlib
-, numpy
-, pillow
+{
+  lib,
+  bash,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  ipython,
+  matplotlib,
+  numpy,
+  pillow,
+  absl-py,
+  ffmpeg_8-headless,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mediapy";
-  version = "1.1.8";
+  version = "1.2.7";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-mVhBM+NQEkLYByp/kCPFJCAY26La5CWjcPl6PgclA9A=";
+  src = fetchFromGitHub {
+    owner = "google";
+    repo = "mediapy";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-+p88Zc7YuN0P4i1AzTQfQqCFo6Uc6hpDKgoDpdJxMaI=";
   };
 
-  propagatedBuildInputs = [ ipython matplotlib numpy pillow ];
+  postPatch = ''
+    substituteInPlace mediapy_test.py \
+      --replace-fail "/bin/bash" "${lib.getExe bash}"
+  '';
 
-  format = "flit";
+  build-system = [ flit-core ];
+
+  dependencies = [
+    ipython
+    matplotlib
+    numpy
+    pillow
+  ];
+
+  nativeCheckInputs = [
+    absl-py
+    ffmpeg_8-headless
+    pytestCheckHook
+  ];
+
+  disabledTests = [
+    # AssertionError: np.float64(148.75258355982479) not less than 51.2
+    "test_video_read_write_10bit"
+  ];
 
   pythonImportsCheck = [ "mediapy" ];
 
-  meta = with lib; {
+  meta = {
     description = "Read/write/show images and videos in an IPython notebook";
     homepage = "https://github.com/google/mediapy";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ mcwitt ];
+    changelog = "https://github.com/google/mediapy/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ mcwitt ];
   };
-}
+})

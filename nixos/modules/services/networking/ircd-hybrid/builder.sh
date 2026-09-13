@@ -1,6 +1,3 @@
-if [ -e .attrs.sh ]; then source .attrs.sh; fi
-source $stdenv/setup
-
 doSub() {
     local src=$1
     local dst=$2

@@ -1,36 +1,53 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, python-dateutil
-, jmespath
-, docutils
-, urllib3
-, pytestCheckHook
-, jsonschema
+{
+  lib,
+  awscrt,
+  cacert,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  jmespath,
+  python-dateutil,
+  urllib3,
+
+  # tests
+  jsonschema,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "botocore";
-  version = "1.29.79"; # N.B: if you change this, change boto3 and awscli to a matching version
+  version = "1.42.31"; # N.B: if you change this, change boto3 and awscli to a matching version
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-x97UQGK+07kolEz7CeFXjtP+0OTJjeTyM/PCBWqNSR4=";
+  src = fetchFromGitHub {
+    owner = "boto";
+    repo = "botocore";
+    tag = version;
+    hash = "sha256-avuv1uXKMeSr3SL+BI9XW8tDCQM/dlXFn590di3S03k=";
   };
 
-  propagatedBuildInputs = [
-    python-dateutil
+  postPatch = ''
+    ln -sf ${cacert}/etc/ssl/certs/ca-no-trust-rules-bundle.crt botocore/cacert.pem
+  '';
+
+  build-system = [
+    setuptools
+  ];
+
+  dependencies = [
     jmespath
-    docutils
+    python-dateutil
     urllib3
   ];
 
   nativeCheckInputs = [
-    pytestCheckHook
     jsonschema
+    pytestCheckHook
   ];
-
-  doCheck = true;
 
   disabledTestPaths = [
     # Integration tests require networking
@@ -40,15 +57,17 @@ buildPythonPackage rec {
     "tests/functional"
   ];
 
-  pythonImportsCheck = [
-    "botocore"
-  ];
+  pythonImportsCheck = [ "botocore" ];
 
-  meta = with lib; {
+  optional-dependencies = {
+    crt = [ awscrt ];
+  };
+
+  meta = {
+    description = "Low-level interface to a growing number of Amazon Web Services";
     homepage = "https://github.com/boto/botocore";
-    changelog = "https://github.com/boto/botocore/blob/${version}/CHANGELOG.rst";
-    license = licenses.asl20;
-    description = "A low-level interface to a growing number of Amazon Web Services";
-    maintainers = with maintainers; [ anthonyroussel ];
+    changelog = "https://github.com/boto/botocore/blob/${src.tag}/CHANGELOG.rst";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ anthonyroussel ];
   };
 }

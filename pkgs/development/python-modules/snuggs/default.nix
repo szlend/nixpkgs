@@ -1,29 +1,43 @@
-{ buildPythonPackage, lib, fetchFromGitHub
-, click, numpy, pyparsing
-, pytest, hypothesis
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  numpy,
+  setuptools,
+  pyparsing,
+  pytestCheckHook,
+  hypothesis,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "snuggs";
   version = "1.4.7";
+  pyproject = true;
 
   # Pypi doesn't ship the tests, so we fetch directly from GitHub
   src = fetchFromGitHub {
     owner = "mapbox";
-    repo = pname;
-    rev = version;
-    sha256 = "1p3lh9s2ylsnrzbs931y2vn7mp2y2xskgqmh767c9l1a33shfgwf";
+    repo = "snuggs";
+    tag = finalAttrs.version;
+    hash = "sha256-jj8H9Rgq0MSOObDiN3UXXtx67BY+jKTXz1ZTL3SCdNw=";
   };
 
-  propagatedBuildInputs = [ click numpy pyparsing ];
+  build-system = [ setuptools ];
 
-  nativeCheckInputs = [ pytest hypothesis ];
-  checkPhase = "pytest test_snuggs.py";
+  dependencies = [
+    numpy
+    pyparsing
+  ];
 
-  meta = with lib; {
+  nativeCheckInputs = [
+    pytestCheckHook
+    hypothesis
+  ];
+
+  meta = {
     description = "S-expressions for Numpy";
-    license = licenses.mit;
+    license = lib.licenses.mit;
     homepage = "https://github.com/mapbox/snuggs";
-    maintainers = with maintainers; [ mredaelli ];
+    maintainers = [ ];
   };
-}
+})

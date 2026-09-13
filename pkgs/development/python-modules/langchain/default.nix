@@ -1,272 +1,163 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, poetry-core
-, numpy
-, pyyaml
-, sqlalchemy
-, requests
-, async-timeout
-, aiohttp
-, numexpr
-, openapi-schema-pydantic
-, dataclasses-json
-, tqdm
-, tenacity
-, bash
-  # optional dependencies
-, anthropic
-, clarifai
-, cohere
-, openai
-, nlpcloud
-, huggingface-hub
-, manifest-ml
-, torch
-, transformers
-, qdrant-client
-, sentence-transformers
-, azure-identity
-, azure-cosmos
-, azure-core
-, elasticsearch
-, opensearch-py
-, google-search-results
-, faiss
-, spacy
-, nltk
-, wikipedia
-, beautifulsoup4
-, tiktoken
-, jinja2
-, pinecone-client
-, weaviate-client
-, redis
-, google-api-python-client
-, pypdf
-, networkx
-, pgvector
-, psycopg2
-, boto3
-, pyowm
-, pytesseract
-, html2text
-, atlassian-python-api
-, duckduckgo-search
-, lark
-, jq
-, steamship
-, pdfminer-six
-, lxml
-, chardet
-, requests-toolbelt
-, neo4j
-, langchainplus-sdk
-  # test dependencies
-, pytest-vcr
-, pytest-asyncio
-, pytest-mock
-, pytest-socket
-, pandas
-, syrupy
-, toml
-, freezegun
-, responses
-, pexpect
-, pytestCheckHook
-, pythonRelaxDepsHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  hatchling,
+
+  # dependencies
+  langchain-core,
+  langgraph,
+  pydantic,
+
+  # Optional dependencies
+  langchain-anthropic,
+  langchain-aws,
+  langchain-community,
+  langchain-deepseek,
+  langchain-fireworks,
+  langchain-google-genai,
+  langchain-groq,
+  langchain-huggingface,
+  langchain-mistralai,
+  langchain-ollama,
+  langchain-openai,
+  langchain-perplexity,
+  langchain-xai,
+
+  # runtime
+  runtimeShell,
+
+  # tests
+  blockbuster,
+  langchain-tests,
+  pytest-asyncio,
+  pytest-mock,
+  pytest-socket,
+  pytest-xdist,
+  pytestCheckHook,
+  syrupy,
+  toml,
+
+  # passthru
+  gitUpdater,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "langchain";
-  version = "0.0.220";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "1.3.14";
+  pyproject = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
-    owner = "hwchase17";
+    owner = "langchain-ai";
     repo = "langchain";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-Br9j2mmLFxW3MHIY93m85mAVrvWVc6bnSlI71OwT8mY=";
+    tag = "langchain==${finalAttrs.version}";
+    hash = "sha256-SmbqK8/AmUYfp+hUEnuwl18K+A/6csLxMUTv0oQHhEs=";
   };
+
+  sourceRoot = "${finalAttrs.src.name}/libs/langchain_v1";
 
   postPatch = ''
-    substituteInPlace langchain/utilities/bash.py \
-      --replace '"env", ["-i", "bash", ' '"${lib.getExe bash}", ['
-    substituteInPlace tests/unit_tests/test_bash.py \
-      --replace "/bin/sh" "${bash}/bin/sh"
+    substituteInPlace langchain/agents/middleware/shell_tool.py \
+      --replace-fail '"/bin/bash"' '"${runtimeShell}"'
   '';
 
-  nativeBuildInputs = [
-    poetry-core
-    pythonRelaxDepsHook
+  build-system = [ hatchling ];
+
+  dependencies = [
+    langchain-core
+    langgraph
+    pydantic
   ];
 
-  buildInputs = [
-    bash
-  ];
-
-  propagatedBuildInputs = [
-    numpy
-    pyyaml
-    sqlalchemy
-    requests
-    aiohttp
-    numexpr
-    openapi-schema-pydantic
-    dataclasses-json
-    tqdm
-    tenacity
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    async-timeout
-  ] ++ passthru.optional-dependencies.all;
-
-  passthru.optional-dependencies = {
-    llms = [
-      anthropic
-      clarifai
-      cohere
-      openai
-      nlpcloud
-      huggingface-hub
-      manifest-ml
-      torch
-      transformers
-    ];
-    qdrant = [
-      qdrant-client
-    ];
-    openai = [
-      openai
-    ];
-    text_helpers = [
-      chardet
-    ];
-    clarifai = [
-      clarifai
-    ];
-    cohere = [
-      cohere
-    ];
-    docarray = [
-      # docarray
-    ];
-    embeddings = [
-      sentence-transformers
-    ];
-    azure = [
-      azure-identity
-      azure-cosmos
-      openai
-      azure-core
-    ];
-    all = [
-      anthropic
-      clarifai
-      cohere
-      openai
-      nlpcloud
-      huggingface-hub
-      # jina
-      manifest-ml
-      elasticsearch
-      opensearch-py
-      google-search-results
-      faiss
-      sentence-transformers
-      transformers
-      spacy
-      nltk
-      wikipedia
-      beautifulsoup4
-      tiktoken
-      torch
-      jinja2
-      pinecone-client
-      # pinecone-text
-      weaviate-client
-      redis
-      google-api-python-client
-      # wolframalpha
-      qdrant-client
-      # tensorflow-text
-      pypdf
-      networkx
-      # nomic
-      # aleph-alpha-client
-      # deeplake
-      pgvector
-      psycopg2
-      boto3
-      pyowm
-      pytesseract
-      html2text
-      atlassian-python-api
-      # gptcache
-      duckduckgo-search
-      # arxiv
-      azure-identity
-      # clickhouse-connect
-      azure-cosmos
-      # lancedb
-      # langkit
-      lark
-      pexpect
-      # pyvespa
-      # O365
-      jq
-      # docarray
-      steamship
-      pdfminer-six
-      lxml
-      requests-toolbelt
-      neo4j
-      # openlm
-      # azure-ai-formrecognizer
-      # azure-ai-vision
-      # azure-cognitiveservices-speech
-      langchainplus-sdk
-    ];
+  optional-dependencies = {
+    anthropic = [ langchain-anthropic ];
+    aws = [ langchain-aws ];
+    # azure-ai = [langchain-azure-ai];
+    community = [ langchain-community ];
+    deepseek = [ langchain-deepseek ];
+    fireworks = [ langchain-fireworks ];
+    google-genai = [ langchain-google-genai ];
+    # google-vertexai = [langchain-google-vertexai];
+    groq = [ langchain-groq ];
+    huggingface = [ langchain-huggingface ];
+    mistralai = [ langchain-mistralai ];
+    ollama = [ langchain-ollama ];
+    openai = [ langchain-openai ];
+    perplexity = [ langchain-perplexity ];
+    # together = [langchain-together];
+    xai = [ langchain-xai ];
   };
 
-  pythonRelaxDeps = [
-    "langchainplus-sdk"
-  ];
-
   nativeCheckInputs = [
-    pytestCheckHook
-    pytest-vcr
+    blockbuster
+    langchain-tests
+    # langchain-openai -- causes recursion error
+    pytest-asyncio
     pytest-mock
     pytest-socket
-    pytest-asyncio
-    pandas
+    pytest-xdist
+    pytestCheckHook
     syrupy
     toml
-    freezegun
-    responses
   ];
 
-  pytestFlagsArray = [
-    # integration_tests have many network, db access and require `OPENAI_API_KEY`, etc.
+  pytestFlags = [
+    "--only-core"
+  ];
+
+  # Note: Not testing with optional dependencies due to mutual recursion
+  enabledTestPaths = [
+    # integration_tests require network access, database access and require `OPENAI_API_KEY`, etc.
     "tests/unit_tests"
   ];
 
+  # All pass with sandbox=false
   disabledTests = [
-    # these tests have db access
-    "test_table_info"
-    "test_sql_database_run"
-
-    # these tests have network access
-    "test_socket_disabled"
+    # Depends on shell's truncation style
+    "test_truncation_indicator_present"
+    "test_truncation_by_bytes"
+    # Depends on the sleep shell command
+    "test_timeout_returns_error"
+    # Can't see the shell session results when sandboxed
+    "test_startup_and_shutdown_commands"
+    # Timing sensitive tests
+    "test_tool_retry_constant_backoff"
+    # AttributeError: 'ImportErrorProfileModel' object has no attribute 'profile'
+    # https://github.com/langchain-ai/langchain/issues/36312
+    "test_summarization_middleware_missing_profile"
   ];
 
-  meta = with lib; {
-    description = "Building applications with LLMs through composability";
-    homepage = "https://github.com/hwchase17/langchain";
-    changelog = "https://github.com/hwchase17/langchain/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ natsukium ];
+  disabledTestPaths = [
+    # Their configuration tests don't place nicely with nixpkgs
+    "tests/unit_tests/test_pytest_config.py"
+
+    # Timing sensitive tests
+    "tests/unit_tests/agents/middleware/implementations/test_model_retry.py"
+  ];
+
+  pythonImportsCheck = [ "langchain" ];
+
+  passthru = {
+    skipBulkUpdate = true;
+    updateScript = gitUpdater {
+      rev-prefix = "langchain==";
+      ignoredVersions = "a|b|dev|rc";
+    };
   };
-}
+
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
+    description = "Building applications with LLMs through composability";
+    homepage = "https://github.com/langchain-ai/langchain";
+    changelog = "https://github.com/langchain-ai/langchain/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      natsukium
+      sarahec
+    ];
+  };
+})

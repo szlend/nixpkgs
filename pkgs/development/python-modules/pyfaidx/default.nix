@@ -1,54 +1,59 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, nose
-, numpy
-, setuptools
-, setuptools-scm
-, six
-, glibcLocales
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  glibcLocales,
+  importlib-metadata,
+  packaging,
+  htslib,
+  fsspec,
+  pytestCheckHook,
+  biopython,
+  setuptools,
+  setuptools-scm,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pyfaidx";
-  version = "0.7.2.1";
-  format = "pyproject";
+  version = "0.9.0.4";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-MPDSCp49UzU/sg62m34i5vAaU+1PIbPhfdQI8L5QUaA=";
+  src = fetchFromGitHub {
+    owner = "mdshw5";
+    repo = "pyfaidx";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-hefRqpI9xzlfdUbr8mpQ6I1+EGAmS50f28avbtRMlSk=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
     setuptools
     setuptools-scm
   ];
 
-  propagatedBuildInputs = [
-    six
+  dependencies = [
+    importlib-metadata
+    packaging
   ];
 
   nativeCheckInputs = [
-    glibcLocales
-    nose
-    numpy
     pytestCheckHook
+    biopython
+    htslib
+    fsspec
+    glibcLocales
   ];
 
-  disabledTestPaths = [
-    # FileNotFoundError: [Errno 2] No such file or directory: 'data/genes.fasta.gz'
-    "tests/test_Fasta_bgzip.py"
-  ];
+  pythonImportsCheck = [ "pyfaidx" ];
 
-  pythonImportsCheck = [
-    "pyfaidx"
-  ];
+  # Require a network access to download test files
+  doCheck = false;
 
-  meta = with lib; {
-    homepage = "https://github.com/mdshw5/pyfaidx";
+  meta = {
     description = "Python classes for indexing, retrieval, and in-place modification of FASTA files using a samtools compatible index";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ jbedo ];
+    homepage = "https://github.com/mdshw5/pyfaidx";
+    changelog = "https://github.com/mdshw5/pyfaidx/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ jbedo ];
+    mainProgram = "faidx";
   };
-}
+})

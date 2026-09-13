@@ -1,66 +1,59 @@
-{ lib
-, buildPythonPackage
-, dictdiffer
-, diskcache
-, dvc-objects
-, fetchFromGitHub
-, funcy
-, nanotime
-, pygtrie
-, pythonOlder
-, setuptools-scm
-, shortuuid
-, sqltrie
+{
+  lib,
+  attrs,
+  buildPythonPackage,
+  dictdiffer,
+  diskcache,
+  dvc-objects,
+  fetchFromGitHub,
+  fsspec,
+  orjson,
+  pygtrie,
+  pythonOlder,
+  setuptools-scm,
+  sqltrie,
+  tqdm,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dvc-data";
-  version = "2.3.1";
-  format = "pyproject";
+  version = "3.18.3";
+  pyproject = true;
 
-  disabled = pythonOlder "3.8";
+  disabled = pythonOlder "3.12";
 
   src = fetchFromGitHub {
     owner = "iterative";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-LuCKQkiQodBDDO3TJ6wWqJG7kDHZyMz9dBpVooGeW3g=";
+    repo = "dvc-data";
+    tag = finalAttrs.version;
+    hash = "sha256-0kEbkauFT2cVEuFUyKYtA37Vh/cn3O5H0PdEPsl9Bkk=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  build-system = [ setuptools-scm ];
 
-  nativeBuildInputs = [
-    setuptools-scm
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
+    attrs
     dictdiffer
     diskcache
     dvc-objects
-    funcy
-    nanotime
+    fsspec
+    orjson
     pygtrie
-    shortuuid
     sqltrie
+    tqdm
   ];
 
   # Tests depend on upath which is unmaintained and only available as wheel
   doCheck = false;
 
-  postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "dvc-objects==" "dvc-objects>="
-  '';
+  pythonImportsCheck = [ "dvc_data" ];
 
-  pythonImportsCheck = [
-    "dvc_data"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "DVC's data management subsystem";
     homepage = "https://github.com/iterative/dvc-data";
-    changelog = "https://github.com/iterative/dvc-data/releases/tag/${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/iterative/dvc-data/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "dvc-data";
   };
-}
+})

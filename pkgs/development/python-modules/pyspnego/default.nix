@@ -1,35 +1,42 @@
-{ lib
-, buildPythonPackage
-, cryptography
-, fetchFromGitHub
-, gssapi
-, krb5
-, ruamel-yaml
-, pytest-mock
-, pytestCheckHook
-, pythonOlder
-, glibcLocales
+{
+  lib,
+  buildPythonPackage,
+  cryptography,
+  fetchFromGitHub,
+  glibcLocales,
+  gssapi,
+  krb5,
+  pytest-mock,
+  pytestCheckHook,
+  ruamel-yaml,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pyspnego";
-  version = "0.8.0";
-
-  disabled = pythonOlder "3.7";
+  version = "0.12.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jborean93";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-3nFxUu2P8dGt80HRGYOliGHXLrtc83C96kJW27CgXV0=";
+    repo = "pyspnego";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-bNmcFVD6mMOaSe3eXWwoD1+yOQf7IrsEtCOWLXu4r30=";
   };
 
-  propagatedBuildInputs = [
-    cryptography
-    gssapi
-    krb5
-    ruamel-yaml
-  ];
+  build-system = [ setuptools ];
+
+  dependencies = [ cryptography ];
+
+  optional-dependencies = {
+    kerberos = [
+      gssapi
+      krb5
+    ];
+    yaml = [ ruamel-yaml ];
+  };
+
+  pythonImportsCheck = [ "spnego" ];
 
   nativeCheckInputs = [
     glibcLocales
@@ -37,19 +44,14 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  disabledTests = [
-    # struct.error: unpack requires a buffer of 1 bytes
-    "test_credssp_invalid_client_authentication"
-  ];
+  env.LC_ALL = "en_US.UTF-8";
 
-  LC_ALL = "en_US.UTF-8";
-
-  pythonImportsCheck = [ "spnego" ];
-
-  meta = with lib; {
+  meta = {
     description = "Python SPNEGO authentication library";
     homepage = "https://github.com/jborean93/pyspnego";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/jborean93/pyspnego/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "pyspnego-parse";
   };
-}
+})

@@ -1,58 +1,51 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, scikit-build-core
-, distlib
-, pytestCheckHook
-, pyproject-metadata
-, pathspec
-, pybind11
-, cmake
-, LASzip
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  scikit-build-core,
+  pybind11,
+  cmake,
+  ninja,
+
+  # buildInputs
+  laszip,
 }:
 
-buildPythonPackage rec {
-  pname = "laszip-python";
-  version = "0.2.1";
-
-  format = "pyproject";
+buildPythonPackage (finalAttrs: {
+  pname = "laszip";
+  version = "0.3.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "tmontaigu";
-    repo = pname;
-    rev = version;
-    sha256 = "sha256-ujKoUm2Btu25T7ZrSGqjRc3NR1qqsQU8OwHQDSx8grY=";
+    repo = "laszip-python";
+    tag = finalAttrs.version;
+    hash = "sha256-fg9Joe5iDNT4w2j+zQuQIoxyAYpCAgLwhuqsBsJn6lU=";
   };
 
-  nativeBuildInputs = [
-    scikit-build-core
-    scikit-build-core.optional-dependencies.pyproject
+  build-system = [
     cmake
-  ];
-
-  buildInputs = [
+    ninja
     pybind11
-    LASzip
+    scikit-build-core
   ];
 
-  checkInputs = [
-    pytestCheckHook
-  ];
+  dontUseCmakeConfigure = true;
 
-  preBuild = ''
-    cd ..
-  '';
+  buildInputs = [ laszip ];
 
   # There are no tests
   doCheck = false;
 
   pythonImportsCheck = [ "laszip" ];
 
-  meta = with lib; {
+  meta = {
     description = "Unofficial bindings between Python and LASzip made using pybind11";
     homepage = "https://github.com/tmontaigu/laszip-python";
-    license = licenses.mit;
-    maintainers = with maintainers; [ matthewcroughan ];
+    changelog = "https://github.com/tmontaigu/laszip-python/blob/${finalAttrs.src.tag}/Changelog.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ matthewcroughan ];
   };
-}
-
+})

@@ -1,56 +1,53 @@
-{ lib
-, aiohttp
-, async-timeout
-, buildPythonPackage
-, fetchFromGitHub
-, pytest-aiohttp
-, pytestCheckHook
-, pythonOlder
-, setuptools
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytest-aiohttp,
+  pytest-cov-stub,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "aiojobs";
-  version = "1.1.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.4.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "aio-libs";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-FHdEVt/XXmuTrPAETyod3fHJIK1wg957/+QMAhZG1xk=";
+    repo = "aiojobs";
+    tag = "v${version}";
+    hash = "sha256-MgGUmDG0b0V/k+mCeiVRnBxa+ChK3URnGv6P8QP7RzQ=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "--cov=aiojobs/ --cov=tests/" ""
-  '';
+  nativeBuildInputs = [ setuptools ];
 
-  nativeBuildInputs = [
-    setuptools
-  ];
-
-  propagatedBuildInputs = [
-    aiohttp
-    async-timeout
-  ];
+  optional-dependencies = {
+    aiohttp = [ aiohttp ];
+  };
 
   nativeCheckInputs = [
     pytestCheckHook
     pytest-aiohttp
+    pytest-cov-stub
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
+
+  pythonImportsCheck = [ "aiojobs" ];
+
+  disabledTests = [
+    # RuntimeWarning: coroutine 'Scheduler._wait_failed' was never awaited
+    "test_scheduler_must_be_created_within_running_loop"
   ];
 
-  pythonImportsCheck = [
-    "aiojobs"
-  ];
+  __darwinAllowLocalNetworking = true;
 
-  meta = with lib; {
+  meta = {
     description = "Jobs scheduler for managing background task (asyncio)";
     homepage = "https://github.com/aio-libs/aiojobs";
-    changelog = "https://github.com/aio-libs/aiojobs/blob/v${version}/CHANGES.rst";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ cmcdragonkai ];
+    changelog = "https://github.com/aio-libs/aiojobs/blob/${src.tag}/CHANGES.rst";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ cmcdragonkai ];
   };
 }

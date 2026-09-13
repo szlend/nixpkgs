@@ -1,27 +1,48 @@
-import ../make-test-python.nix ({pkgs, ...}: {
+{ pkgs, ... }:
+{
   name = "kerberos_server-mit";
-  nodes.machine = { config, libs, pkgs, ...}:
-  { services.kerberos_server =
-    { enable = true;
-      realms = {
-        "FOO.BAR".acl = [{principal = "admin"; access = ["add" "cpw"];}];
-      };
-    };
-    krb5 = {
-      enable = true;
-      kerberos = pkgs.krb5;
-      libdefaults = {
-        default_realm = "FOO.BAR";
-      };
-      realms = {
-        "FOO.BAR" = {
-          admin_server = "machine";
-          kdc = "machine";
+
+  nodes.machine =
+    {
+      config,
+      libs,
+      pkgs,
+      ...
+    }:
+    {
+      services.kerberos_server = {
+        enable = true;
+        settings.realms = {
+          "FOO.BAR".acl = [
+            {
+              principal = "admin";
+              access = [
+                "add"
+                "cpw"
+              ];
+            }
+          ];
         };
       };
+      security.krb5 = {
+        enable = true;
+        package = pkgs.krb5;
+        settings = {
+          libdefaults = {
+            default_realm = "FOO.BAR";
+          };
+          realms = {
+            "FOO.BAR" = {
+              admin_server = "machine";
+              kdc = "machine";
+            };
+          };
+        };
+      };
+      users.extraUsers.alice = {
+        isNormalUser = true;
+      };
     };
-    users.extraUsers.alice = { isNormalUser = true; };
-  };
 
   testScript = ''
     machine.succeed(
@@ -38,4 +59,6 @@ import ../make-test-python.nix ({pkgs, ...}: {
         "echo alice_pw | sudo -u alice kinit",
     )
   '';
-})
+
+  meta.maintainers = [ pkgs.lib.maintainers.dblsaiko ];
+}

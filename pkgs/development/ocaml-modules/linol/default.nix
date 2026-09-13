@@ -1,27 +1,41 @@
-{ lib, fetchFromGitHub, buildDunePackage, yojson, logs, lsp, ppx_yojson_conv_lib }:
+{
+  lib,
+  fetchFromGitHub,
+  buildDunePackage,
+  logs,
+  ppx_yojson_conv_lib,
+  trace,
+  uutf,
+}:
 
-buildDunePackage
-rec {
+buildDunePackage (finalAttrs: {
   pname = "linol";
-  version = "2023-04-25";
+  version = "0.11";
 
   minimalOCamlVersion = "4.14";
-  duneVersion = "3";
 
   src = fetchFromGitHub {
     owner = "c-cube";
     repo = "linol";
-    # Brings support for newer LSP
-    rev = "439534e0c5b7a3fbf93ba05fae7d171426153763";
-    sha256 = "sha256-EW35T7KUc/L1Zy4+oaJOC6mlVpbvhTfnU3NNFGoZAJg=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-9n610J62IPUXYQ/u+WjGTtowYFKQ45wE8M7UkLdEKVM=";
   };
 
-  propagatedBuildInputs = [ yojson logs lsp ppx_yojson_conv_lib ];
+  propagatedBuildInputs = [
+    logs
+    ppx_yojson_conv_lib
+    trace
+    uutf
+  ];
 
-  meta = with lib; {
+  meta = {
     description = "LSP server library";
-    license = licenses.mit;
-    maintainers = [ maintainers.ulrikstrid ];
     homepage = "https://github.com/c-cube/linol";
+    changelog = "https://raw.githubusercontent.com/c-cube/linol/refs/tags/v${finalAttrs.version}/CHANGES.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      stepbrobd
+      ulrikstrid
+    ];
   };
-}
+})

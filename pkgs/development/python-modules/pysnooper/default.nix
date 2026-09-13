@@ -1,35 +1,39 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pysnooper";
-  version = "1.1.1";
-  format = "setuptools";
+  version = "1.2.3";
+  pyproject = true;
 
-  disabled = pythonOlder "3.8";
-
-  src = fetchPypi {
-    inherit version;
-    pname = "PySnooper";
-    hash = "sha256-0X3JHMoVk8ECMNzkXkax0/8PiRDww46UHt9roSYLOCA=";
+  src = fetchFromGitHub {
+    owner = "cool-RR";
+    repo = "PySnooper";
+    tag = finalAttrs.version;
+    hash = "sha256-+Cjqi0xkWO4QVAZymmcper4dal9pNWbpPgPY4UzbXfA=";
   };
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  build-system = [ setuptools ];
+
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  disabledTests = lib.optionals stdenv.hostPlatform.isDarwin [
+    # timing-sensitive and often breaks on Darwin
+    "test_relative_time"
   ];
 
-  pythonImportsCheck = [
-    "pysnooper"
-  ];
+  pythonImportsCheck = [ "pysnooper" ];
 
-  meta = with lib; {
-    description = "A poor man's debugger for Python";
+  meta = {
+    description = "Poor man's debugger for Python";
     homepage = "https://github.com/cool-RR/PySnooper";
-    license = licenses.mit;
-    maintainers = with maintainers; [ seqizz ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ seqizz ];
   };
-}
+})

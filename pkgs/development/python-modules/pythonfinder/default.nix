@@ -1,66 +1,50 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, pytestCheckHook
-, attrs
-, cached-property
-, click
-, packaging
-, pytest-cov
-, pytest-timeout
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  click,
+  fetchFromGitHub,
+  packaging,
+  pytest-cov-stub,
+  pytest-timeout,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pythonfinder";
-  version = "1.3.2";
-  format = "pyproject";
+  version = "3.0.4";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "sarugaku";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-sfoAS3QpD78we8HcXpxjSyEIN1xLRVLExaM3oXe6tLU=";
+    repo = "pythonfinder";
+    tag = finalAttrs.version;
+    hash = "sha256-MX5o8KIMpZjUj93QwL54CDp6OjAnhw8TtuEGT8wkKtw=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
-    attrs
-    cached-property
-    click
-    packaging
-  ];
+  dependencies = [ packaging ];
+
+  optional-dependencies = {
+    cli = [ click ];
+  };
 
   nativeCheckInputs = [
-    pytestCheckHook
-    pytest-cov
+    pytest-cov-stub
     pytest-timeout
-  ];
+    pytestCheckHook
+  ]
+  ++ lib.flatten (builtins.attrValues finalAttrs.passthru.optional-dependencies);
 
-  pythonImportsCheck = [
-    "pythonfinder"
-  ];
+  pythonImportsCheck = [ "pythonfinder" ];
 
-  pytestFlagsArray = [
-    "--no-cov"
-  ];
-
-  # these tests invoke git in a subprocess and
-  # for some reason git can't be found even if included in nativeCheckInputs
-  disabledTests = [
-    "test_shims_are_kept"
-    "test_shims_are_removed"
-  ];
-
-  meta = with lib; {
+  meta = {
+    description = "Cross platform search tool for finding Python";
     homepage = "https://github.com/sarugaku/pythonfinder";
-    changelog = "https://github.com/sarugaku/pythonfinder/blob/v${version}/CHANGELOG.rst";
-    description = "Cross Platform Search Tool for Finding Pythons";
-    license = licenses.mit;
-    maintainers = with maintainers; [ cpcloud ];
+    changelog = "https://github.com/sarugaku/pythonfinder/blob/${finalAttrs.src.tag}/CHANGELOG.rst";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ cpcloud ];
+    mainProgram = "pyfinder";
   };
-}
+})

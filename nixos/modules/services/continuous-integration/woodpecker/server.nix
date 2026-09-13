@@ -1,40 +1,39 @@
-{ config
-, lib
-, pkgs
-, ...
+{
+  config,
+  lib,
+  pkgs,
+  ...
 }:
 
 let
   cfg = config.services.woodpecker-server;
 in
 {
-  meta.maintainers = with lib.maintainers; [ janik ambroisie ];
-
+  meta.maintainers = with lib.maintainers; [ ambroisie ];
 
   options = {
     services.woodpecker-server = {
-      enable = lib.mkEnableOption (lib.mdDoc "the Woodpecker-Server, a CI/CD application for automatic builds, deployments and tests");
-      package = lib.mkPackageOptionMD pkgs "woodpecker-server" { };
+      enable = lib.mkEnableOption "the Woodpecker-Server, a CI/CD application for automatic builds, deployments and tests";
+      package = lib.mkPackageOption pkgs "woodpecker-server" { };
       environment = lib.mkOption {
         default = { };
         type = lib.types.attrsOf lib.types.str;
-        example = lib.literalExpression
-          ''
-            {
-              WOODPECKER_HOST = "https://woodpecker.example.com";
-              WOODPECKER_OPEN = "true";
-              WOODPECKER_GITEA = "true";
-              WOODPECKER_GITEA_CLIENT = "ffffffff-ffff-ffff-ffff-ffffffffffff";
-              WOODPECKER_GITEA_URL = "https://git.example.com";
-            }
-          '';
-        description = lib.mdDoc "woodpecker-server config environment variables, for other options read the [documentation](https://woodpecker-ci.org/docs/administration/server-config)";
+        example = lib.literalExpression ''
+          {
+            WOODPECKER_HOST = "https://woodpecker.example.com";
+            WOODPECKER_OPEN = "true";
+            WOODPECKER_GITEA = "true";
+            WOODPECKER_GITEA_CLIENT = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+            WOODPECKER_GITEA_URL = "https://git.example.com";
+          }
+        '';
+        description = "woodpecker-server config environment variables, for other options read the [documentation](https://woodpecker-ci.org/docs/administration/configuration/server)";
       };
       environmentFile = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        example = "/root/woodpecker-server.env";
-        description = lib.mdDoc ''
+        type = with lib.types; coercedTo path (f: [ f ]) (listOf path);
+        default = [ ];
+        example = [ "/root/woodpecker-server.env" ];
+        description = ''
           File to load environment variables
           from. This is helpful for specifying secrets.
           Example content of environmentFile:
@@ -61,8 +60,8 @@ in
           StateDirectoryMode = "0700";
           UMask = "0007";
           ConfigurationDirectory = "woodpecker-server";
-          EnvironmentFile = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
-          ExecStart = "${cfg.package}/bin/woodpecker-server";
+          EnvironmentFile = cfg.environmentFile;
+          ExecStart = lib.getExe cfg.package;
           Restart = "on-failure";
           RestartSec = 15;
           CapabilityBoundingSet = "";
@@ -95,4 +94,3 @@ in
     };
   };
 }
-

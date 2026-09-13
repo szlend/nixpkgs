@@ -1,57 +1,59 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonRelaxDepsHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
 
-# propagates
-, django
-, jwcrypto
-, requests
-, oauthlib
+  # propagates
+  django,
+  jwcrypto,
+  oauthlib,
+  requests,
+  urllib3,
 
-# tests
-, djangorestframework
-, pytest-django
-, pytest-xdist
-, pytest-mock
-, pytestCheckHook
+  # tests
+  django-ninja,
+  djangorestframework,
+  pytest-cov-stub,
+  pytest-django,
+  pytest-mock,
+  pytest-xdist,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "django-oauth-toolkit";
-  version = "2.3.0";
-  format = "setuptools";
+  version = "3.4.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jazzband";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-oGg5MD9p4PSUVkt5pGLwjAF4SHHf4Aqr+/3FsuFaybY=";
+    repo = "django-oauth-toolkit";
+    tag = finalAttrs.version;
+    hash = "sha256-UsnfGOyVk5w0grG6cTgMmfo+HyrZtsER338YobLyk08=";
   };
 
-  postPatch = ''
-    sed -i '/cov/d' tox.ini
-  '';
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     django
     jwcrypto
     oauthlib
     requests
+    urllib3
   ];
 
-  nativeBuildInputs = [ pythonRelaxDepsHook ];
-  pythonRelaxDeps = [
-    "django"
-  ];
-
-  DJANGO_SETTINGS_MODULE = "tests.settings";
+  preCheck = ''
+    export DJANGO_SETTINGS_MODULE=tests.settings
+  '';
 
   nativeCheckInputs = [
+    django-ninja
     djangorestframework
+    pytest-cov-stub
     pytest-django
-    pytest-xdist
     pytest-mock
+    pytest-xdist
     pytestCheckHook
   ];
 
@@ -60,10 +62,11 @@ buildPythonPackage rec {
     "test_response_when_auth_server_response_return_404"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "OAuth2 goodies for the Djangonauts";
     homepage = "https://github.com/jazzband/django-oauth-toolkit";
-    license = licenses.bsd2;
-    maintainers = with maintainers; [ mmai ];
+    changelog = "https://github.com/jazzband/django-oauth-toolkit/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.bsd2;
+    maintainers = [ ];
   };
-}
+})

@@ -2,18 +2,17 @@
 
 grafanaPlugin rec {
   pname = "grafana-clickhouse-datasource";
-  version = "3.1.0";
+  version = "4.16.0";
   zipHash = {
-    x86_64-linux = "sha256-x/Uruhk7mhPbsfAcST6tLnxJDd4vlqIkOUI4nAOZN50=";
-    aarch64-linux = "sha256-nNAIKoXYyhT1fwSB/a+uD1XUe5RxE9MYrbtHHx6T1fI=";
-    x86_64-darwin = "sha256-u9KRR7k/ktMu1KO5tpN/A+x48yDyXXPEnSNEx0hkT8Y=";
-    aarch64-darwin = "sha256-ME/LkVXoN1Sp4L3e9qFXgBfa7mCLRyKfEGHiBbaN8iY=";
+    x86_64-linux = "sha256-fmYrMoLMFSA/bG7db7IhEKcgYAd3ukRTZOtT6h0bCbw=";
+    aarch64-linux = "sha256-TTo85HkQrq6bbifAfG30BPVP72nqOYP9yaJ7INpBN1U=";
+    aarch64-darwin = "sha256-NC5yVkrnD1J1LiDbSnKwNZsUOCShgfSZy8FuDnXpZWs=";
   };
-  meta = with lib; {
+  meta = {
     description = "Connects Grafana to ClickHouse";
-    license = licenses.asl20;
-    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
-    maintainers = with maintainers; [ moody yuka ];
-    platforms = attrNames zipHash;
+    license = lib.licenses.asl20;
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    maintainers = with lib.maintainers; [ moody ];
+    platforms = lib.attrNames zipHash;
   };
 }

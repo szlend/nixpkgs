@@ -1,72 +1,70 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 
-# build
-, hassil
-, jinja2
-, pyyaml
-, regex
-, voluptuous
-, python
+  # build-system
+  setuptools,
 
-# tests
-, pytest-xdist
-, pytestCheckHook
+  # codegen
+  hassil,
+  python,
+  pyyaml,
+  voluptuous,
+  regex,
+  jinja2,
+
+  # tests
+  pytest-xdist,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "home-assistant-intents";
-  version = "2023.6.5";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "2026.8.28";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "home-assistant";
-    repo = "intents";
-    rev = "refs/tags/${version}";
-    hash = "sha256-ZfPOxTFPQNdZ3Tq8p410RHlLGej+FOqhafD+91MRbRo=";
+    owner = "OHF-Voice";
+    repo = "intents-package";
+    tag = finalAttrs.version;
+    fetchSubmodules = true;
+    hash = "sha256-9VVTpMhlbhHVhqZ5ujZZNI+qqkhjRM+B1W3Uruy/bn8=";
   };
 
-  sourceRoot = "source/package";
-
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "2023.4.26" "${version}"
-  '';
-
-  nativeBuildInputs = [
-    hassil
-    jinja2
-    pyyaml
-    regex
+  build-system = [
     setuptools
+
+    # build-time codegen; https://github.com/home-assistant/intents/blob/main/requirements.txt#L1-L5
+    hassil
+    pyyaml
     voluptuous
+    regex
+    jinja2
   ];
 
   postInstall = ''
-    pushd ..
-    # https://github.com/home-assistant/intents/blob/main/script/package#L18
-    ${python.pythonForBuild.interpreter} -m script.intentfest merged_output $out/${python.sitePackages}/home_assistant_intents/data
-    popd
+    # https://github.com/OHF-Voice/intents-package/blob/main/script/package#L23-L24
+    PACKAGE_DIR=$out/${python.sitePackages}/home_assistant_intents
+    ${python.pythonOnBuildForHost.interpreter} script/merged_output.py $PACKAGE_DIR/data
+    ${python.pythonOnBuildForHost.interpreter} script/write_languages.py $PACKAGE_DIR/data > $PACKAGE_DIR/languages.py
   '';
 
-  checkInputs = [
+  nativeCheckInputs = [
     pytest-xdist
     pytestCheckHook
   ];
 
-  pytestFlagsArray = [
-    "../tests"
+  enabledTestPaths = [
+    "intents/tests"
   ];
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/OHF-Voice/intents-package/releases/tag/${finalAttrs.src.tag}";
     description = "Intents to be used with Home Assistant";
-    homepage = "https://github.com/home-assistant/intents";
-    license = licenses.cc-by-40;
-    maintainers = teams.home-assistant.members;
+    homepage = "https://github.com/OHF-Voice/intents-package";
+    # https://github.com/OHF-Voice/intents-package/issues/12
+    license = lib.licenses.cc-by-40;
+    teams = [ lib.teams.home-assistant ];
   };
-}
+})

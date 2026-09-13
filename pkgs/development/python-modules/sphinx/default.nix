@@ -1,73 +1,86 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, fetchpatch
+{
+  lib,
+  buildPythonPackage,
+  pythonAtLeast,
+  pythonOlder,
+  fetchFromGitHub,
+  fetchpatch2,
+  isPyPy,
 
-# nativeBuildInputs
-, flit-core
+  # build-system
+  flit-core,
 
-# propagatedBuildInputs
-, babel
-, alabaster
-, docutils
-, imagesize
-, importlib-metadata
-, jinja2
-, packaging
-, pygments
-, requests
-, snowballstemmer
-, sphinxcontrib-apidoc
-, sphinxcontrib-applehelp
-, sphinxcontrib-devhelp
-, sphinxcontrib-htmlhelp
-, sphinxcontrib-jsmath
-, sphinxcontrib-qthelp
-, sphinxcontrib-serializinghtml
-, sphinxcontrib-websupport
+  # dependencies
+  babel,
+  alabaster,
+  docutils,
+  imagesize,
+  jinja2,
+  packaging,
+  pygments,
+  requests,
+  roman-numerals,
+  snowballstemmer,
+  sphinxcontrib-applehelp,
+  sphinxcontrib-devhelp,
+  sphinxcontrib-htmlhelp,
+  sphinxcontrib-jsmath,
+  sphinxcontrib-qthelp,
+  sphinxcontrib-serializinghtml,
+  sphinxcontrib-websupport,
 
-# check phase
-, cython
-, html5lib
-, pytestCheckHook
-, typed-ast
+  # check phase
+  defusedxml,
+  pytestCheckHook,
+  pytest-xdist,
+  typing-extensions,
+  writableTmpDirAsHomeHook,
+
+  # reverse dependencies to test
+  breathe,
 }:
 
 buildPythonPackage rec {
   pname = "sphinx";
-  version = "5.3.0";
-  format = "pyproject";
+  version = "9.1.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
+  disabled = pythonOlder "3.12";
 
   src = fetchFromGitHub {
     owner = "sphinx-doc";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-80bVg1rfBebgSOKbWkzP84vpm39iLgM8lWlVD64nSsQ=";
+    repo = "sphinx";
+    tag = "v${version}";
     postFetch = ''
-      cd $out
-      mv tests/roots/test-images/testimäge.png \
-        tests/roots/test-images/testimæge.png
-      patch -p1 < ${./0001-test-images-Use-normalization-equivalent-character.patch}
+      # Change ä to æ in file names, since ä can be encoded multiple ways on different
+      # filesystems, leading to different hashes on different platforms.
+      cd "$out";
+      mv tests/roots/test-images/{testimäge,testimæge}.png
+      sed -i 's/testimäge/testimæge/g' tests/{test_build*.py,roots/test-images/index.rst}
     '';
+    hash = "sha256-PgqjCeyHOhWtZjyzSZyvsPT0Q7yRyNDiW3x1fQq0K+8=";
   };
 
-  nativeBuildInputs = [
-    flit-core
+  patches = [
+    (fetchpatch2 {
+      name = "fix-test-stemmer.patch";
+      url = "https://github.com/sphinx-doc/sphinx/commit/c01b0eb640bbc3dbd8141f3ea08df9edaa78ab2c.patch?full_index=1";
+      hash = "sha256-Zi2WoYMSRg2xvbocj9XhEmXPAEebBokl9XyuSEpDaF0=";
+    })
   ];
 
-  propagatedBuildInputs = [
-    babel
+  build-system = [ flit-core ];
+
+  dependencies = [
     alabaster
+    babel
     docutils
     imagesize
     jinja2
     packaging
     pygments
     requests
+    roman-numerals
     snowballstemmer
     sphinxcontrib-applehelp
     sphinxcontrib-devhelp
@@ -77,83 +90,116 @@ buildPythonPackage rec {
     sphinxcontrib-serializinghtml
     # extra[docs]
     sphinxcontrib-websupport
-
-    # extra plugins which are otherwise not found by sphinx-build
-    sphinxcontrib-apidoc
-  ] ++ lib.optionals (pythonOlder "3.10") [
-    importlib-metadata
   ];
+
+  pythonRelaxDeps = [ "docutils" ];
+
+  __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
-    cython
-    html5lib
+    defusedxml
     pytestCheckHook
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    typed-ast
+    pytest-xdist
+    typing-extensions
+    writableTmpDirAsHomeHook
   ];
 
-  preCheck = ''
-    export HOME=$(mktemp -d)
-  '';
+  disabledTestPaths = lib.optionals isPyPy [
+    # internals are asserted which are sightly different in PyPy
+    "tests/test_ext_autodoc/test_ext_autodoc.py"
+    "tests/test_ext_autodoc/test_ext_autodoc_autoclass.py"
+    "tests/test_ext_autodoc/test_ext_autodoc_autofunction.py"
+    "tests/test_ext_autodoc/test_ext_autodoc_automodule.py"
+    "tests/test_ext_autodoc/test_ext_autodoc_preserve_defaults.py"
+    "tests/test_util/test_util_inspect.py"
+    "tests/test_util/test_util_typing.py"
+  ];
 
   disabledTests = [
     # requires network access
-    "test_anchors_ignored"
-    "test_defaults"
-    "test_defaults_json"
     "test_latex_images"
-
-    # requires imagemagick (increases build closure size), doesn't
-    # test anything substantial
-    "test_ext_imgconverter"
-
-    # fails with pygments 2.14
-    # TODO remove for sphinx 6
-    "test_viewcode"
-    "test_additional_targets_should_be_translated"
-    "test_additional_targets_should_not_be_translated"
-
-    # sphinx.errors.VersionRequirementError: The alabaster extension
-    # used by this project needs at least Sphinx v1.6; it therefore
-    # cannot be built with this version.
-    "test_needs_sphinx"
-
-    # Likely due to pygments 2.14 update
-    #  AssertionError: assert '5:11:17\u202fAM' == '5:11:17 AM'
-    "test_format_date"
-  ] ++ lib.optionals stdenv.isDarwin [
-    # Due to lack of network sandboxing can't guarantee port 7777 isn't bound
-    "test_inspect_main_url"
-    "test_auth_header_uses_first_match"
-    "test_linkcheck_allowed_redirects"
-    "test_linkcheck_request_headers"
-    "test_linkcheck_request_headers_no_slash"
-    "test_follows_redirects_on_HEAD"
-    "test_get_after_head_raises_connection_error"
-    "test_invalid_ssl"
-    "test_connect_to_selfsigned_with_tls_verify_false"
-    "test_connect_to_selfsigned_with_tls_cacerts"
-    "test_connect_to_selfsigned_with_requests_env_var"
-    "test_connect_to_selfsigned_nonexistent_cert_file"
-    "test_TooManyRedirects_on_HEAD"
-    "test_too_many_requests_retry_after_int_del"
-    "test_too_many_requests_retry_after_HTTP_date"
-    "test_too_many_requests_retry_after_without_header"
-    "test_too_many_requests_user_timeout"
-    "test_raises_for_invalid_status"
-    "test_auth_header_no_match"
-    "test_follows_redirects_on_GET"
-    "test_connect_to_selfsigned_fails"
+    # racy
+    "test_defaults"
+    "test_check_link_response_only"
+    "test_anchors_ignored_for_url"
+    "test_autodoc_default_options"
+    "test_too_many_requests_retry_after_int_delay"
+    # racy with pytest-xdist
+    "test_domain_cpp_build_semicolon"
+    "test_class_alias"
+    "test_class_alias_having_doccomment"
+    "test_class_alias_for_imported_object_having_doccomment"
+    "test_decorators"
+    "test_xml_warnings"
+    # racy with too many threads
+    # https://github.com/NixOS/nixpkgs/issues/353176
+    "test_document_toc_only"
+    # Assertion error
+    "test_gettext_literalblock_additional"
+    # Could not fetch remote image: http://localhost:7777/sphinx.png
+    "test_copy_images"
+    # ModuleNotFoundError: No module named 'fish_licence.halibut'
+    "test_import_native_module_stubs"
+    # Racy tex file creation
+    "test_literalinclude_namedlink_latex"
+    "test_literalinclude_caption_latex"
+    # Racy local networking
+    "test_load_mappings_cache"
+    "test_load_mappings_cache_update"
+    "test_load_mappings_cache_revert_update"
+  ]
+  ++ lib.optionals (pythonAtLeast "3.14") [
+    "test_autodoc_special_members"
+    "test_is_invalid_builtin_class"
+    "test_autosummary_generate_content_for_module_imported_members"
+  ]
+  ++ lib.optionals isPyPy [
+    # PyPy has not __builtins__ which get asserted
+    # https://doc.pypy.org/en/latest/cpython_differences.html#miscellaneous
+    "test_autosummary_generate_content_for_module"
+    "test_autosummary_generate_content_for_module_skipped"
+    # Struct vs struct.Struct
+    "test_restify"
+    "test_stringify_annotation"
+    "test_stringify_type_union_operator"
   ];
 
-  meta = with lib; {
+  passthru.tests = {
+    inherit breathe;
+  };
+
+  meta = {
     description = "Python documentation generator";
     longDescription = ''
-      A tool that makes it easy to create intelligent and beautiful
-      documentation for Python projects
+      Sphinx makes it easy to create intelligent and beautiful documentation.
+
+      Here are some of Sphinx’s major features:
+      - Output formats: HTML (including Windows HTML Help), LaTeX (for printable
+        PDF versions), ePub, Texinfo, manual pages, plain text
+      - Extensive cross-references: semantic markup and automatic links for
+        functions, classes, citations, glossary terms and similar pieces of
+        information
+      - Hierarchical structure: easy definition of a document tree, with
+        automatic links to siblings, parents and children
+      - Automatic indices: general index as well as a language-specific module
+        indices
+      - Code handling: automatic highlighting using the Pygments highlighter
+      - Extensions: automatic testing of code snippets, inclusion of docstrings
+        from Python modules (API docs) via built-in extensions, and much more
+        functionality via third-party extensions.
+      - Themes: modify the look and feel of outputs via creating themes, and
+        re-use many third-party themes.
+      - Contributed extensions: dozens of extensions contributed by users; most
+        of them installable from PyPI.
+
+      Sphinx uses the reStructuredText markup language by default, and can read
+      MyST markdown via third-party extensions. Both of these are powerful and
+      straightforward to use, and have functionality for complex documentation
+      and publishing workflows. They both build upon Docutils to parse and write
+      documents.
     '';
     homepage = "https://www.sphinx-doc.org";
-    license = licenses.bsd3;
-    maintainers = teams.sphinx.members;
+    changelog = "https://www.sphinx-doc.org/en/master/changes.html";
+    license = lib.licenses.bsd3;
   };
 }

@@ -1,39 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 
-# build-system
-, flit-core
+  # build-system
+  flit-core,
 
-# docs
-, sphinxHook
-, sphinx-rtd-theme
-, myst-parser
+  # docs
+  sphinxHook,
+  sphinx-rtd-theme,
+  myst-parser,
 
-# propagates
-, typing-extensions
+  # optionals
+  arabic-reshaper,
+  cryptography,
+  fonttools,
+  pillow,
+  python-bidi,
 
-# optionals
-, pycryptodome
-, pillow
-
-# tests
-, pytestCheckHook
+  # tests
+  fpdf2,
+  pytestCheckHook,
+  pytest-timeout,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pypdf";
-  version = "3.5.2";
-  format = "pyproject";
+  version = "6.18.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "py-pdf";
     repo = "pypdf";
-    rev = "refs/tags/${version}";
+    tag = finalAttrs.version;
     # fetch sample files used in tests
     fetchSubmodules = true;
-    hash = "sha256-f+M4sfUzDy8hxHUiWG9hyu0EYvnjNA46OtHzBSJdID0=";
+    hash = "sha256-BfscatAwiiPQfbgTSBE3CM2As2LkcNh0zkr5jIq45Ww=";
   };
 
   outputs = [
@@ -41,52 +43,49 @@ buildPythonPackage rec {
     "doc"
   ];
 
-  nativeBuildInputs = [
-    flit-core
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "--disable-socket" ""
+  '';
 
-    # docs
+  build-system = [ flit-core ];
+
+  nativeBuildInputs = [
     sphinxHook
     sphinx-rtd-theme
     myst-parser
   ];
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "--disable-socket" ""
-  '';
-
-  propagatedBuildInputs = lib.optionals (pythonOlder "3.10") [
-    typing-extensions
-  ];
-
-  passthru.optional-dependencies = rec {
-    full = crypto ++ image;
-    crypto = [
-      pycryptodome
-    ];
-    image = [
-      pillow
+  optional-dependencies = rec {
+    full = crypto ++ fonts ++ image ++ rtl_text;
+    crypto = [ cryptography ];
+    fonts = [ fonttools ];
+    image = [ pillow ];
+    rtl_text = [
+      arabic-reshaper
+      python-bidi
     ];
   };
 
-  pythonImportsCheck = [
-    "pypdf"
-  ];
+  pythonImportsCheck = [ "pypdf" ];
 
   nativeCheckInputs = [
+    (fpdf2.overridePythonAttrs { doCheck = false; }) # avoid reference loop
     pytestCheckHook
-  ] ++ passthru.optional-dependencies.full;
+    pytest-timeout
+  ]
+  ++ finalAttrs.passthru.optional-dependencies.full;
 
-  pytestFlagsArray = [
+  disabledTestMarks = [
     # don't access the network
-    "-m" "'not enable_socket'"
+    "enable_socket"
   ];
 
-  meta = with lib; {
-    description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming the pages of PDF files";
+  meta = {
+    description = "Pure-python PDF library capable of splitting, merging, cropping, and transforming the pages of PDF files";
     homepage = "https://github.com/py-pdf/pypdf";
-    changelog = "https://github.com/py-pdf/pypdf/blob/${src.rev}/CHANGELOG.md";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ hexa ];
+    changelog = "https://github.com/py-pdf/pypdf/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ javaes ];
   };
-}
+})

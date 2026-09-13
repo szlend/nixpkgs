@@ -1,8 +1,13 @@
-{ lib, fetchFromGitHub, buildDunePackage, qcheck-core }:
+{
+  lib,
+  fetchFromGitHub,
+  buildDunePackage,
+  qcheck-core,
+}:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "bwd";
-  version = "2.1.0";
+  version = "2.3.0";
 
   minimalOCamlVersion = "4.12";
   duneVersion = "3";
@@ -10,8 +15,8 @@ buildDunePackage rec {
   src = fetchFromGitHub {
     owner = "RedPRL";
     repo = "ocaml-bwd";
-    rev = version;
-    hash = "sha256-ucXOBjD1behL2h8CZv64xtRjCPkajZic7G1oxxDmEXY=";
+    rev = finalAttrs.version;
+    hash = "sha256-rzn0U/D6kPNsH5hBTElc3d1jfKbgKbjA2JHicpaJtu4=";
   };
 
   doCheck = true;
@@ -19,8 +24,9 @@ buildDunePackage rec {
 
   meta = {
     description = "Backward Lists";
-    inherit (src.meta) homepage;
+    homepage = "https://github.com/RedPRL/ocaml-bwd";
+    changelog = "https://github.com/RedPRL/ocaml-bwd/blob/${finalAttrs.version}/CHANGELOG.markdown";
     license = lib.licenses.asl20;
     maintainers = [ lib.maintainers.vbgl ];
   };
-}
+})

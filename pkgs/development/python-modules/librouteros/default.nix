@@ -1,28 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, isPy3k
-, pytestCheckHook
-, pytest-xdist
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hypothesis,
+  pytest-asyncio,
+  pytest-xdist,
+  pytestCheckHook,
+  uv-build,
+  stamina,
+  toml,
 }:
 
 buildPythonPackage rec {
   pname = "librouteros";
-  version = "3.2.1";
-  format = "setuptools";
-
-  disabled = !isPy3k;
+  version = "4.1.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "luqasz";
-    repo = pname;
-    rev = version;
-    hash = "sha256-VwpZ1RY6Sul7xvWY7ZoOxZ7KgbRmKRwcVdF9e2b3f6Q=";
+    repo = "librouteros";
+    tag = version;
+    hash = "sha256-iqpaHSA+1AuN+VBfDfpxSjl5/g24yjbPmZd+dG32izQ=";
   };
 
+  build-system = [ uv-build ];
+
+  dependencies = [ toml ];
+
   nativeCheckInputs = [
+    hypothesis
+    pytest-asyncio
     pytest-xdist
     pytestCheckHook
+    stamina
   ];
 
   disabledTests = [
@@ -35,14 +45,13 @@ buildPythonPackage rec {
     "test_generator_ditch"
   ];
 
-  pythonImportsCheck = [
-    "librouteros"
-  ];
+  pythonImportsCheck = [ "librouteros" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python implementation of the MikroTik RouterOS API";
     homepage = "https://librouteros.readthedocs.io/";
-    license = with licenses; [ gpl2Only ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/luqasz/librouteros/blob/${version}/CHANGELOG.rst";
+    license = lib.licenses.gpl2Only;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

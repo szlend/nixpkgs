@@ -1,45 +1,78 @@
-{ lib
-, pythonOlder
-, buildPythonPackage
-, fetchPypi
-, ruff
-, lsprotocol
-, python-lsp-server
-, tomli
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  ruff,
+
+  # dependencies
+  cattrs,
+  lsprotocol,
+  python-lsp-server,
+
+  # checks
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-lsp-ruff";
-  version = "1.5.1";
-  format = "pyproject";
-  disabled = pythonOlder "3.7";
+  version = "2.3.4";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit version;
-    pname = "python-lsp-ruff";
-    sha256 = "sha256-yvG4Qn9aym0rTDALURxHrWtDhO7g2VYsI+zLgb8z+gE=";
+  src = fetchFromGitHub {
+    owner = "python-lsp";
+    repo = "python-lsp-ruff";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-9VRbQvQCVqB92jx7E7QF1xHW3n6lO0ScFr7FhDw9Jgg=";
   };
 
-  postPatch = ''
-    # ruff binary is used directly, the ruff python package is not needed
-    sed -i '/"ruff>=/d' pyproject.toml
-    sed -i 's|sys.executable, "-m", "ruff"|"${ruff}/bin/ruff"|' pylsp_ruff/plugin.py
-  '';
+  postPatch =
+    let
+      ruffBin = lib.getExe ruff;
+    in
+    ''
+      substituteInPlace pylsp_ruff/plugin.py \
+        --replace-fail \
+          "*find_executable(executable)" \
+          '"${ruffBin}"'
 
-  propagatedBuildInputs = [
-    lsprotocol
-    python-lsp-server
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
+      substituteInPlace tests/test_ruff_lint.py \
+        --replace-fail "str(sys.executable)" '"${ruffBin}"' \
+        --replace-fail '"-m",' "" \
+        --replace-fail '"ruff",' "" \
+        --replace-fail \
+          'assert "ruff" in call_args' \
+          'assert "${ruffBin}" in call_args' \
+        --replace-fail \
+          'ruff_executable = ruff_exe.name' \
+          'ruff_executable = "${ruffBin}"' \
+        --replace-fail 'os.chmod(ruff_executable, st.st_mode | stat.S_IEXEC)' ""
+    ''
+    # Nix builds everything in /build/ but ruff somehow doesn't run on files in /build/ and outputs empty results.
+    + ''
+      substituteInPlace tests/*.py \
+        --replace-fail "workspace.root_path" '"/tmp/"'
+    '';
+
+  pythonRemoveDeps = [
+    # ruff binary is used directly, the ruff python package is not needed
+    "ruff"
   ];
 
-  doCheck = true;
+  dependencies = [
+    cattrs
+    lsprotocol
+    python-lsp-server
+  ];
 
-  meta = with lib; {
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  meta = {
     homepage = "https://github.com/python-lsp/python-lsp-ruff";
     description = "Ruff linting plugin for pylsp";
-    changelog = "https://github.com/python-lsp/python-lsp-ruff/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ linsui ];
+    changelog = "https://github.com/python-lsp/python-lsp-ruff/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ linsui ];
   };
-}
+})

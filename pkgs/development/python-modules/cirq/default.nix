@@ -1,30 +1,35 @@
-{ buildPythonPackage
-, cirq-aqt
-, cirq-core
-, cirq-google
-, cirq-ionq
-, cirq-pasqal
-, cirq-rigetti
-, cirq-web
-, pytestCheckHook
+{
+  buildPythonPackage,
+  cirq-aqt,
+  cirq-core,
+  cirq-google,
+  cirq-ionq,
+  cirq-pasqal,
+  cirq-web,
+  pytest-benchmark,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cirq";
+  pyproject = true;
   inherit (cirq-core) version src meta;
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     cirq-aqt
     cirq-core
-    cirq-ionq
     cirq-google
-    cirq-rigetti
+    cirq-ionq
     cirq-pasqal
     cirq-web
   ];
 
   # pythonImportsCheck = [ "cirq" "cirq.Circuit" ];  # cirq's importlib hook doesn't work here
   nativeCheckInputs = [
+    pytest-benchmark
     pytestCheckHook
   ];
 
@@ -35,9 +40,7 @@ buildPythonPackage rec {
     "cirq-google"
     "cirq-ionq"
     "cirq-pasqal"
-    "cirq-rigetti"
     "cirq-web"
     "dev_tools"
   ];
-
-}
+})

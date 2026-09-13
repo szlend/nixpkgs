@@ -1,32 +1,38 @@
-{ lib
-, buildPythonPackage
-, docopt
-, fetchFromGitHub
-, freezegun
-, mock
-, pyjwt
-, pytest-mock
-, pytestCheckHook
-, pythonOlder
-, requests
-, requests-mock
+{
+  lib,
+  buildPythonPackage,
+  docopt,
+  fetchFromGitHub,
+  freezegun,
+  mock,
+  pyjwt,
+  pytest-mock,
+  pytestCheckHook,
+  requests,
+  requests-mock,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "notifications-python-client";
-  version = "8.0.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.8";
+  version = "12.1.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "alphagov";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-feATZS7PG9IKY6ooPztA49WykQ/Bt67frSe3PpbiCLc=";
+    repo = "notifications-python-client";
+    tag = finalAttrs.version;
+    hash = "sha256-jaNALtQQBxBE2ofBw9ZXC4z5VCnclAAHYvPMTBK74tY=";
   };
 
-  propagatedBuildInputs = [
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace-fail "pytest-runner" ""
+  '';
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     docopt
     pyjwt
     requests
@@ -40,20 +46,13 @@ buildPythonPackage rec {
     requests-mock
   ];
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "'pytest-runner'" ""
-  '';
+  pythonImportsCheck = [ "notifications_python_client" ];
 
-  pythonImportsCheck = [
-    "notifications_python_client"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python client for the GOV.UK Notify API";
     homepage = "https://github.com/alphagov/notifications-python-client";
-    changelog = "https://github.com/alphagov/notifications-python-client/blob/${version}/CHANGELOG.md";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/alphagov/notifications-python-client/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

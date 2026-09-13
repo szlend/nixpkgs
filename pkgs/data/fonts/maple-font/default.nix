@@ -1,72 +1,155 @@
-{ lib
-, stdenv
-, unzip
-, fetchurl
+{
+  lib,
+  stdenv,
+  unzip,
+  fetchurl,
+  installFonts,
 }:
 
 let
-  maple-font = { pname, sha256, desc }: stdenv.mkDerivation
-    rec{
 
-      inherit pname desc;
-      version = "6.3";
+  hashes = lib.importJSON ./hashes.json;
+
+  maple-font =
+    {
+      pname,
+      hash,
+      desc,
+      suffix,
+    }:
+    stdenv.mkDerivation rec {
+      inherit pname;
+      version = "7.9";
       src = fetchurl {
         url = "https://github.com/subframe7536/Maple-font/releases/download/v${version}/${pname}.zip";
-        inherit sha256;
+        inherit hash;
       };
 
       # Work around the "unpacker appears to have produced no directories"
       # case that happens when the archive doesn't have a subdirectory.
-      setSourceRoot = "sourceRoot=`pwd`";
-      nativeBuildInputs = [ unzip ];
-      installPhase = ''
-        find . -name '*.ttf'    -exec install -Dt $out/share/fonts/truetype {} \;
-        find . -name '*.otf'    -exec install -Dt $out/share/fonts/opentype {} \;
-        find . -name '*.woff2'  -exec install -Dt $out/share/fonts/woff2 {} \;
-      '';
+      sourceRoot = ".";
+      nativeBuildInputs = [
+        installFonts
+        unzip
+      ];
 
-      meta = with lib; {
+      # installFonts checks if "$webfont" exists and copies any woff files there,
+      # this is typically done with a second "webfont" output, resulting in a second derivation
+      # we set this to `placeholder "out"` to keep webfonts in the same derivation instead
+      webfont = lib.optionalString (suffix == "Woff2") (placeholder "out");
+
+      meta = {
         homepage = "https://github.com/subframe7536/Maple-font";
         description = ''
           Open source ${desc} font with round corner and ligatures for IDE and command line
         '';
-        license = licenses.ofl;
-        platforms = platforms.all;
-        maintainers = with maintainers; [ oluceps ];
+        license = lib.licenses.ofl;
+        platforms = lib.platforms.all;
+        maintainers = with lib.maintainers; [ oluceps ];
       };
     };
 
+  typeVariants = {
+    truetype = {
+      suffix = "TTF";
+      desc = "monospace TrueType";
+    };
+
+    truetype-autohint = {
+      suffix = "TTF-AutoHint";
+      desc = "monospace ttf autohint";
+    };
+
+    variable = {
+      suffix = "Variable";
+      desc = "monospace variable";
+    };
+
+    woff2 = {
+      suffix = "Woff2";
+      desc = "WOFF2.0";
+    };
+
+    opentype = {
+      suffix = "OTF";
+      desc = "OpenType";
+    };
+
+    NF = {
+      suffix = "NF";
+      desc = "Nerd Font";
+    };
+
+    NF-unhinted = {
+      suffix = "NF-unhinted";
+      desc = "Nerd Font unhinted";
+    };
+
+    CN = {
+      suffix = "CN";
+      desc = "monospace CN";
+    };
+
+    CN-unhinted = {
+      suffix = "CN-unhinted";
+      desc = "monospace CN unhinted";
+    };
+
+    NF-CN = {
+      suffix = "NF-CN";
+      desc = "Nerd Font CN";
+    };
+
+    NF-CN-unhinted = {
+      suffix = "NF-CN-unhinted";
+      desc = "Nerd Font CN unhinted";
+    };
+  };
+
+  ligatureVariants = {
+    No-Ligature = {
+      suffix = "NL";
+      desc = "No Ligature";
+    };
+    Normal-Ligature = {
+      suffix = "Normal";
+      desc = "Normal Ligature";
+    };
+    Normal-No-Ligature = {
+      suffix = "NormalNL";
+      desc = "Normal No Ligature";
+    };
+  };
+
+  combinedFonts =
+    lib.concatMapAttrs (
+      ligName: ligVariant:
+      lib.concatMapAttrs (
+        typeName: typeVariant:
+        let
+          pname = "MapleMono${ligVariant.suffix}-${typeVariant.suffix}";
+        in
+        {
+          "${ligVariant.suffix}-${typeVariant.suffix}" = maple-font {
+            inherit pname;
+            desc = "${ligVariant.desc} ${typeVariant.desc}";
+            hash = hashes.${pname};
+            inherit (typeVariant) suffix;
+          };
+        }
+      ) typeVariants
+    ) ligatureVariants
+    // lib.mapAttrs (
+      _: value:
+      let
+        pname = "MapleMono-${value.suffix}";
+      in
+      maple-font {
+        inherit pname;
+        inherit (value) desc;
+        hash = hashes.${pname};
+        inherit (value) suffix;
+      }
+    ) typeVariants;
 in
-{
-  Mono = maple-font {
-    pname = "MapleMono";
-    sha256 = "sha256-Ap4OwP/QGFz9+xn12rekia1/pwRxZvv+H+ZmZiXcxcY=";
-    desc = "monospace";
-  };
-
-  NF = maple-font {
-    pname = "MapleMono-NF";
-    sha256 = "sha256-WZHFQRG+81TF5YgOT249c8VA8vAvYowiQx/pqsDuJ4o=";
-    desc = "Nerd Font";
-  };
-
-  SC-NF = maple-font {
-    pname = "MapleMono-SC-NF";
-    sha256 = "sha256-26odkmMljEwstRywDYJ7Dst5pfOXrtQTcrFFxbRwHcA=";
-    desc = "Nerd Font SC";
-  };
-
-  opentype = maple-font {
-    pname = "MapleMono-otf";
-    sha256 = "sha256-u2IuymjiosoSbdIW7h2QalagTI+eDMRSuhLgXy5RdRA=";
-    desc = "OpenType";
-  };
-
-  woff2 = maple-font {
-    pname = "MapleMono-woff2";
-    sha256 = "sha256-iv6Q/aYMlAkhaem8tFWAzqc9mVgWQXghBzcHJz1dg/Y=";
-    desc = "WOFF2.0";
-  };
-}
-
-
+combinedFonts

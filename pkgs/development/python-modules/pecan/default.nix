@@ -1,70 +1,59 @@
-{ lib
-, fetchPypi
-, buildPythonPackage
-, logutils
-, mako
-, webtest
-, pythonOlder
-, pytestCheckHook
-, genshi
-, gunicorn
-, jinja2
-, six
-, sqlalchemy
-, virtualenv
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  genshi,
+  gunicorn,
+  jinja2,
+  mako,
+  pytestCheckHook,
+  setuptools,
+  sqlalchemy,
+  virtualenv,
+  webob,
+  webtest,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pecan";
-  version = "1.4.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "1.8.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-SbJV5wHD8UYWBfWw6PVPDCGSLXhF1BTCTdZAn+aV1VA=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-L5+86obo2/Gi0olUIlVHY0oonbcgHndkUWpdzobBFt4=";
   };
 
-  propagatedBuildInputs = [
-    logutils
+  build-system = [ setuptools ];
+
+  dependencies = [
     mako
-    webtest
-    six
+    setuptools
+    webob
   ];
 
   nativeCheckInputs = [
-    pytestCheckHook
     genshi
     gunicorn
     jinja2
+    pytestCheckHook
     sqlalchemy
     virtualenv
+    webtest
   ];
 
-  pytestFlagsArray = [
-    "--pyargs pecan"
-    # tests fail with sqlalchemy 2.0
-  ] ++ lib.optionals (lib.versionAtLeast sqlalchemy.version "2.0") [
-    # The 'sqlalchemy.orm.mapper()' function is removed as of SQLAlchemy
-    # 2.0.  Use the 'sqlalchemy.orm.registry.map_imperatively()` method
-    # of the ``sqlalchemy.orm.registry`` class to perform classical
-    # mapping.
-    # https://github.com/pecan/pecan/issues/143
-    "--deselect=pecan/tests/test_jsonify.py::TestJsonifySQLAlchemyGenericEncoder::test_result_proxy"
-    "--deselect=pecan/tests/test_jsonify.py::TestJsonifySQLAlchemyGenericEncoder::test_row_proxy"
-    "--deselect=pecan/tests/test_jsonify.py::TestJsonifySQLAlchemyGenericEncoder::test_sa_object"
-  ];
-
-  pythonImportsCheck = [
+  pytestFlags = [
+    "--pyargs"
     "pecan"
   ];
 
-  meta = with lib; {
-    changelog = "https://pecan.readthedocs.io/en/latest/changes.html";
+  pythonImportsCheck = [ "pecan" ];
+
+  meta = {
     description = "WSGI object-dispatching web framework";
     homepage = "https://www.pecanpy.org/";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ applePrincess ];
+    changelog = "https://github.com/pecan/pecan/releases/tag/${finalAttrs.version}";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ applePrincess ];
   };
-}
+})

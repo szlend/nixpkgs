@@ -1,43 +1,30 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-
-# build
-, pdm-pep517
-
-# docs
-, docutils
-, sphinxHook
-, sphinx-rtd-theme
-, sphinx-autodoc-typehints
-
-# runtime
-, tomli
-, packaging
-
-# optionals
-, pydantic
-, platformdirs
-, sphinx
-, tabulate
-
-# tests
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  docutils,
+  fetchFromGitHub,
+  packaging,
+  pdm-backend,
+  platformdirs,
+  pydantic,
+  pytestCheckHook,
+  sphinx,
+  sphinx-autodoc-typehints,
+  sphinx-rtd-theme,
+  sphinxHook,
+  tabulate,
 }:
 
 buildPythonPackage rec {
   pname = "pytoolconfig";
-  version = "1.2.5";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "1.3.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "bagel897";
     repo = "pytoolconfig";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-b7er/IgXr2j9dSnI87669BXWA5CXNTzwa1DTpl8PBZ4=";
+    tag = "v${version}";
+    hash = "sha256-h21SDgVsnCDZQf5GS7sFE19L/p+OlAFZGEYKc0RHn30=";
   };
 
   outputs = [
@@ -45,55 +32,45 @@ buildPythonPackage rec {
     "doc"
   ];
 
-  PDM_PEP517_SCM_VERSION = version;
+  env.PDM_PEP517_SCM_VERSION = version;
 
   nativeBuildInputs = [
-    pdm-pep517
+    pdm-backend
 
     # docs
     docutils
     sphinx-autodoc-typehints
     sphinx-rtd-theme
     sphinxHook
-  ] ++ passthru.optional-dependencies.doc;
+  ]
+  ++ optional-dependencies.doc;
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "packaging>=22.0" "packaging"
-  '';
+  propagatedBuildInputs = [ packaging ];
 
-  propagatedBuildInputs = [
-    packaging
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
-  ];
-
-  passthru.optional-dependencies = {
-    validation = [
-      pydantic
-    ];
-    global = [
-      platformdirs
-    ];
+  optional-dependencies = {
+    validation = [ pydantic ];
+    global = [ platformdirs ];
     doc = [
       sphinx
       tabulate
     ];
   };
 
-  pythonImportsCheck = [
-    "pytoolconfig"
-  ];
+  pythonImportsCheck = [ "pytoolconfig" ];
 
   nativeCheckInputs = [
     pytestCheckHook
-  ] ++ lib.flatten (builtins.attrValues passthru.optional-dependencies);
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
-  meta = with lib; {
-    changelog = "https://github.com/bagel897/pytoolconfig/releases/tag/v${version}";
+  meta = {
     description = "Python tool configuration";
     homepage = "https://github.com/bagel897/pytoolconfig";
-    license = licenses.lgpl3Plus;
-    maintainers = with maintainers; [ fab hexa ];
+    changelog = "https://github.com/bagel897/pytoolconfig/releases/tag/v${version}";
+    license = lib.licenses.lgpl3Plus;
+    maintainers = with lib.maintainers; [
+      fab
+      hexa
+    ];
   };
 }

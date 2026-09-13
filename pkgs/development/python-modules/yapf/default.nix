@@ -1,27 +1,36 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, isPyPy
-, nose
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  importlib-metadata,
+  platformdirs,
+  tomli,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "yapf";
-  version = "0.32.0";
+  version = "0.43.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-o/UIXTfvfj4ATEup+bPkDFT/GQHNER8FFFrjE6fGfRs=";
+    hash = "sha256-ANOqJL/t/5QgsuDV2fWrbZ1CaOcq+/Wbs/pUJ4HVIY4=";
   };
 
-  # nose is unavailable on pypy
-  doCheck = !isPyPy;
+  build-system = [ setuptools ];
 
-  nativeCheckInputs = [
-    nose
+  dependencies = [
+    importlib-metadata
+    platformdirs
+    tomli
   ];
 
-  meta = with lib; {
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  meta = {
+    changelog = "https://github.com/google/yapf/blob/v${version}/CHANGELOG.md";
     homepage = "https://github.com/google/yapf";
     description = "Yet Another Python Formatter";
     longDescription = ''
@@ -44,7 +53,10 @@ buildPythonPackage rec {
       that a programmer would write if they were following the style guide. It
       takes away some of the drudgery of maintaining your code.
     '';
-    license = licenses.asl20;
-    maintainers = with maintainers; [ AndersonTorres siddharthist ];
+    license = lib.licenses.asl20;
+    mainProgram = "yapf";
+    maintainers = with lib.maintainers; [
+      siddharthist
+    ];
   };
 }

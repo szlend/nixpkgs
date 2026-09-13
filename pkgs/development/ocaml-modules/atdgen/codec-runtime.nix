@@ -1,14 +1,16 @@
-{ lib, buildDunePackage, fetchurl }:
+{
+  lib,
+  buildDunePackage,
+  fetchurl,
+}:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "atdgen-codec-runtime";
-  version = "2.11.0";
-
-  duneVersion = "3";
+  version = "4.2.0";
 
   src = fetchurl {
-    url = "https://github.com/ahrefs/atd/releases/download/${version}/atdts-${version}.tbz";
-    hash = "sha256-TTTuSxNKydPmTmztUapLoxntBIrAo8aWYIJ/G5cok1Y=";
+    url = "https://github.com/ahrefs/atd/releases/download/${finalAttrs.version}/atd-${finalAttrs.version}.tbz";
+    hash = "sha256-QOVMjs3EV5QVUiH0KZwqnUkXD07EFCToyInSNaUtOlU=";
   };
 
   meta = {
@@ -17,4 +19,4 @@ buildDunePackage rec {
     maintainers = [ lib.maintainers.vbgl ];
     license = lib.licenses.mit;
   };
-}
+})

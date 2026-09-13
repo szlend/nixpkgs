@@ -1,27 +1,26 @@
-{ lib
-, aiohttp
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "pyatag";
-  version = "0.3.6.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.3.7.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "MatsNl";
     repo = "pyatag";
-    rev = "refs/tags/${version}";
-    hash = "sha256-yJEPDNjEv2lGrBQ78sl7nseVRemsG7hTdBGH5trciYU=";
+    tag = version;
+    hash = "sha256-3h9mpopTbEULCx7rcEt/I/ZnUA0L/fJ7Y3L5h/6EuC4=";
   };
 
-  propagatedBuildInputs = [
-    aiohttp
-  ];
+  nativeBuildInputs = [ setuptools ];
+
+  propagatedBuildInputs = [ aiohttp ];
 
   # no tests implemented
   doCheck = false;
@@ -31,11 +30,15 @@ buildPythonPackage rec {
     "pyatag.discovery"
   ];
 
-  meta = with lib; {
+  # it would use the erroneous tag 3.5.1
+  # nixpkgs-update: no auto update
+  passthru.skipBulkUpdate = true;
+
+  meta = {
     description = "Python module to talk to Atag One";
     homepage = "https://github.com/MatsNl/pyatag";
     changelog = "https://github.com/MatsNl/pyatag/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ dotlambda ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

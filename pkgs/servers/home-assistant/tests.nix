@@ -1,116 +1,187 @@
-{ lib
-, home-assistant
+{
+  lib,
+  stdenv,
+  home-assistant,
+  writableTmpDirAsHomeHook,
 }:
 
 let
+  getComponentDeps = component: home-assistant.getPackages component home-assistant.python3Packages;
+  inherit (lib) concatMap;
+
   # some components' tests have additional dependencies
-  extraCheckInputs = with home-assistant.python.pkgs; {
-    alexa = [ av ];
-    bluetooth = [ pyswitchbot ];
-    bthome = [ xiaomi-ble ];
-    camera = [ av ];
-    cloud = [ mutagen ];
-    config = [ pydispatcher ];
-    generic = [ av ];
-    google_translate = [ mutagen ];
-    google_sheets = [ oauth2client ];
-    govee_ble = [ ibeacon-ble ];
-    hassio = [ bellows zha-quirks zigpy-deconz zigpy-xbee zigpy-zigate zigpy-znp ];
-    homeassistant_sky_connect = [ bellows zha-quirks zigpy-deconz zigpy-xbee zigpy-zigate zigpy-znp zwave-js-server-python ];
-    homeassistant_yellow = [ bellows zha-quirks zigpy-deconz zigpy-xbee zigpy-zigate zigpy-znp ];
-    lovelace = [ pychromecast ];
-    mopeka = [ pyswitchbot ];
-    nest = [ av ];
-    onboarding = [ pymetno radios rpi-bad-power ];
-    otbr = [ bellows zha-quirks zigpy-deconz zigpy-xbee zigpy-zigate zigpy-znp ];
-    raspberry_pi = [ rpi-bad-power ];
-    shelly = [ pyswitchbot ];
-    tilt_ble = [ govee-ble ibeacon-ble ];
-    tomorrowio = [ pyclimacell ];
-    version = [ aioaseko ];
-    xiaomi_miio = [ arrow ];
-    voicerss = [ mutagen ];
-    yandextts = [ mutagen ];
-    zha = [ pydeconz ];
-    zwave_js = [ homeassistant-pyozw ];
+  extraCheckInputs = with home-assistant.python3Packages; {
+    alexa = concatMap getComponentDeps [
+      "cloud"
+      "frontend"
+      "stream"
+    ];
+    analytics = getComponentDeps "homeassistant_hardware";
+    anthropic = getComponentDeps "ai_task" ++ getComponentDeps "openai_conversation";
+    assist_pipeline = getComponentDeps "frontend";
+    automation = getComponentDeps "frontend" ++ getComponentDeps "mobile_app";
+    axis = getComponentDeps "deconz";
+    backup = getComponentDeps "homeassistant_hardware";
+    bluetooth = getComponentDeps "switchbot";
+    braviatv = getComponentDeps "ssdp";
+    bthome = getComponentDeps "frontend";
+    camera = getComponentDeps "stream";
+    deconz = getComponentDeps "frontend";
+    elkm1 = getComponentDeps "frontend";
+    emulated_hue = [
+      defusedxml
+    ];
+    esphome = getComponentDeps "homeassistant_hardware";
+    gardena_bluetooth = getComponentDeps "husqvarna_automower_ble";
+    go2rtc = [
+      tqdm
+    ];
+    google_assistant_sdk = getComponentDeps "frontend";
+    google_drive = getComponentDeps "frontend";
+    google_generative_ai_conversation = getComponentDeps "ai_task";
+    govee_ble = [
+      ibeacon-ble
+    ];
+    hassio = getComponentDeps "frontend" ++ getComponentDeps "homeassistant_yellow";
+    homeassistant_connect_zbt2 = getComponentDeps "zha";
+    homeassistant_hardware = getComponentDeps "otbr" ++ getComponentDeps "zha";
+    homeassistant_sky_connect = getComponentDeps "zha";
+    homeassistant_yellow = getComponentDeps "zha";
+    homekit = getComponentDeps "frontend";
+    http = concatMap getComponentDeps [
+      "cloud"
+      "frontend"
+      "homeassistant_hardware"
+    ];
+    influxdb = getComponentDeps "isal";
+    intelliclima = getComponentDeps "intellifire";
+    logbook = getComponentDeps "alexa";
+    lovelace = getComponentDeps "frontend" ++ [
+      pychromecast
+    ];
+    lutron_caseta = getComponentDeps "frontend";
+    mastodon = concatMap getComponentDeps [
+      "stream"
+    ];
+    matter = getComponentDeps "homeassistant_hardware";
+    miele = getComponentDeps "cloud";
+    mobile_app = getComponentDeps "frontend";
+    mopeka = getComponentDeps "switchbot";
+    mqtt = getComponentDeps "homeassistant_hardware";
+    nest = [
+      av
+    ];
+    ollama = getComponentDeps "ai_task";
+    onboarding = [
+      pymetno
+      radios
+      rpi-bad-power
+    ]
+    ++ getComponentDeps "homeassistant_hardware"
+    ++ getComponentDeps "usb";
+    open_router = getComponentDeps "ai_task";
+    osoenergy = [
+      # loguru wants to write into HOME
+      writableTmpDirAsHomeHook
+    ];
+    raspberry_pi = [
+      rpi-bad-power
+    ];
+    reolink = getComponentDeps "stream";
+    rss_feed_template = [
+      defusedxml
+    ];
+    script = getComponentDeps "frontend" ++ getComponentDeps "mobile_app";
+    shelly = getComponentDeps "frontend" ++ getComponentDeps "switchbot";
+    songpal = [
+      isal
+    ];
+    sonos = getComponentDeps "frontend";
+    swiss_public_transport = getComponentDeps "cookidoo";
+    system_log = [
+      isal
+    ];
+    unifi_discovery = getComponentDeps "unifiprotect";
+    xiaomi_miio = [
+      arrow
+    ];
+    yolink = getComponentDeps "cloud";
+    zeroconf = getComponentDeps "shelly";
+    zha = getComponentDeps "deconz" ++ getComponentDeps "frontend";
+    zwave_js = getComponentDeps "frontend" ++ getComponentDeps "homeassistant_hardware";
   };
 
   extraDisabledTestPaths = {
+    ecovacs = [
+      # [2026.7.2] Outdated snapshots
+      "tests/components/ecovacs/test_vacuum.py::test_clean_area_room_from_not_current_map"
+      "tests/components/ecovacs/test_vacuum.py::test_clean_area_no_map"
+      "tests/components/ecovacs/test_vacuum.py::test_clean_area_invalid_map_id"
+    ];
+    jellyfin = [
+      # AssertionError: assert 'audio/x-flac' == 'audio/flac'
+      "tests/components/jellyfin/test_media_source.py::test_resolve"
+      "tests/components/jellyfin/test_media_source.py::test_audio_codec_resolve"
+      "tests/components/jellyfin/test_media_source.py::test_music_library"
+    ];
+    minecraft_server = [
+      # FileNotFoundError: [Errno 2] No such file or directory: '/etc/resolv.conf'
+      "tests/components/minecraft_server/test_binary_sensor.py"
+      "tests/components/minecraft_server/test_diagnostics.py"
+      "tests/components/minecraft_server/test_init.py"
+      "tests/components/minecraft_server/test_sensor.py"
+    ];
+    systemmonitor = [
+      # sandbox doesn't grant access to /sys/class/power_supply
+      "tests/components/systemmonitor/test_config_flow.py::test_add_and_remove_processes"
+    ];
   };
 
   extraDisabledTests = {
-    vesync = [
-      # homeassistant.components.vesync:config_validation.py:863 The 'vesync' option has been removed, please remove it from your configuration
-      "test_async_get_config_entry_diagnostics__single_humidifier"
-      "test_async_get_device_diagnostics__single_fan"
+    conversation = lib.optionals stdenv.hostPlatform.isAarch64 [
+      # intent fixture mismatch on aarch64
+      "test_error_no_device_on_floor"
+    ];
+    homeassistant_connect_zbt2 = [
+      # [2026.6.1] AssertionError: assert <ConfigEntryState.LOADED: 'loaded'> is <ConfigEntryState.SETUP_RETRY: 'setup_retry'>
+      "test_usb_device_reactivity"
+    ];
+    homeassistant = [
+      # disabled via nixos-was-never-supported.patch
+      "test_deprecated_installation_issue_core"
+    ];
+    zeroconf = [
+      # multicast socket bind, not possible in the sandbox
+      "test_subscribe_discovery"
     ];
   };
-
-  extraPytestFlagsArray = {
-    conversation = [
-      "--deselect tests/components/conversation/test_init.py::test_get_agent_list"
-    ];
-    dnsip = [
-      # Tries to resolve DNS entries
-      "--deselect tests/components/dnsip/test_config_flow.py::test_options_flow"
-    ];
-    history_stats = [
-      # Flaky: AssertionError: assert '0.0' == '12.0'
-      "--deselect tests/components/history_stats/test_sensor.py::test_end_time_with_microseconds_zeroed"
-    ];
-    modbus = [
-      # homeassistant.components.modbus.modbus:modbus.py:317 Pymodbus: modbusTest: Modbus Error: test connect exception
-      "--deselect tests/components/modbus/test_init.py::test_pymodbus_connect_fail"
-    ];
-    modem_callerid = [
-      # aioserial mock produces wrong state
-      "--deselect tests/components/modem_callerid/test_init.py::test_setup_entry"
-    ];
-    sonos = [
-      # KeyError: 'sonos_media_player'
-      "--deselect tests/components/sonos/test_init.py::test_async_poll_manual_hosts_warnings"
-      "--deselect tests/components/sonos/test_init.py::test_async_poll_manual_hosts_3"
-    ];
-    unifiprotect = [
-      # "TypeError: object Mock can't be used in 'await' expression
-      "--deselect tests/components/unifiprotect/test_repairs.py::test_ea_warning_fix"
-    ];
-    zha = [
-      "--deselect tests/components/zha/test_config_flow.py::test_formation_strategy_restore_manual_backup_non_ezsp"
-      "--deselect tests/components/zha/test_config_flow.py::test_formation_strategy_restore_automatic_backup_non_ezsp"
-    ];
-  };
-in lib.listToAttrs (map (component: lib.nameValuePair component (
+in
+lib.genAttrs home-assistant.supportedComponentsWithTests (
+  component:
   home-assistant.overridePythonAttrs (old: {
     pname = "homeassistant-test-${component}";
-    format = "other";
+    pyproject = false;
 
     dontBuild = true;
     dontInstall = true;
 
-    nativeCheckInputs = old.nativeCheckInputs
-      ++ home-assistant.getPackages component home-assistant.python.pkgs
+    nativeCheckInputs =
+      old.requirementsTest
+      ++ home-assistant.getPackages component home-assistant.python3Packages
       ++ extraCheckInputs.${component} or [ ];
 
-    disabledTests = old.disabledTests or [] ++ extraDisabledTests.${component} or [];
-    disabledTestPaths = old.disabledTestPaths or [] ++ extraDisabledTestPaths.${component} or [ ];
+    disabledTests = extraDisabledTests.${component} or [ ];
+    disabledTestPaths = extraDisabledTestPaths.${component} or [ ];
 
     # components are more often racy than the core
     dontUsePytestXdist = true;
 
-    pytestFlagsArray = lib.remove "tests" old.pytestFlagsArray
-      ++ extraPytestFlagsArray.${component} or [ ]
-      ++ [ "tests/components/${component}" ];
-
-    preCheck = old.preCheck + lib.optionalString (builtins.elem component [ "emulated_hue" "songpal" "system_log" ]) ''
-      patch -p1 < ${./patches/tests-mock-source-ip.patch}
-    '';
+    enabledTestPaths = [ "tests/components/${component}" ];
 
     meta = old.meta // {
-      broken = lib.elem component [
-      ];
+      broken = lib.elem component [ ];
       # upstream only tests on Linux, so do we.
       platforms = lib.platforms.linux;
     };
   })
-)) home-assistant.supportedComponentsWithTests)
+)

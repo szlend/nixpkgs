@@ -1,60 +1,70 @@
-{ lib, stdenv
-, buildPythonPackage
-, fetchPypi
-, pkgs
-, pillow
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  mesa,
+  pkgs,
+  replaceVars,
+  setuptools,
+  stdenv,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pyopengl";
-  version = "3.1.6";
+  version = "3.1.10";
+  pyproject = true;
 
-  src = fetchPypi {
-    pname = "PyOpenGL";
-    inherit version;
-    hash = "sha256-jqbIdzkn7adAW//G9buTvoFWmnsFyMrFDNlOlp3OXic=";
+  src = fetchFromGitHub {
+    owner = "mcfletch";
+    repo = "pyopengl";
+    tag = finalAttrs.version;
+    hash = "sha256-U/7J3EoxKHp/dR2LAzTiwR5wcjZbUBuT5Dt3c76xxj4=";
   };
 
-  propagatedBuildInputs = [ pillow ];
+  patches = lib.optionals (finalAttrs.passthru.runtimeLibs != [ ]) [
+    # patch OpenGL.platform.ctypesloader::_loadLibraryPosix with extra search paths
+    (replaceVars ./ld-preload-gl.patch {
+      GL_LD_LIBRARY_PATH = lib.makeLibraryPath finalAttrs.passthru.runtimeLibs;
+    })
+  ];
 
-  patchPhase = let
-    ext = stdenv.hostPlatform.extensions.sharedLibrary; in lib.optionalString (!stdenv.isDarwin) ''
-    # Theses lines are patching the name of dynamic libraries
-    # so pyopengl can find them at runtime.
-    substituteInPlace OpenGL/platform/glx.py \
-      --replace "'GL'" "'${pkgs.libGL}/lib/libGL${ext}'" \
-      --replace "'GLU'" "'${pkgs.libGLU}/lib/libGLU${ext}'" \
-      --replace "'glut'" "'${pkgs.freeglut}/lib/libglut${ext}'"
-  '' + ''
-    # https://github.com/NixOS/nixpkgs/issues/76822
-    # pyopengl introduced a new "robust" way of loading libraries in 3.1.4.
-    # The later patch of the filepath does not work anymore because
-    # pyopengl takes the "name" (for us: the path) and tries to add a
-    # few suffix during its loading phase.
-    # The following patch put back the "name" (i.e. the path) in the
-    # list of possible files.
-    substituteInPlace OpenGL/platform/ctypesloader.py \
-      --replace "filenames_to_try = []" "filenames_to_try = [name]"
-  '';
+  build-system = [ setuptools ];
 
-  # Need to fix test runner
-  # Tests have many dependencies
-  # Extension types could not be found.
-  # Should run test suite from $out/${python.sitePackages}
+  # mosts tests fail in the nix sandbox with:
+  #  GLX is not supported
   doCheck = false;
 
-  meta = with lib; {
-    homepage = "https://pyopengl.sourceforge.net/";
+  # PyOpenGL looks for libraries during import, making this a somewhat decent test of our patching
+  # (these are impure deps on darwin)
+  pythonImportsCheck = [
+    "OpenGL"
+    "OpenGL.GL"
+    "OpenGL.GLE"
+    "OpenGL.GLU"
+  ]
+  ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
+    "OpenGL.EGL"
+    "OpenGL.GLES1"
+    "OpenGL.GLES2"
+    "OpenGL.GLES3"
+    "OpenGL.GLX"
+  ];
+
+  passthru.runtimeLibs = lib.optionals (!stdenv.hostPlatform.isDarwin) [
+    "/run/opengl-driver/lib"
+    pkgs.libglvnd
+    pkgs.libGLU
+    pkgs.libglut
+    pkgs.gle
+  ];
+
+  meta = {
+    homepage = "https://mcfletch.github.io/pyopengl/";
     description = "PyOpenGL, the Python OpenGL bindings";
     longDescription = ''
-      PyOpenGL is the cross platform Python binding to OpenGL and
-      related APIs.  The binding is created using the standard (in
-      Python 2.5) ctypes library, and is provided under an extremely
-      liberal BSD-style Open-Source license.
+      PyOpenGL is the cross platform Python binding to OpenGL and related APIs.
     '';
-    license = "BSD-style";
-    platforms = platforms.mesaPlatforms;
+    license = lib.licenses.bsd3;
+    inherit (mesa.meta) platforms;
   };
-
-
-}
+})

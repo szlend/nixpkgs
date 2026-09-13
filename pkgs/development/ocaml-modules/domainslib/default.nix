@@ -1,26 +1,36 @@
-{ lib
-, fetchurl
-, buildDunePackage
-, lockfree
-, mirage-clock-unix
+{
+  lib,
+  fetchurl,
+  buildDunePackage,
+  saturn,
+  domain-local-await,
+  kcas,
+  mirage-clock-unix,
+  qcheck-stm,
 }:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "domainslib";
-  version = "0.5.0";
+  version = "0.5.2";
 
-  duneVersion = "3";
   minimalOCamlVersion = "5.0";
 
   src = fetchurl {
-    url = "https://github.com/ocaml-multicore/domainslib/releases/download/v${version}/domainslib-${version}.tbz";
-    hash = "sha256-rty+9DUhTUEcN7BPl8G6Q/G/MJ6z/UAn0RPkG8hACwA=";
+    url = "https://github.com/ocaml-multicore/domainslib/releases/download/${finalAttrs.version}/domainslib-${finalAttrs.version}.tbz";
+    hash = "sha256-pyDs4stBsqWRrRpEotuezVVz6Le1ES6NRtDydfmvHK8=";
   };
 
-  propagatedBuildInputs = [ lockfree ];
+  propagatedBuildInputs = [
+    domain-local-await
+    saturn
+  ];
 
   doCheck = true;
-  checkInputs = [ mirage-clock-unix ];
+  checkInputs = [
+    kcas
+    mirage-clock-unix
+    qcheck-stm
+  ];
 
   meta = {
     homepage = "https://github.com/ocaml-multicore/domainslib";
@@ -28,4 +38,4 @@ buildDunePackage rec {
     license = lib.licenses.isc;
     maintainers = [ lib.maintainers.vbgl ];
   };
-}
+})

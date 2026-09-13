@@ -1,30 +1,44 @@
-{ lib
-, buildPythonPackage
-, git
-, greenlet
-, fetchFromGitHub
-, pyee
-, python
-, pythonOlder
-, setuptools-scm
-, playwright-driver
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # patches
+  replaceVars,
+  nodejs,
+  playwright-driver,
+
+  # build-system
+  setuptools,
+  setuptools-scm,
+
+  # nativeBuildInputs
+  gitMinimal,
+  writableTmpDirAsHomeHook,
+
+  # dependencies
+  greenlet,
+  pyee,
+
+  python,
+  nixosTests,
 }:
 
 let
   driver = playwright-driver;
 in
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "playwright";
-  # run ./pkgs/development/python-modules/playwright/update.sh to update
-  version = "1.34.0";
-  format = "setuptools";
-  disabled = pythonOlder "3.7";
+  # run ./pkgs/development/web/playwright/update.sh to update
+  version = "1.61.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "microsoft";
     repo = "playwright-python";
-    rev = "v${version}";
-    hash = "sha256-GIxMVuSSJsRDsHDOPnJsDsTcghGYtIFpRS5u7HJd+zY=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-6FIUFDa23q0Ge0G1ZmaYDitVYzZzOHatQtLRvZ18W0Q=";
   };
 
   patches = [
@@ -33,38 +47,39 @@ buildPythonPackage rec {
     # - The setup script, which would try to download the driver package from
     #   a CDN and patch wheels so that they include it. We don't want this
     #   we have our own driver build.
-    ./driver-location.patch
+    (replaceVars ./driver-location.patch {
+      driver = "${driver}/cli.js";
+      nodejs = lib.getExe nodejs;
+    })
   ];
 
   postPatch = ''
-    # if setuptools_scm is not listing files via git almost all python files are excluded
-    export HOME=$(mktemp -d)
-    git init .
-    git add -A .
-    git config --global user.email "nixpkgs"
-    git config --global user.name "nixpkgs"
-    git commit -m "workaround setuptools-scm"
+    # Use sed with a regex instead of substituteInPlace so we don't have to
+    # bump pinned versions on every upstream release. grep -q precheck makes
+    # the build fail loudly if upstream restructures the requires list.
+    grep -q 'requires = \["setuptools==.*", "setuptools-scm==.*", "wheel==.*", "auditwheel==.*"\]' pyproject.toml
+    sed -i -e 's/requires = \["setuptools==.*", "setuptools-scm==.*", "wheel==.*", "auditwheel==.*"\]/requires = ["setuptools", "setuptools-scm", "wheel"]/' pyproject.toml
 
-    substituteInPlace setup.py \
-      --replace "greenlet==2.0.1" "greenlet>=2.0.1" \
-      --replace "pyee==8.1.0" "pyee>=8.1.0" \
-      --replace "setuptools-scm==7.0.5" "setuptools-scm>=7.0.5" \
-      --replace "wheel==0.38.1" "wheel>=0.37.1"
-
-    # Skip trying to download and extract the driver.
+    # setup.py downloads and extracts the driver.
     # This is done manually in postInstall instead.
-    substituteInPlace setup.py \
-      --replace "self._download_and_extract_local_driver(base_wheel_bundles)" ""
-
-    # Set the correct driver path with the help of a patch in patches
-    substituteInPlace playwright/_impl/_driver.py \
-      --replace "@driver@" "${driver}/bin/playwright"
+    rm setup.py
   '';
 
+  build-system = [
+    setuptools-scm
+    setuptools
+  ];
 
-  nativeBuildInputs = [ git setuptools-scm ];
+  nativeBuildInputs = [
+    gitMinimal
+    writableTmpDirAsHomeHook
+  ];
 
-  propagatedBuildInputs = [
+  pythonRelaxDeps = [
+    "greenlet"
+    "pyee"
+  ];
+  dependencies = [
     greenlet
     pyee
   ];
@@ -73,28 +88,34 @@ buildPythonPackage rec {
     ln -s ${driver} $out/${python.sitePackages}/playwright/driver
   '';
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
-
   # Skip tests because they require network access.
   doCheck = false;
 
-  pythonImportsCheck = [
-    "playwright"
-  ];
+  pythonImportsCheck = [ "playwright" ];
 
   passthru = {
     inherit driver;
     tests = {
-      driver = playwright-driver;
+      inherit driver;
       browsers = playwright-driver.browsers;
+    }
+    // lib.optionalAttrs stdenv.hostPlatform.isLinux {
+      inherit (nixosTests) playwright-python;
     };
+    # Package and playwright driver versions are tightly coupled.
+    # Use the update script to ensure synchronized updates.
+    skipBulkUpdate = true;
   };
 
-  meta = with lib; {
+  meta = {
     description = "Python version of the Playwright testing and automation library";
+    mainProgram = "playwright";
     homepage = "https://github.com/microsoft/playwright-python";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ techknowlogick yrd SuperSandro2000 ];
-    platforms = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [
+      techknowlogick
+      yrd
+      kalekseev
+    ];
   };
-}
+})

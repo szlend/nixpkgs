@@ -1,68 +1,77 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, django
-, django-allauth
-, djangorestframework
-, djangorestframework-simplejwt
-, responses
-, unittest-xml-reporting
-, python
+{
+  lib,
+  buildPythonPackage,
+  django,
+  django-allauth,
+  djangorestframework,
+  djangorestframework-simplejwt,
+  fetchFromGitHub,
+  python,
+  responses,
+  setuptools,
+  unittest-xml-reporting,
+  pyotp,
+  pytestCheckHook,
+  pytest-django,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dj-rest-auth";
-  version = "3.0.0";
+  version = "7.2.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "iMerica";
     repo = "dj-rest-auth";
-    rev = "refs/tags/${version}";
-    hash = "sha256-wkbFUrvKhdp2Hd4QkXAvhMiaqSXFD/fgIw03nLPaO5I=";
+    tag = finalAttrs.version;
+    hash = "sha256-eUcve2KPcLjKKWU7AxQEZ0mokP185E43Xjm4b+4hQzA=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "coveralls>=1.11.1" "" \
-      --replace "==" ">="
-  '';
+  build-system = [ setuptools ];
 
-  buildInputs = [
-    django
-  ];
+  buildInputs = [ django ];
 
-  propagatedBuildInputs = [
-    djangorestframework
-  ];
+  dependencies = [ djangorestframework ];
 
-  passthru.optional-dependencies.with_social = [
-    django-allauth
-  ];
+  optional-dependencies = {
+    with_social = [
+      django-allauth
+    ]
+    ++ django-allauth.optional-dependencies.socialaccount;
+    with_mfa = [
+      pyotp
+    ];
+  };
 
   nativeCheckInputs = [
+    pytest-django
     djangorestframework-simplejwt
+    pytestCheckHook
+    pytest-django
     responses
     unittest-xml-reporting
-  ] ++ passthru.optional-dependencies.with_social;
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
+
+  env.DJANGO_SETTINGS_MODULE = "dj_rest_auth.tests.settings";
 
   preCheck = ''
-    # connects to graph.facebook.com
-    substituteInPlace dj_rest_auth/tests/test_serializers.py \
-      --replace "def test_http_error" "def dont_test_http_error"
+    # Make tests module available for the checkPhase
+    export PYTHONPATH=$out/${python.sitePackages}/dj_rest_auth:$PYTHONPATH
   '';
 
-  checkPhase = ''
-    runHook preCheck
-    ${python.interpreter} runtests.py
-    runHook postCheck
-  '';
+  disabledTests = [
+    # Test connects to graph.facebook.com
+    "TestSocialLoginSerializer"
+  ];
 
   pythonImportsCheck = [ "dj_rest_auth" ];
 
-  meta = with lib; {
+  meta = {
     description = "Authentication for Django Rest Framework";
     homepage = "https://github.com/iMerica/dj-rest-auth";
-    license = licenses.mit;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    changelog = "https://github.com/iMerica/dj-rest-auth/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ onny ];
   };
-}
+})

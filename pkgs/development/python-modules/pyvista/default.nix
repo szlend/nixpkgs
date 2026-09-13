@@ -1,48 +1,53 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, imageio
-, matplotlib
-, numpy
-, pillow
-, pooch
-, scooby
-, vtk
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  cyclopts,
+  matplotlib,
+  numpy,
+  pillow,
+  pooch,
+  scooby,
+  setuptools,
+  typing-extensions,
+  vtk,
 }:
 
 buildPythonPackage rec {
   pname = "pyvista";
-  version = "0.39.1";
-  format = "setuptools";
+  version = "0.48.4";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-N+1FfTKDITBmLaOjKZsahMd6s26W19ObcWXk8gGQ0QI=";
+    owner = "pyvista";
+    repo = "pyvista";
+    tag = "v${version}";
+    hash = "sha256-VF84EMS/FnLl0y1LpWaYosyG0qEWI/QghZQq32ktlLg=";
   };
 
-  propagatedBuildInputs = [
-    imageio
+  build-system = [ setuptools ];
+
+  dependencies = [
+    cyclopts
     matplotlib
     numpy
     pillow
     pooch
     scooby
+    typing-extensions
     vtk
   ];
 
   # Fatal Python error: Aborted
   doCheck = false;
 
-  pythonImportsCheck = [
-    "pyvista"
-  ];
+  pythonImportsCheck = [ "pyvista" ];
 
-  meta = with lib; {
-    homepage = "https://pyvista.org";
+  meta = {
     description = "Easier Pythonic interface to VTK";
-    license = licenses.mit;
-    maintainers = with maintainers; [ wegank ];
+    homepage = "https://pyvista.org";
+    changelog = "https://github.com/pyvista/pyvista/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ wegank ];
   };
 }

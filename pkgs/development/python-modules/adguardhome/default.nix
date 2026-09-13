@@ -1,62 +1,54 @@
-{ lib
-, aiohttp
-, aresponses
-, buildPythonPackage
-, fetchFromGitHub
-, poetry-core
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
-, yarl
+{
+  lib,
+  aiohttp,
+  aresponses,
+  buildPythonPackage,
+  fetchFromGitHub,
+  poetry-core,
+  pyprojectVersionPatchHook,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
+  yarl,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "adguardhome";
-  version = "0.6.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "0.8.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "frenck";
-    repo = "python-${pname}";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-ZeajC8FM7Py+DWknVjnwiM4jaCCcnxfC+kTbHEEmyms=";
+    repo = "python-adguardhome";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-pc7UfR/0mQZ98FyomQErz5hePHy6KE2h9UhJ9lFGtFA=";
   };
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "--cov" "" \
-      --replace '"0.0.0"' '"${version}"'
+  build-system = [ poetry-core ];
 
-    substituteInPlace tests/test_adguardhome.py \
-      --replace 0.0.0 ${version}
-  '';
+  nativeBuildInputs = [ pyprojectVersionPatchHook ];
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
     aiohttp
     yarl
   ];
 
+  __darwinAllowLocalNetworking = true;
+
   nativeCheckInputs = [
     aresponses
     pytest-asyncio
+    pytest-cov-stub
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "adguardhome"
-  ];
+  pythonImportsCheck = [ "adguardhome" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python client for the AdGuard Home API";
     homepage = "https://github.com/frenck/python-adguardhome";
-    changelog = "https://github.com/frenck/python-adguardhome/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ jamiemagee ];
+    changelog = "https://github.com/frenck/python-adguardhome/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ jamiemagee ];
   };
-}
+})

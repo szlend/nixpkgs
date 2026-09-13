@@ -1,30 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "types-deprecated";
-  version = "1.2.9.2";
-  format = "setuptools";
+  version = "1.3.1.20260520";
+  pyproject = true;
 
   src = fetchPypi {
-    pname = "types-Deprecated";
-    inherit version;
-    hash = "sha256-kWFv1nRfi/LUV/u779FM3kODjp8AoEtaDq5Pwfe7xpc=";
+    pname = "types_deprecated";
+    inherit (finalAttrs) version;
+    hash = "sha256-TQ2eVSFDLZzogWn7i3k7RdcNjozBp+zVpEZau/g8mrQ=";
   };
+
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "setuptools>=82.0.1" "setuptools" \
+      --replace-fail "'deprecated-stubs' =" "'*' ="
+  '';
+
+  build-system = [ setuptools ];
 
   # Modules has no tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "deprecated-stubs"
-  ];
+  pythonImportsCheck = [ "deprecated-stubs" ];
 
-  meta = with lib; {
+  meta = {
     description = "Typing stubs for Deprecated";
     homepage = "https://pypi.org/project/types-Deprecated/";
-    license = with licenses; [ asl20 ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

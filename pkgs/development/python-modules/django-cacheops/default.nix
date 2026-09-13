@@ -1,65 +1,66 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, django
-, funcy
-, redis
-, pytest-django
-, pytestCheckHook
-, pythonOlder
-, six
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  django,
+  funcy,
+  redis,
+  redisTestHook,
+  six,
+  pytestCheckHook,
+  pytest-django,
+  mock,
+  dill,
+  jinja2,
+  before-after,
+  net-tools,
+  pkgs,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "django-cacheops";
-  version = "6.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "7.2";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-zHP9ChwUeZJT/yCopFeRo8jSgCIXswHnDPoIroGeQ48=";
+    pname = "django_cacheops";
+    inherit version;
+    hash = "sha256-y8EcwDISlaNkTie8smlA8Iy5wucdPuUGy8/wvdoanzM=";
   };
 
-  propagatedBuildInputs = [
+  pythonRelaxDeps = [ "funcy" ];
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     django
     funcy
     redis
     six
   ];
 
+  __darwinAllowLocalNetworking = true;
+
   nativeCheckInputs = [
     pytestCheckHook
     pytest-django
+    mock
+    dill
+    jinja2
+    before-after
+    net-tools
+    pkgs.valkey
+    redisTestHook
   ];
 
-  disabledTests = [
-    # Tests require networking
-    "test_cached_as"
-    "test_invalidation_signal"
-    "test_queryset"
-    "test_queryset_empty"
-    "test_lock"
-    "test_context_manager"
-    "test_decorator"
-    "test_in_transaction"
-    "test_nested"
-    "test_unhashable_args"
-    "test_db_agnostic_by_default"
-    "test_db_agnostic_disabled"
-  ];
+  env.DJANGO_SETTINGS_MODULE = "tests.settings";
 
-  DJANGO_SETTINGS_MODULE = "tests.settings";
-
-  meta = with lib; {
-    description = "A slick ORM cache with automatic granular event-driven invalidation for Django";
+  meta = {
+    description = "Slick ORM cache with automatic granular event-driven invalidation for Django";
     homepage = "https://github.com/Suor/django-cacheops";
     changelog = "https://github.com/Suor/django-cacheops/blob/${version}/CHANGELOG";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ onny ];
-    # No support for funcy > 2
-    # https://github.com/Suor/django-cacheops/issues/454
-    broken = true;
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ onny ];
   };
 }

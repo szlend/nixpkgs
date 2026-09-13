@@ -1,26 +1,55 @@
-{ buildDunePackage, conduit-lwt
-, ppx_sexp_conv, sexplib, uri, cstruct, mirage-flow
-, mirage-flow-combinators, mirage-random, mirage-time, mirage-clock
-, dns-client-mirage, vchan, xenstore, tls, tls-mirage, ipaddr, ipaddr-sexp
-, tcpip, ca-certs-nss
+{
+  buildDunePackage,
+  conduit-lwt,
+  ppx_sexp_conv,
+  sexplib0,
+  uri,
+  cstruct,
+  mirage-flow,
+  mirage-flow-combinators,
+  mirage-crypto-rng,
+  mirage-ptime,
+  mirage-mtime,
+  dns-client-mirage,
+  vchan,
+  xenstore,
+  tls,
+  tls-mirage,
+  ipaddr,
+  ipaddr-sexp,
+  tcpip,
+  ca-certs-nss,
 }:
 
 buildDunePackage {
   pname = "conduit-mirage";
 
   inherit (conduit-lwt) version src;
-  duneVersion = "3";
 
   nativeBuildInputs = [ ppx_sexp_conv ];
 
   propagatedBuildInputs = [
-    sexplib uri cstruct mirage-clock mirage-flow
-    mirage-flow-combinators mirage-random mirage-time
-    dns-client-mirage conduit-lwt vchan xenstore tls tls-mirage
-    ipaddr ipaddr-sexp tcpip ca-certs-nss
+    sexplib0
+    uri
+    cstruct
+    mirage-ptime
+    mirage-mtime
+    mirage-flow
+    mirage-flow-combinators
+    mirage-crypto-rng
+    dns-client-mirage
+    conduit-lwt
+    vchan
+    xenstore
+    tls
+    tls-mirage
+    ipaddr
+    ipaddr-sexp
+    tcpip
+    ca-certs-nss
   ];
 
   meta = conduit-lwt.meta // {
-    description = "A network connection establishment library for MirageOS";
+    description = "Network connection establishment library for MirageOS";
   };
 }

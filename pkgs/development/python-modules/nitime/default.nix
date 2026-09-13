@@ -1,39 +1,68 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, pytestCheckHook
-, cython
-, numpy
-, scipy
-, matplotlib
-, networkx
-, nibabel
+{
+  stdenv,
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pytestCheckHook,
+  pytest-cov-stub,
+  cython,
+  setuptools,
+  setuptools-scm,
+  wheel,
+  numpy,
+  scipy,
+  matplotlib,
+  networkx,
+  nibabel,
 }:
 
 buildPythonPackage rec {
   pname = "nitime";
-  version = "0.10.1";
-  disabled = pythonOlder "3.7";
-  format = "pyproject";
+  version = "0.12.1";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-NnoVrSt6MTTcNup1e+/1v5JoHCYcycuQH4rHLzXJt+Y=";
+    hash = "sha256-Esv0iLBlXcBaoYoMpZgt6XAwJgTkYfyS6H69m3U5tv8=";
   };
 
-  buildInputs = [ cython ];
-  propagatedBuildInputs = [ numpy scipy matplotlib networkx nibabel ];
+  nativeBuildInputs = [
+    cython
+    setuptools
+    setuptools-scm
+    wheel
+  ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
-  doCheck = !stdenv.isDarwin;  # tests hang indefinitely
+  propagatedBuildInputs = [
+    numpy
+    scipy
+    matplotlib
+    networkx
+    nibabel
+  ];
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    pytest-cov-stub
+  ];
+
+  doCheck = !stdenv.hostPlatform.isDarwin; # tests hang indefinitely
+
+  disabledTests = [
+    # [doctest] nitime.tests.test_timeseries.test_UniformTime_repr
+    # Expected:
+    #     UniformTime([    0.,  1000.,  2000.,  3000.,  4000.], time_unit='ms')
+    # Got:
+    #     UniformTime([   0., 1000., 2000., 3000., 4000.], time_unit='ms')
+    "test_UniformTime_repr"
+  ];
+
   pythonImportsCheck = [ "nitime" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://nipy.org/nitime";
     description = "Algorithms and containers for time-series analysis in time and spectral domains";
-    license = licenses.bsd3;
-    maintainers = [ maintainers.bcdarwin ];
+    license = lib.licenses.bsd3;
+    maintainers = [ lib.maintainers.bcdarwin ];
   };
 }

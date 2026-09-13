@@ -1,52 +1,50 @@
-{ lib
-, buildPythonPackage
-, colorful
-, fetchFromGitHub
-, git
-, httpx
-, lxml
-, packaging
-, poetry-core
-, pytestCheckHook
-, python-dateutil
-, pythonOlder
-, semver
-, rich
-, tomlkit
-, typing-extensions
+{
+  lib,
+  buildPythonPackage,
+  colorful,
+  fetchFromGitHub,
+  git,
+  httpx,
+  lxml,
+  packaging,
+  poetry-core,
+  pyprojectVersionPatchHook,
+  pytestCheckHook,
+  python-dateutil,
+  semver,
+  shtab,
+  rich,
+  tomlkit,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pontos";
-  version = "23.7.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "26.6.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "greenbone";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-KCWU14nW83xlKk0HqbhE4pWoDs46lW4w47n8mdtts6Q=";
+    repo = "pontos";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-NKe5kM4YPxsGge1UG7DjE3SDXlfZIVazOVmF5RBCbSo=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  nativeBuildInputs = [ pyprojectVersionPatchHook ];
 
-  propagatedBuildInputs = [
+  build-system = [ poetry-core ];
+
+  dependencies = [
     colorful
     httpx
     lxml
     packaging
     python-dateutil
     semver
+    shtab
     rich
-    typing-extensions
     tomlkit
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    typing-extensions
-  ] ++ httpx.optional-dependencies.http2;
+  ]
+  ++ httpx.optional-dependencies.http2;
 
   nativeCheckInputs = [
     git
@@ -67,17 +65,21 @@ buildPythonPackage rec {
     "test_successfully_sign"
     # calls git log, but our fetcher removes .git
     "test_git_error"
+    # Tests require git executable
+    "test_github_action_output"
+    "test_initial_release"
+    # Tests are out-dated
+    "test_getting_version_without_version_config"
+    "test_verify_version_does_not_match"
   ];
 
-  pythonImportsCheck = [
-    "pontos"
-  ];
+  pythonImportsCheck = [ "pontos" ];
 
-  meta = with lib; {
+  meta = {
     description = "Collection of Python utilities, tools, classes and functions";
     homepage = "https://github.com/greenbone/pontos";
-    changelog = "https://github.com/greenbone/pontos/releases/tag/v${version}";
-    license = with licenses; [ gpl3Plus ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/greenbone/pontos/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

@@ -1,27 +1,19 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{ lib, callPackage, ... }@args:
 
-buildGoModule rec {
-  pname = "rke2";
-  version = "1.27.2+rke2r1";
+let
+  common = opts: callPackage (import ./builder.nix lib opts);
+  extraArgs = removeAttrs args [ "callPackage" ];
+in
+rec {
+  rke2_1_33 = common (import ./1_33/versions.nix) extraArgs;
 
-  src = fetchFromGitHub {
-    owner = "rancher";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-jzm2tYwsomLifAfmb0w1+/FpCgtOk+O8DRmy1OgzfmE=";
-  };
+  rke2_1_34 = common (import ./1_34/versions.nix) extraArgs;
 
-  vendorHash = "sha256-VVc1IgeR+LWEexTyIXtCcF6TtdDzsgP4U4kqArIKdU4=";
+  rke2_1_35 = common (import ./1_35/versions.nix) extraArgs;
 
-  subPackages = [ "." ];
+  rke2_1_36 = common (import ./1_36/versions.nix) extraArgs;
 
-  ldflags = [ "-s" "-w" "-X github.com/k3s-io/k3s/pkg/version.Version=v${version}" ];
-
-  meta = with lib; {
-    homepage = "https://github.com/rancher/rke2";
-    description = "RKE2, also known as RKE Government, is Rancher's next-generation Kubernetes distribution.";
-    changelog = "https://github.com/rancher/rke2/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ zygot ];
-  };
+  # Automatically set by update script, changes shouldn't be backported
+  rke2_stable = rke2_1_35;
+  rke2_latest = rke2_1_36;
 }

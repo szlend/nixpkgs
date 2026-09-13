@@ -1,6 +1,3 @@
-if [ -e .attrs.sh ]; then source .attrs.sh; fi
-source $stdenv/setup
-
 pkgdir=$(pwd)/pkg
 deploydir=$(pwd)/deploy
 

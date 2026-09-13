@@ -1,13 +1,24 @@
-{ lib, fetchurl, buildDunePackage, yaml, dune-configurator, ppx_sexp_conv, sexplib }:
+{
+  buildDunePackage,
+  yaml,
+  ppx_sexp_conv,
+  sexplib,
+  junit_alcotest,
+}:
 
-buildDunePackage rec {
+buildDunePackage {
   pname = "yaml-sexp";
 
   inherit (yaml) version src;
 
-  duneVersion = "3";
+  propagatedBuildInputs = [
+    yaml
+    ppx_sexp_conv
+    sexplib
+  ];
 
-  propagatedBuildInputs = [ yaml ppx_sexp_conv sexplib ];
+  doCheck = true;
+  checkInputs = [ junit_alcotest ];
 
   meta = yaml.meta // {
     description = "ocaml-yaml with sexp support";

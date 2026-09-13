@@ -1,25 +1,24 @@
-{ lib
-, buildPythonPackage
-, callPackage
-, fetchFromGitHub
-, httpx
-, pythonOlder
-, sanic
-, websockets
+{
+  lib,
+  buildPythonPackage,
+  callPackage,
+  fetchFromGitHub,
+  httpx,
+  sanic,
+  setuptools,
+  websockets,
 }:
 
 buildPythonPackage rec {
   pname = "sanic-testing";
-  version = "22.12.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "24.6.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "sanic-org";
     repo = "sanic-testing";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-pFTF2SQ9giRzPhG24FLqLPJRXaFdQ7Xi5EeltS7J3DI=";
+    tag = "v${version}";
+    hash = "sha256-biUgxa0sINHAYzyKimVD8+/mPUq2dlnCl2BN+UeUaEo=";
   };
 
   outputs = [
@@ -27,7 +26,9 @@ buildPythonPackage rec {
     "testsout"
   ];
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     httpx
     sanic
     websockets
@@ -47,11 +48,11 @@ buildPythonPackage rec {
     pytest = callPackage ./tests.nix { };
   };
 
-  meta = with lib; {
+  meta = {
     description = "Core testing clients for the Sanic web framework";
     homepage = "https://github.com/sanic-org/sanic-testing";
     changelog = "https://github.com/sanic-org/sanic-testing/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ AluisioASG ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

@@ -1,61 +1,58 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitLab
-, gobject-introspection
-, idna
-, libsoup_3
-, precis-i18n
-, pygobject3
-, pyopenssl
-, setuptools
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchurl,
+  fetchFromGitLab,
+  gobject-introspection,
+  idna,
+  libsoup_3,
+  packaging,
+  precis-i18n,
+  pygobject3,
+  pyopenssl,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "nbxmpp";
-  version = "4.3.1";
-
-  disabled = pythonOlder "3.10";
+  version = "7.4.0";
+  pyproject = true;
 
   src = fetchFromGitLab {
     domain = "dev.gajim.org";
     owner = "gajim";
     repo = "python-nbxmpp";
-    rev = version;
-    hash = "sha256-8Fh4sgQps6zUEN8o5ljrDIbRlbSZIMncbqh/qAnyOkw=";
+    tag = finalAttrs.version;
+    hash = "sha256-Xg2RFEUbvshVDjWftnAx4nbOor1q8naeG2vvukDFwHY=";
   };
-
-  format = "pyproject";
 
   nativeBuildInputs = [
     # required for pythonImportsCheck otherwise libsoup cannot be found
     gobject-introspection
+    setuptools
   ];
 
-  buildInputs = [
-    precis-i18n
-  ];
+  buildInputs = [ precis-i18n ];
 
   propagatedBuildInputs = [
     gobject-introspection
     idna
     libsoup_3
+    packaging
     pygobject3
     pyopenssl
-    setuptools
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   pythonImportsCheck = [ "nbxmpp" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://dev.gajim.org/gajim/python-nbxmpp";
+    changelog = "https://dev.gajim.org/gajim/python-nbxmpp/-/blob/${finalAttrs.src.tag}/ChangeLog";
     description = "Non-blocking Jabber/XMPP module";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ abbradar ];
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ haansn08 ];
   };
-}
+})

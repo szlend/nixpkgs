@@ -1,47 +1,42 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, hatchling
-, ipykernel
-, jupytext
-, mkdocs
-, mkdocs-material
-, nbconvert
-, pygments
-, pytestCheckHook
-, pythonOlder
-, pythonRelaxDepsHook
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  hatchling,
+  ipykernel,
+  jupytext,
+  mkdocs,
+  mkdocs-material,
+  nbconvert,
+  pygments,
+  pytestCheckHook,
+  pytest-cov-stub,
+  writableTmpDirAsHomeHook,
 }:
 
 buildPythonPackage rec {
   pname = "mkdocs-jupyter";
-  version = "0.24.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.26.1";
+  pyproject = true;
 
   src = fetchPypi {
     pname = "mkdocs_jupyter";
     inherit version;
-    hash = "sha256-lncDf7fpMSaPPfdZn8CCjCYSR989FXW87TILqLfR1G0=";
+    hash = "sha256-fIDA05U96R5bQKDTIJIzeVyPgAJDqymOTsOOBQTtpjA=";
   };
 
-  postPatch = ''
-    sed -i "/--cov/d" pyproject.toml
-    substituteInPlace mkdocs_jupyter/tests/test_base_usage.py \
-      --replace "[\"mkdocs\"," "[\"${mkdocs.out}/bin/mkdocs\","
-  '';
-
   pythonRelaxDeps = [
+    "ipykernel"
     "nbconvert"
   ];
 
+  build-system = [ hatchling ];
+
   nativeBuildInputs = [
-    hatchling
-    pythonRelaxDepsHook
+    writableTmpDirAsHomeHook
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     ipykernel
     jupytext
     mkdocs
@@ -52,17 +47,18 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     pytestCheckHook
+    pytest-cov-stub
   ];
 
-  pythonImportsCheck = [
-    "mkdocs_jupyter"
-  ];
+  pythonImportsCheck = [ "mkdocs_jupyter" ];
 
-  meta = with lib; {
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
     description = "Use Jupyter Notebook in mkdocs";
     homepage = "https://github.com/danielfrg/mkdocs-jupyter";
     changelog = "https://github.com/danielfrg/mkdocs-jupyter/blob/${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ net-mist ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ net-mist ];
   };
 }

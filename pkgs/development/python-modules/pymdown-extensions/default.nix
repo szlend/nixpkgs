@@ -1,11 +1,18 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, hatchling
-, pytestCheckHook
-, markdown
-, pyyaml
-, pygments
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  pytestCheckHook,
+  markdown,
+  pyyaml,
+  pygments,
+
+  # for passthru.tests
+  mkdocstrings,
+  mkdocs-material,
+  mkdocs-mermaid2-plugin,
+  hydrus,
 }:
 
 let
@@ -38,31 +45,47 @@ let
 in
 buildPythonPackage rec {
   pname = "pymdown-extensions";
-  version = "9.9.2";
-  format = "pyproject";
+  version = "11.0.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "facelessuser";
     repo = "pymdown-extensions";
-    rev = "refs/tags/${version}";
-    hash = "sha256-ld3NuBTjDJUN4ZK+eTwmmfzcB8XCtg8xaLMECo95+Cg=";
+    tag = version;
+    hash = "sha256-z3AnL5z9QPb0utOKSW/SiJ9tFtFi8REETjfZbrKY+xM=";
   };
 
-  nativeBuildInputs = [ hatchling ];
+  build-system = [ hatchling ];
 
-  propagatedBuildInputs = [ markdown pygments ];
+  dependencies = [
+    markdown
+    pygments
+    pyyaml
+  ];
 
   nativeCheckInputs = [
     pytestCheckHook
-    pyyaml
   ];
 
   pythonImportsCheck = map (ext: "pymdownx.${ext}") extensions;
 
-  meta = with lib; {
+  passthru.tests = {
+    inherit
+      mkdocstrings
+      mkdocs-material
+      mkdocs-mermaid2-plugin
+      hydrus
+      ;
+  };
+
+  meta = {
+    changelog = "https://github.com/facelessuser/pymdown-extensions/blob/${src.tag}/docs/src/markdown/about/changelog.md";
     description = "Extensions for Python Markdown";
     homepage = "https://facelessuser.github.io/pymdown-extensions/";
-    license = with licenses; [ mit bsd2 ];
-    maintainers = with maintainers; [ cpcloud ];
+    license = with lib.licenses; [
+      mit
+      bsd2
+    ];
+    maintainers = with lib.maintainers; [ cpcloud ];
   };
 }

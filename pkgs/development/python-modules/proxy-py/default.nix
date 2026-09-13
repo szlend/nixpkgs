@@ -1,60 +1,65 @@
-{ lib
-, stdenv
-, bash
-, buildPythonPackage
-, fetchFromGitHub
-, gnumake
-, httpx
-, openssl
-, paramiko
-, pytest-asyncio
-, pytest-mock
-, pytestCheckHook
-, pythonOlder
-, setuptools-scm
-, typing-extensions
+{
+  lib,
+  bash,
+  buildPythonPackage,
+  fetchFromGitHub,
+  gnumake,
+  h2,
+  hpack,
+  httpx,
+  hyperframe,
+  openssl,
+  paramiko,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytest-mock,
+  pytest-xdist,
+  pytestCheckHook,
+  requests,
+  setuptools-scm,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "proxy-py";
-  version = "2.4.3";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "2.4.10";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "abhinavsingh";
     repo = "proxy.py";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-dA7a9RicBFCSf6IoGX/CdvI8x/xMOFfNtyuvFn9YmHI=";
+    tag = "v${version}";
+    hash = "sha256-47Qt8J60QFfHUSquD17xMfl+wBTsSimaPSRvS/sSPMI=";
   };
 
   postPatch = ''
     substituteInPlace Makefile \
     --replace "SHELL := /bin/bash" "SHELL := ${bash}/bin/bash"
-    substituteInPlace pytest.ini \
-      --replace "-p pytest_cov" "" \
-      --replace "--no-cov-on-fail" ""
-    sed -i "/--cov/d" pytest.ini
   '';
 
-  nativeBuildInputs = [
-    setuptools-scm
-  ];
+  build-system = [ setuptools-scm ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     paramiko
     typing-extensions
   ];
 
   nativeCheckInputs = [
-    httpx
-    openssl
     gnumake
+    h2
+    hpack
+    httpx
+    hyperframe
+    openssl
     pytest-asyncio
+    pytest-cov-stub
     pytest-mock
+    pytest-xdist
     pytestCheckHook
+    requests
   ];
+
+  __darwinAllowLocalNetworking = true;
 
   preCheck = ''
     export HOME=$(mktemp -d);
@@ -62,21 +67,26 @@ buildPythonPackage rec {
 
   disabledTests = [
     # Test requires network access
-    "test_http2_via_proxy"
+    "http"
+    "http2"
+    "proxy"
+    "web_server"
+    # Location is not writable
+    "test_gen_csr"
+    "test_gen_public_key"
     # Tests run into a timeout
     "integration"
+    # Crashes
+    "test_grout"
   ];
 
-  pythonImportsCheck = [
-    "proxy"
-  ];
+  pythonImportsCheck = [ "proxy" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python proxy framework";
     homepage = "https://github.com/abhinavsingh/proxy.py";
-    changelog = "https://github.com/abhinavsingh/proxy.py/releases/tag/v${version}";
-    license = with licenses; [ bsd3 ];
-    maintainers = with maintainers; [ fab ];
-    broken = (stdenv.isLinux && stdenv.isAarch64) || stdenv.isDarwin;
+    changelog = "https://github.com/abhinavsingh/proxy.py/releases/tag/${src.tag}";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

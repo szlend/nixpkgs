@@ -1,74 +1,71 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, rustPlatform
-, stdenv
-, libiconv
-, brotli
-, hypothesis
-, lz4
-, memory_profiler
-, numpy
-, py
-, pytest-benchmark
-, pytestCheckHook
-, python-snappy
-, zstd
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pyprojectVersionPatchHook,
+  rustPlatform,
+
+  # tests
+  hypothesis,
+  numpy,
+  pytest-xdist,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cramjam";
-  version = "2.6.2.post1";
-  format = "pyproject";
+  version = "2.12.1";
+  pyproject = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "milesgranger";
-    repo = "pyrus-cramjam";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-KU1JVNEQJadXNiIWTvI33N2NSq994xoKxcAGGezFjaI=";
+    repo = "cramjam";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-aiXe19cDl4dsWJQO2z+PBXN8svGsHsykoLR6vKr8q0U=";
   };
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src;
-    hash = "sha256-w1bEf+etLgR/YOyLmC3lFtO9fqAx8z2aul/XIKUQb5k=";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit (finalAttrs) pname src version;
+    hash = "sha256-wTheNASf8G4i8cTLPcreBM1+Kl/VvR+jyliiSC+KMpY=";
   };
 
-  nativeBuildInputs = with rustPlatform; [
-    cargoSetupHook
-    maturinBuildHook
+  nativeBuildInputs = [
+    rustPlatform.cargoSetupHook
+    rustPlatform.maturinBuildHook
+    pyprojectVersionPatchHook
   ];
-
-  buildInputs = lib.optional stdenv.isDarwin libiconv;
 
   nativeCheckInputs = [
-    brotli
     hypothesis
-    lz4
-    memory_profiler
     numpy
-    py
-    pytest-benchmark
+    pytest-xdist
     pytestCheckHook
-    python-snappy
-    zstd
   ];
 
-  pytestFlagsArray = [
-    "--benchmark-disable"
+  env = {
+    # Makes tests less flaky by relaxing performance constraints
+    # https://github.com/HypothesisWorks/hypothesis/issues/3713
+    CI = true;
+  };
+
+  disabledTests = [
+    # I (@GaetanLepage) cannot reproduce the failure, but it fails consistently on Ofborg with:
+    # SyntaxError: could not convert string to float: 'V' - Consider hexadecimal for huge integer literals to avoid decimal conversion limits.
+    "test_variants_decompress_into"
   ];
 
   disabledTestPaths = [
     "benchmarks/test_bench.py"
   ];
 
-  pythonImportsCheck = [
-    "cramjam"
-  ];
+  pythonImportsCheck = [ "cramjam" ];
 
-  meta = with lib; {
+  meta = {
     description = "Thin Python bindings to de/compression algorithms in Rust";
     homepage = "https://github.com/milesgranger/pyrus-cramjam";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ veprbl ];
+    changelog = "https://github.com/milesgranger/cramjam/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ veprbl ];
   };
-}
+})

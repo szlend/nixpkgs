@@ -1,56 +1,37 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, django
-, freezegun
-, psycopg2
-, pytest-django
-, pytestCheckHook
-, pythonOlder
-, setuptools-scm
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  django,
+  setuptools-scm,
 }:
 
 buildPythonPackage rec {
   pname = "django-model-utils";
-  version = "4.3.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "5.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jazzband";
     repo = "django-model-utils";
-    rev = "refs/tags/${version}";
-    hash = "sha256-p3/JO6wNwZPYX7MIgMj/0caHt5s+uL51Sxa28/VITxo=";
+    tag = version;
+    hash = "sha256-iRtTYXsgD8NYG3k9ZWAr2Nwazo3HUa6RgdbMeDxc7NI=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  build-system = [ setuptools-scm ];
 
-  nativeBuildInputs = [
-    setuptools-scm
-  ];
+  dependencies = [ django ];
 
-  propagatedBuildInputs = [
-    django
-  ];
-
-  # requires postgres database
+  # Test requires postgres database
   doCheck = false;
-
-  nativeCheckInputs = [
-    freezegun
-    psycopg2
-    pytest-django
-    pytestCheckHook
-  ];
 
   pythonImportsCheck = [ "model_utils" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/jazzband/django-model-utils";
     description = "Django model mixins and utilities";
     changelog = "https://github.com/jazzband/django-model-utils/blob/${version}/CHANGES.rst";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
   };
 }

@@ -1,25 +1,26 @@
-{ lib
-, buildPythonPackage
-, fetchFromBitbucket
-, h5py
-, termcolor
-, pexpect
-, jinja2
-, sphinxHook
-, sphinx-rtd-theme
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  h5py,
+  termcolor,
+  pexpect,
+  jinja2,
+  sphinxHook,
+  sphinx-rtd-theme,
 }:
 
 buildPythonPackage {
   pname = "pylion";
-  version = "0.5.2";
+  version = "0.5.3";
   format = "setuptools";
 
-  src = fetchFromBitbucket {
+  src = fetchFromGitHub {
     owner = "dtrypogeorgos";
     repo = "pylion";
     # Version is set in setup.cfg, but not in a git tag / bitbucket release
-    rev = "8945a7b6f1912ae6b9c705f8a2bd521101f5ba59";
-    hash = "sha256-4AdJkoQ1hAssDUpgmARGmN+ihQqRPPOncWJ5ErQyWII=";
+    rev = "3e6b96b542b97107c622d66b0be0551c3bd9f948";
+    hash = "sha256-c0UOv2Vlv9wJ6YW+QdHinhpdaclUh3As5TDvyoRhpSI=";
   };
 
   # Docs are not available online, besides the article:
@@ -46,10 +47,10 @@ buildPythonPackage {
     cp -r examples $out/share/doc/$name/examples
   '';
 
-  meta = with lib; {
-    description = "A LAMMPS wrapper for molecular dynamics simulations of trapped ions";
-    homepage = "https://bitbucket.org/dtrypogeorgos/pylion";
-    license = licenses.mit;
-    maintainers = with maintainers; [ doronbehar ];
+  meta = {
+    description = "LAMMPS wrapper for molecular dynamics simulations of trapped ions";
+    homepage = "https://github.com/dtrypogeorgos/pylion";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ doronbehar ];
   };
 }

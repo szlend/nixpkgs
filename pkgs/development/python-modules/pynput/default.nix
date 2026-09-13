@@ -1,29 +1,74 @@
-{ lib, stdenv, buildPythonPackage, fetchPypi, sphinx, setuptools-lint, xlib, evdev }:
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  gitUpdater,
+
+  # build-system
+  setuptools,
+  setuptools-lint,
+  sphinx,
+
+  # dependencies
+  python-xlib,
+  evdev,
+  six,
+  pyobjc-framework-ApplicationServices,
+  pyobjc-framework-Quartz,
+
+  # tests
+  unittestCheckHook,
+}:
 
 buildPythonPackage rec {
   pname = "pynput";
-  version = "1.7.6";
+  version = "1.8.2";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "3a5726546da54116b687785d38b1db56997ce1d28e53e8d22fc656d8b92e533c";
+  src = fetchFromGitHub {
+    owner = "moses-palmer";
+    repo = "pynput";
+    tag = "v${version}";
+    hash = "sha256-LoolcMYzurJrR7HR1qDO+dvLwP1l9P3+QOzI7uwLdso=";
+  };
+  passthru.updateScript = gitUpdater {
+    rev-prefix = "v";
   };
 
-  nativeBuildInputs = [ sphinx ];
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace-fail "'sphinx >=1.3.1'," "" \
+      --replace-fail "'twine >=4.0']" "]"
+  '';
 
-  propagatedBuildInputs = [ setuptools-lint xlib ]
-  ++ lib.optionals stdenv.isLinux [
-    evdev
+  nativeBuildInputs = [
+    setuptools
+    setuptools-lint
+    sphinx
   ];
 
-  doCheck = false;
+  propagatedBuildInputs = [
+    six
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    evdev
+    python-xlib
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # the darwin backend imports HIServices (ApplicationServices) and Quartz
+    pyobjc-framework-ApplicationServices
+    pyobjc-framework-Quartz
+  ];
 
-  meta = with lib; {
-    broken = stdenv.isDarwin;
-    description = "A library to control and monitor input devices";
+  doCheck = false; # requires running X server
+
+  nativeCheckInputs = [ unittestCheckHook ];
+
+  meta = {
+    description = "Library to control and monitor input devices";
     homepage = "https://github.com/moses-palmer/pynput";
-    license = licenses.lgpl3;
-    maintainers = with maintainers; [ nickhu ];
+    license = lib.licenses.lgpl3;
+    maintainers = with lib.maintainers; [ nickhu ];
   };
 }
-

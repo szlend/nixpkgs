@@ -1,42 +1,42 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, playwright
-, playwright-driver
-, pytest
-, pytest-base-url
-, pytestCheckHook
-, python-slugify
-, pythonOlder
-, setuptools-scm
-, django
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+  playwright,
+  playwright-driver,
+  pytest,
+  pytest-base-url,
+  python-slugify,
+  setuptools,
+  setuptools-scm,
 }:
 
 buildPythonPackage rec {
   pname = "pytest-playwright";
-  version = "0.3.3";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.9.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "microsoft";
     repo = "playwright-pytest";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-2xdRW8Q10x6mtNs/EdAsgrOtVmvLAOdbIGXfyeB8ZAg=";
+    tag = "v${version}";
+    hash = "sha256-R8I22TzfkXgNi6SEv149xdbyeUwXUNjwsOHlcieCLwQ=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  postPatch = ''
+    pushd pytest-playwright
 
-  nativeBuildInputs = [
+    substituteInPlace pyproject.toml --replace-fail "==" ">="
+  '';
+
+  build-system = [
+    setuptools
     setuptools-scm
   ];
 
-  buildInputs = [
-    pytest
-  ];
+  buildInputs = [ pytest ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     playwright
     pytest-base-url
     python-slugify
@@ -47,18 +47,17 @@ buildPythonPackage rec {
   doCheck = false;
 
   preCheck = ''
+    popd
     export PLAYWRIGHT_BROWSERS_PATH=${playwright-driver.browsers}
   '';
 
-  pythonImportsCheck = [
-    "pytest_playwright"
-  ];
+  pythonImportsCheck = [ "pytest_playwright" ];
 
-  meta = with lib; {
+  meta = {
     description = "Pytest plugin to write end-to-end browser tests with Playwright";
     homepage = "https://github.com/microsoft/playwright-pytest";
-    changelog = "https://github.com/microsoft/playwright-pytest/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ sephi ];
+    changelog = "https://github.com/microsoft/playwright-pytest/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ sephi ];
   };
 }

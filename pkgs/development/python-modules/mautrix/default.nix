@@ -1,49 +1,53 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
   # deps
-, aiohttp
-, attrs
-, yarl
+  setuptools,
+  aiohttp,
+  attrs,
+  yarl,
   # optional deps
-, python-magic
-, python-olm
-, unpaddedbase64
-, pycryptodome
+  base58,
+  python-magic,
+  python-olm,
+  unpaddedbase64,
+  pycryptodome,
   # check deps
-, pytestCheckHook
-, pytest-asyncio
-, aiosqlite
-, sqlalchemy
-, asyncpg
+  pytestCheckHook,
+  pytest-asyncio,
+  aiosqlite,
+  asyncpg,
+  ruamel-yaml,
+
+  withOlm ? false,
 }:
 
 buildPythonPackage rec {
   pname = "mautrix";
-  version = "0.19.16";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.8";
+  version = "0.21.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mautrix";
     repo = "python";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-aZlc4+J5Q+N9qEzGUMhsYguPdUy+E5I06wrjVyqvVDk=";
+    tag = "v${version}";
+    hash = "sha256-7N6WiIvBWWSK+cNLtKOryUiJG3aILFy3RqfmkbKbY70=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     aiohttp
     attrs
     yarl
-  ];
+  ]
+  ++ lib.optionals withOlm optional-dependencies.encryption;
 
-  passthru.optional-dependencies = {
-    detect_mimetype = [
-      python-magic
-    ];
+  optional-dependencies = {
+    detect_mimetype = [ python-magic ];
     encryption = [
+      base58
       python-olm
       unpaddedbase64
       pycryptodome
@@ -52,31 +56,25 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     pytestCheckHook
-  ];
-
-  checkInputs = [
     pytest-asyncio
     aiosqlite
-    sqlalchemy
     asyncpg
-  ] ++ passthru.optional-dependencies.encryption;
-
-  SQLALCHEMY_SILENCE_UBER_WARNING = 1;
-
-  disabledTestPaths = [
-    # sqlalchemy 2 unsupported
-    "mautrix/client/state_store/tests/store_test.py"
+    ruamel-yaml
   ];
 
-  pythonImportsCheck = [
-    "mautrix"
-  ];
+  disabledTestPaths = lib.optionals (!withOlm) [ "mautrix/crypto/" ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "mautrix" ];
+
+  meta = {
     description = "Asyncio Matrix framework";
     homepage = "https://github.com/tulir/mautrix-python";
-    changelog = "https://github.com/mautrix/python/releases/tag/v${version}";
-    license = licenses.mpl20;
-    maintainers = with maintainers; [ nyanloutre ma27 sumnerevans nickcao ];
+    changelog = "https://github.com/mautrix/python/releases/tag/${src.tag}";
+    license = lib.licenses.mpl20;
+    maintainers = with lib.maintainers; [
+      nyanloutre
+      sumnerevans
+      nickcao
+    ];
   };
 }

@@ -1,53 +1,136 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, setuptools
-, httpx
-, importlib-metadata
-, requests
-, tokenizers
-, aiohttp
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  stdenv,
+
+  # build-system
+  hatch-fancy-pypi-readme,
+  hatchling,
+
+  # dependencies
+  anyio,
+  distro,
+  docstring-parser,
+  httpx,
+  jiter,
+  pydantic,
+  sniffio,
+  typing-extensions,
+
+  # optional dependencies
+  google-auth,
+  boto3,
+  botocore,
+  aiohttp,
+  httpx-aiohttp,
+
+  # test
+  dirty-equals,
+  http-snapshot,
+  inline-snapshot,
+  nest-asyncio,
+  pytest-asyncio,
+  pytest-xdist,
+  pytestCheckHook,
+  respx,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "anthropic";
-  version = "0.2.10";
-  format = "pyproject";
+  version = "0.109.1";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  disabled = pythonOlder "3.8";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-5NoGGobY/7hgcsCw/q8hmjpPff3dQiTfm6dp5GlJjBk=";
+  src = fetchFromGitHub {
+    owner = "anthropics";
+    repo = "anthropic-sdk-python";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-H+blENPgkKhoGPJmAtdszFsJDkAzgprlDso0o2fhwz8=";
   };
 
-  nativeBuildInputs = [
-    setuptools
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail '"hatchling==1.26.3"' '"hatchling>=1.26.3"'
+  '';
+
+  build-system = [
+    hatchling
+    hatch-fancy-pypi-readme
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    anyio
+    distro
+    docstring-parser
     httpx
-    requests
-    tokenizers
-    aiohttp
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    importlib-metadata
+    jiter
+    pydantic
+    sniffio
+    typing-extensions
   ];
 
-  # try downloading tokenizer in tests
-  # relates https://github.com/anthropics/anthropic-sdk-python/issues/24
-  doCheck = false;
+  optional-dependencies = {
+    aiohttp = [
+      aiohttp
+      httpx-aiohttp
+    ];
+    bedrock = [
+      boto3
+      botocore
+    ];
+    vertex = [ google-auth ] ++ google-auth.optional-dependencies.requests;
+  };
 
-  pythonImportsCheck = [
-    "anthropic"
+  nativeCheckInputs = [
+    dirty-equals
+    http-snapshot
+    inline-snapshot
+    nest-asyncio
+    pytest-asyncio
+    pytest-xdist
+    pytestCheckHook
+    respx
+  ]
+  ++ lib.flatten (builtins.attrValues finalAttrs.passthru.optional-dependencies);
+
+  pythonImportsCheck = [ "anthropic" ];
+
+  disabledTests = [
+    # Test require network access
+    "test_copy_build_request"
+    # Tests try to launch bash and fail
+    "test_bash_session_persistence"
+    "test_bash_timeout"
+    "test_bash_sentinel_not_spoofable"
+    "test_bash_stdin_redirect"
+    "test_bash_session_closed_property"
+    "test_bash_outer_cancel_closes_subprocess_no_stale_state"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # Hangs
+    # https://github.com/anthropics/anthropic-sdk-python/issues/1008
+    "test_get_platform"
   ];
 
-  meta = with lib; {
+  disabledTestPaths = [
+    # Test require network access
+    "tests/api_resources"
+    "tests/lib/test_bedrock.py"
+  ];
+
+  pytestFlags = [
+    "-Wignore::DeprecationWarning"
+  ];
+
+  meta = {
     description = "Anthropic's safety-first language model APIs";
     homepage = "https://github.com/anthropics/anthropic-sdk-python";
-    changelog = "https://github.com/anthropics/anthropic-sdk-python/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ natsukium ];
+    changelog = "https://github.com/anthropics/anthropic-sdk-python/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = [
+      lib.maintainers.natsukium
+      lib.maintainers.sarahec
+    ];
   };
-}
+})

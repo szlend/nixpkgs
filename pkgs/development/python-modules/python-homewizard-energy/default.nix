@@ -1,54 +1,68 @@
-{ lib
-, aiohttp
-, aresponses
-, awesomeversion
-, buildPythonPackage
-, fetchFromGitHub
-, poetry-core
-, protobuf
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiohttp,
+  aresponses,
+  async-timeout,
+  awesomeversion,
+  backoff,
+  buildPythonPackage,
+  fetchFromGitHub,
+  mashumaro,
+  multidict,
+  orjson,
+  poetry-core,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
+  syrupy,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-homewizard-energy";
-  version = "2.0.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "10.2.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "DCSBL";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-s3FNRpMZC/MG3s+ZDHgdsIT2AhvBDmGvJfutUPzY4wE=";
+    repo = "python-homewizard-energy";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-d81Jjm/ykmqzFR67xaiwFAWuixrNIwm7jNMpA2rg90s=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail 'version = "0.0.0"' 'version = "${finalAttrs.version}"'
+  '';
+
+  build-system = [ poetry-core ];
+
+  dependencies = [
+    aiohttp
+    async-timeout
+    awesomeversion
+    backoff
+    mashumaro
+    multidict
+    orjson
   ];
 
-  propagatedBuildInputs = [
-    awesomeversion
-    aiohttp
-  ];
+  __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
     aresponses
     pytest-asyncio
+    pytest-cov-stub
     pytestCheckHook
+    syrupy
   ];
 
-  pythonImportsCheck = [
-    "homewizard_energy"
-  ];
+  pythonImportsCheck = [ "homewizard_energy" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library to communicate with HomeWizard Energy devices";
-    homepage = "https://github.com/DCSBL/python-homewizard-energy";
-    changelog = "https://github.com/DCSBL/python-homewizard-energy/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ fab ];
+    homepage = "https://github.com/homewizard/python-homewizard-energy";
+    changelog = "https://github.com/homewizard/python-homewizard-energy/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

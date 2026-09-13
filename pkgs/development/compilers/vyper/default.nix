@@ -1,26 +1,27 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, pythonRelaxDepsHook
-, writeText
-, asttokens
-, pycryptodome
-, importlib-metadata
-, recommonmark
-, semantic-version
-, sphinx
-, sphinx-rtd-theme
-, pytest-runner
-, setuptools-scm
-, git
+{
+  lib,
+  lark,
+  asttokens,
+  buildPythonPackage,
+  cbor2,
+  fetchPypi,
+  git,
+  immutables,
+  importlib-metadata,
+  packaging,
+  pycryptodome,
+  recommonmark,
+  setuptools-scm,
+  sphinx,
+  sphinx-rtd-theme,
+  writeText,
 }:
 
 let
   sample-contract = writeText "example.vy" ''
     count: int128
 
-    @external
+    @deploy
     def __init__(foo: address):
         self.count = 1
   '';
@@ -28,33 +29,41 @@ let
 in
 buildPythonPackage rec {
   pname = "vyper";
-  version = "0.3.9";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.4.3";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-4UBSH4qRBgsy+VO9XzosWedM65R1lTo9ml2C95T9OAA=";
+    hash = "sha256-IqdXNldAHYo7xpDWXWt3QWgABxgJeMOgX5iS2zHV3PU=";
   };
+
+  postPatch = ''
+    # pythonRelaxDeps doesn't work
+    substituteInPlace setup.py \
+      --replace-fail "setuptools_scm>=7.1.0,<8.0.0" "setuptools_scm>=7.1.0"
+  '';
 
   nativeBuildInputs = [
     # Git is used in setup.py to compute version information during building
     # ever since https://github.com/vyperlang/vyper/pull/2816
     git
 
-    pythonRelaxDepsHook
-    pytest-runner
     setuptools-scm
   ];
 
-  pythonRelaxDeps = [ "asttokens" "semantic-version" ];
+  pythonRelaxDeps = [
+    "asttokens"
+    "packaging"
+  ];
 
   propagatedBuildInputs = [
+    lark
     asttokens
-    pycryptodome
-    semantic-version
+    cbor2
+    immutables
     importlib-metadata
+    packaging
+    pycryptodome
 
     # docs
     recommonmark
@@ -66,10 +75,15 @@ buildPythonPackage rec {
     $out/bin/vyper "${sample-contract}"
   '';
 
-  meta = with lib; {
+  pythonImportsCheck = [
+    "vyper"
+  ];
+
+  meta = {
     description = "Pythonic Smart Contract Language for the EVM";
     homepage = "https://github.com/vyperlang/vyper";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ siraben ];
+    changelog = "https://github.com/vyperlang/vyper/releases/tag/v${version}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ siraben ];
   };
 }

@@ -1,37 +1,57 @@
-{ lib, buildPythonPackage, fetchPypi
-, pytestCheckHook
-, pyyaml
-, setuptools-scm
-, setuptools-scm-git-archive
-, toml
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+  setuptools-scm,
+
+  # dependencies
+  fsspec,
+  pyyaml,
+
+  # tests
+  aiohttp,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "pyyaml-include";
-  version = "1.3";
+  version = "2.2";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-9/vrjnG1C+Dm4HRy98edv7GhW63pyToHg2n/SeV+Z3E=";
+  src = fetchFromGitHub {
+    owner = "tanbro";
+    repo = "pyyaml-include";
+    tag = "v${version}";
+    hash = "sha256-nswSYRTZ6LTLSGh78DnrXl3q06Ap1J1IMKOESv1lJoY=";
   };
 
-  nativeBuildInputs = [
-    pyyaml
+  build-system = [
+    setuptools
     setuptools-scm
-    setuptools-scm-git-archive
-    toml
+  ];
+
+  dependencies = [
+    fsspec
+    pyyaml
   ];
 
   nativeCheckInputs = [
+    aiohttp
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [ "yamlinclude" ];
+  pythonImportsCheck = [ "yaml_include" ];
 
-  meta = with lib; {
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
     description = "Extending PyYAML with a custom constructor for including YAML files within YAML files";
     homepage = "https://github.com/tanbro/pyyaml-include";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ jonringer ];
+    changelog = "https://github.com/tanbro/pyyaml-include/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.gpl3Plus;
+    maintainers = [ ];
   };
 }

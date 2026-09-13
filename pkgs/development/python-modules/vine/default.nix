@@ -1,36 +1,39 @@
-{ lib
-, buildPythonPackage
-, case
-, fetchPypi
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "vine";
-  version = "5.0.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "5.1.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-fTsWJKlT2oLvY0YgE7vScdPrdXUUifmAdZjo80C9Y34=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-i2LpgdNcQQSSEc9ioKEkLYwe6b0Vuxls44rv1nmeYeA=";
   };
 
+  build-system = [ setuptools ];
+
   nativeCheckInputs = [
-    case
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "vine"
+  disabledTestPaths = [
+    # https://github.com/celery/vine/issues/106
+    "t/unit/test_synchronization.py"
   ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "vine" ];
+
+  meta = {
     description = "Python promises";
     homepage = "https://github.com/celery/vine";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/celery/vine/releases/tag/v${finalAttrs.version}";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

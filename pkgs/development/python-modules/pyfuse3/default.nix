@@ -1,49 +1,49 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, cython
-, pkg-config
-, fuse3
-, trio
-, python
-, pytestCheckHook
-, pytest-trio
-, which
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  cython,
+  pkg-config,
+  setuptools,
+  setuptools-scm,
+  fuse3,
+  trio,
+  python,
+  pytestCheckHook,
+  pytest-trio,
+  which,
 }:
 
 buildPythonPackage rec {
   pname = "pyfuse3";
-  version = "3.2.2";
-
-  disabled = pythonOlder "3.5";
-
-  format = "setuptools";
+  version = "3.5.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "libfuse";
     repo = "pyfuse3";
-    rev = "refs/tags/${version}";
-    hash = "sha256-Y9Haz3MMhTXkvYFOGNWJnoGNnvoK6wiQ+s3AwJhBD8Q=";
+    tag = "v${version}";
+    hash = "sha256-HhEtWYWdxJZOMS3dqB2VdQS7aSdpkRhq7EZCJ55n2OE=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "'pkg-config'" "'$(command -v $PKG_CONFIG)'"
-  '';
-
-  nativeBuildInputs = [
-    cython
-    pkg-config
+  patches = [
+    # Fix cross compilation by using PKG_CONFIG env variable instead
+    # of hardcoded binary name
+    # https://github.com/libfuse/pyfuse3/pull/148
+    ./fix_cross_parse_pkg_config.patch
   ];
+
+  build-system = [
+    cython
+    setuptools
+    setuptools-scm
+  ];
+
+  nativeBuildInputs = [ pkg-config ];
 
   buildInputs = [ fuse3 ];
 
-  propagatedBuildInputs = [ trio ];
-
-  preBuild = ''
-    ${python.pythonForBuild.interpreter} setup.py build_cython
-  '';
+  dependencies = [ trio ];
 
   nativeCheckInputs = [
     pytestCheckHook
@@ -57,14 +57,18 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [
     "pyfuse3"
-    "pyfuse3_asyncio"
+    "pyfuse3.asyncio"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Python 3 bindings for libfuse 3 with async I/O support";
     homepage = "https://github.com/libfuse/pyfuse3";
-    license = licenses.lgpl2Plus;
-    maintainers = with maintainers; [ nyanloutre dotlambda ];
-    changelog = "https://github.com/libfuse/pyfuse3/blob/${version}/Changes.rst";
+    license = lib.licenses.lgpl2Plus;
+    maintainers = with lib.maintainers; [
+      nyanloutre
+      dotlambda
+    ];
+    changelog = "https://github.com/libfuse/pyfuse3/blob/${src.tag}/Changes.rst";
+    platforms = lib.platforms.linux;
   };
 }

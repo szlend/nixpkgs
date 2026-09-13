@@ -1,38 +1,46 @@
-{ lib
-, buildPythonPackage
-, dvc-objects
-, fetchPypi
-, gcsfs
-, pythonRelaxDepsHook
-, setuptools-scm }:
+{
+  lib,
+  buildPythonPackage,
+  dvc-objects,
+  fetchPypi,
+  gcsfs,
+  setuptools-scm,
+}:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dvc-gs";
-  version = "2.22.1";
-  format = "setuptools";
+  version = "3.1.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-IKDwdSfolZwv8TvHHicVV42PYeULhskv8csbkiJzLbk=";
+    pname = "dvc_gs";
+    inherit (finalAttrs) version;
+    hash = "sha256-QhhWD/HVGW/Qx5FiZVzXnFE0+mHr40o6UH+vB0kibu4=";
   };
 
   # Prevent circular dependency
   pythonRemoveDeps = [ "dvc" ];
 
-  nativeBuildInputs = [ setuptools-scm pythonRelaxDepsHook ];
+  build-system = [ setuptools-scm ];
 
-  propagatedBuildInputs = [ gcsfs dvc-objects ];
+  dependencies = [
+    gcsfs
+    dvc-objects
+  ];
 
   # Network access is needed for tests
   doCheck = false;
 
-  pythonImportsCheck = [ "dvc_gs" ];
+  # Circular dependency
+  # pythonImportsCheck = [
+  #   "dvc_gs"
+  # ];
 
-  meta = with lib; {
+  meta = {
     description = "gs plugin for dvc";
     homepage = "https://pypi.org/project/dvc-gs/version";
-    changelog = "https://github.com/iterative/dvc-gs/releases/tag/${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ melling ];
+    changelog = "https://github.com/iterative/dvc-gs/releases/tag/${finalAttrs.version}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

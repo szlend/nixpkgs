@@ -1,42 +1,54 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, eventlet
-, oslo-config
-, oslo-context
-, oslo-serialization
-, oslo-utils
-, oslotest
-, pbr
-, pyinotify
-, python-dateutil
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  debtcollector,
+  oslo-config,
+  oslo-context,
+  oslo-i18n,
+  oslo-serialization,
+  oslo-utils,
+  pbr,
+  python-dateutil,
+
+  # tests
+  eventlet,
+  oslotest,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "oslo-log";
-  version = "5.2.0";
-  format = "setuptools";
+  version = "8.3.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    pname = "oslo.log";
-    inherit version;
-    hash = "sha256-YiYzbVtu4YhfBXtl2+3oTEqcXk5K51oOjn84PBY+xIA=";
+  src = fetchFromGitHub {
+    owner = "openstack";
+    repo = "oslo.log";
+    tag = version;
+    hash = "sha256-teESuCQg8fxCWPMUWTTYyBIGSn9m916Uoy3UkWArVVs=";
   };
 
-  propagatedBuildInputs = [
+  # Manually set version because prb wants to get it from the git upstream repository (and we are
+  # installing from tarball instead)
+  env.PBR_VERSION = version;
+
+  build-system = [ setuptools ];
+
+  dependencies = [
+    debtcollector
     oslo-config
     oslo-context
+    oslo-i18n
     oslo-serialization
     oslo-utils
     pbr
     python-dateutil
-  ] ++ lib.optionals stdenv.isLinux [
-    pyinotify
   ];
 
   nativeCheckInputs = [
@@ -46,19 +58,21 @@ buildPythonPackage rec {
   ];
 
   disabledTests = [
-    # not compatible with sandbox
+    # Incompatible Exception Representation, displaying natively
     "test_logging_handle_error"
+    "test_rotate_log"
+    "test_timed_rotate_log"
   ];
 
-  pythonImportsCheck = [
-    "oslo_log"
-  ];
+  pythonImportsCheck = [ "oslo_log" ];
 
-  meta = with lib; {
-    broken = stdenv.isDarwin;
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
     description = "oslo.log library";
+    mainProgram = "convert-json";
     homepage = "https://github.com/openstack/oslo.log";
-    license = licenses.asl20;
-    maintainers = teams.openstack.members;
+    license = lib.licenses.asl20;
+    teams = [ lib.teams.openstack ];
   };
 }

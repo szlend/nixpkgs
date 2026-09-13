@@ -1,14 +1,13 @@
-{ lib
-, buildPythonPackage
-, isPy27
-, fetchFromGitHub
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 }:
 
 buildPythonPackage rec {
   pname = "pyaehw4a1";
   version = "0.3.9";
-
-  disabled = isPy27;
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "bannhead";
@@ -22,10 +21,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "pyaehw4a1" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python interface for Hisense AEH-W4A1 module";
     homepage = "https://github.com/bannhead/pyaehw4a1";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ dotlambda ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

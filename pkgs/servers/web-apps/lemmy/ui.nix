@@ -1,90 +1,95 @@
-{ lib
-, mkYarnPackage
-, libsass
-, nodejs
-, python3
-, pkg-config
-, fetchFromGitHub
-, fetchYarnDeps
-, nixosTests
-, vips
-, nodePackages
+{
+  lib,
+  stdenvNoCC,
+  libsass,
+  nodejs,
+  pnpm_11,
+  fetchPnpmDeps,
+  pnpmConfigHook,
+  fetchFromGitHub,
+  nixosTests,
+  vips,
 }:
 
 let
   pinData = lib.importJSON ./pin.json;
+in
 
-  pkgConfig = {
-    node-sass = {
-      nativeBuildInputs = [ pkg-config ];
-      buildInputs = [ libsass python3 ];
-      postInstall = ''
-        LIBSASS_EXT=auto yarn --offline run build
-        rm build/config.gypi
-      '';
-    };
-    sharp = {
-      nativeBuildInputs = [ pkg-config nodePackages.semver ];
-      buildInputs = [ vips ];
-      postInstall = ''
-        yarn --offline run install
-      '';
-    };
-  };
+stdenvNoCC.mkDerivation (finalAttrs: {
 
-  name = "lemmy-ui";
-  version = pinData.version;
+  pname = "lemmy-ui";
+  version = pinData.uiVersion;
 
   src = fetchFromGitHub {
     owner = "LemmyNet";
-    repo = name;
-    rev = version;
+    repo = "lemmy-ui";
+    tag = finalAttrs.version;
     fetchSubmodules = true;
-    sha256 = pinData.uiSha256;
-  };
-in
-mkYarnPackage {
-
-  inherit src pkgConfig name version;
-
-  extraBuildInputs = [ libsass ];
-
-  packageJSON = ./package.json;
-  offlineCache = fetchYarnDeps {
-    yarnLock = src + "/yarn.lock";
-    sha256 = pinData.uiYarnDepsSha256;
+    hash = pinData.uiHash;
   };
 
-  yarnPreBuild = ''
-    export npm_config_nodedir=${nodejs}
-  '';
+  nativeBuildInputs = [
+    nodejs
+    pnpmConfigHook
+    pnpm_11
+  ];
+
+  buildInputs = [
+    libsass
+    vips
+  ];
+
+  pnpmDeps = fetchPnpmDeps {
+    inherit (finalAttrs) pname version src;
+    pnpm = pnpm_11;
+    fetcherVersion = 4;
+    hash = pinData.uiPNPMDepsHash;
+  };
 
   buildPhase = ''
-    # Yarn writes cache directories etc to $HOME.
-    export HOME=$PWD/yarn_home
+    runHook preBuild
 
-    ln -sf $PWD/node_modules $PWD/deps/lemmy-ui/
-    echo 'export const VERSION = "${version}";' > $PWD/deps/lemmy-ui/src/shared/version.ts
+    pnpm run prebuild:prod
+    # Required to pass a custom value for COMMIT_HASH, as the normal
+    # `pnpm build:prod` tries to derive its value by running `git`.
+    # This value is only injected into the templated asset URLs for cache invalidation,
+    # so we don't really need a commit hash here, just a value that changes on every
+    # update.
+    pnpm exec webpack --env COMMIT_HASH="${finalAttrs.version}" --mode=production
 
-    yarn --offline build:prod
+    runHook postBuild
   '';
 
   preInstall = ''
     mkdir $out
-    cp -R ./deps/lemmy-ui/dist $out
+    cp -R ./dist $out
     cp -R ./node_modules $out
   '';
 
-  distPhase = "true";
+  preFixup = ''
+    find $out -name libvips-cpp.so.42 -print0 | while read -d $'\0' libvips; do
+      echo replacing libvips at $libvips
+      rm $libvips
+      ln -s ${lib.getLib vips}/lib/libvips-cpp.so.42 $libvips
+    done
+  '';
 
-  passthru.updateScript = ./update.sh;
-  passthru.tests.lemmy-ui = nixosTests.lemmy;
+  passthru = {
+    updateScript = ./update.py;
+    tests.lemmy-ui = nixosTests.lemmy;
+  };
 
-  meta = with lib; {
-    description = "Building a federated alternative to reddit in rust";
+  meta = {
+    description = "Web frontend for a federated link aggregator";
     homepage = "https://join-lemmy.org/";
-    license = licenses.agpl3Only;
-    maintainers = with maintainers; [ happysalada billewanick ];
+    license = lib.licenses.agpl3Only;
+    maintainers = with lib.maintainers; [
+      happysalada
+      billewanick
+      georgyo
+      lucasew
+    ];
+    teams = [ lib.teams.ngi ];
     inherit (nodejs.meta) platforms;
   };
-}
+})

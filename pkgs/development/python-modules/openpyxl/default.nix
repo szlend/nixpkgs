@@ -1,49 +1,55 @@
-{ lib
-, buildPythonPackage
-, et_xmlfile
-, fetchFromGitLab
-, jdcal
-, lxml
-, pillow
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  et-xmlfile,
+  fetchFromGitLab,
+  lxml,
+  pandas,
+  pillow,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "openpyxl";
-  version = "3.1.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "3.1.5";
+  pyproject = true;
 
   src = fetchFromGitLab {
     domain = "foss.heptapod.net";
     owner = "openpyxl";
     repo = "openpyxl";
-    rev = version;
-    hash = "sha256-SWRbjA83AOLrfe6on2CSb64pH5EWXkfyYcTqWJNBEP0=";
+    tag = version;
+    hash = "sha256-vp+TIWcHCAWlDaBcmC7w/kV7DZTZpa6463NusaJmqKo=";
   };
 
-  propagatedBuildInputs = [
-    jdcal
-    et_xmlfile
-    lxml
-  ];
+  build-system = [ setuptools ];
+
+  dependencies = [ et-xmlfile ];
 
   nativeCheckInputs = [
+    lxml
+    pandas
     pillow
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "openpyxl"
+  pytestFlags = [
+    "-Wignore::DeprecationWarning"
   ];
 
-  meta = with lib; {
+  disabledTests = [
+    # lxml 6.0
+    "test_iterparse"
+  ];
+
+  pythonImportsCheck = [ "openpyxl" ];
+
+  meta = {
     description = "Python library to read/write Excel 2010 xlsx/xlsm files";
     homepage = "https://openpyxl.readthedocs.org";
     changelog = "https://foss.heptapod.net/openpyxl/openpyxl/-/blob/${version}/doc/changes.rst";
-    license = licenses.mit;
-    maintainers = with maintainers; [ lihop ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ lihop ];
   };
 }

@@ -1,69 +1,76 @@
-{ lib
-, stdenv
-, aiohttp
-, aioresponses
-, buildPythonPackage
-, cachetools
-, cryptography
-, fetchPypi
-, flask
-, freezegun
-, grpcio
-, mock
-, oauth2client
-, pyasn1-modules
-, pyopenssl
-, pytest-asyncio
-, pytest-localserver
-, pytestCheckHook
-, pythonOlder
-, pyu2f
-, requests
-, responses
-, rsa
-, six
-, urllib3
+{
+  lib,
+  fetchFromGitHub,
+  aiohttp,
+  aioresponses,
+  buildPythonPackage,
+  cryptography,
+  flask,
+  freezegun,
+  gitUpdater,
+  grpcio,
+  mock,
+  packaging,
+  pyasn1-modules,
+  pyjwt,
+  pyopenssl,
+  pytest-asyncio,
+  pytest-localserver,
+  pytestCheckHook,
+  pyu2f,
+  requests,
+  responses,
+  rsa,
+  setuptools,
+  urllib3,
 }:
 
 buildPythonPackage rec {
   pname = "google-auth";
-  version = "2.19.1";
-  format = "setuptools";
+  version = "2.50.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-qc+oiz4WGWhF5ko2WOuVOZISnROsczewZMZUb3fBcYM=";
+  src = fetchFromGitHub {
+    owner = "googleapis";
+    repo = "google-cloud-python";
+    tag = "google-auth-v${version}";
+    hash = "sha256-Z3TsDEtDDfXO23gOlmEM5O4a9qS2+fTB7g0vJ4dOFH4=";
   };
 
-  propagatedBuildInputs = [
-    cachetools
+  sourceRoot = "${src.name}/packages/google-auth";
+
+  build-system = [ setuptools ];
+
+  dependencies = [
+    cryptography
     pyasn1-modules
-    rsa
-    six
-    urllib3
   ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     aiohttp = [
       aiohttp
       requests
     ];
+    cryptography = [ cryptography ];
     enterprise_cert = [
-      cryptography
       pyopenssl
     ];
     pyopenssl = [
       pyopenssl
     ];
-    reauth = [
-      pyu2f
+    pyjwt = [
+      pyjwt
     ];
-    requests = [
-      requests
+    reauth = [ pyu2f ];
+    requests = [ requests ];
+    rsa = [ rsa ];
+    urllib3 = [
+      packaging
+      urllib3
     ];
   };
+
+  pythonRelaxDeps = [ "cachetools" ];
 
   nativeCheckInputs = [
     aioresponses
@@ -71,40 +78,40 @@ buildPythonPackage rec {
     freezegun
     grpcio
     mock
-    oauth2client
     pytest-asyncio
     pytest-localserver
     pytestCheckHook
     responses
-  ] ++ passthru.optional-dependencies.aiohttp
-  # `cryptography` is still required on `aarch64-darwin` for `tests/crypt/*`
-  ++ (if (stdenv.isDarwin && stdenv.isAarch64) then [ cryptography ] else passthru.optional-dependencies.enterprise_cert)
-  ++ passthru.optional-dependencies.reauth;
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
+
+  disabledTestPaths = [
+    "system_tests/"
+
+    # cryptography 44 compat issue
+    "tests/transport/test__mtls_helper.py::TestDecryptPrivateKey::test_success"
+  ];
 
   pythonImportsCheck = [
     "google.auth"
     "google.oauth2"
   ];
 
-  disabledTestPaths = lib.optionals (stdenv.isDarwin && stdenv.isAarch64) [
-    # Disable tests using pyOpenSSL as it does not build on M1 Macs
-    "tests/transport/test__mtls_helper.py"
-    "tests/transport/test_requests.py"
-    "tests/transport/test_urllib3.py"
-    "tests/transport/test__custom_tls_signer.py"
-  ];
-
   __darwinAllowLocalNetworking = true;
 
-  meta = with lib; {
+  passthru.updateScript = gitUpdater {
+    rev-prefix = "google-auth-v";
+  };
+
+  meta = {
     description = "Google Auth Python Library";
     longDescription = ''
       This library simplifies using Google's various server-to-server
       authentication mechanisms to access Google APIs.
     '';
-    homepage = "https://github.com/googleapis/google-auth-library-python";
-    changelog = "https://github.com/googleapis/google-auth-library-python/blob/v${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    homepage = "https://github.com/googleapis/google-cloud-python/tree/main/packages/google-auth";
+    changelog = "https://github.com/googleapis/google-cloud-python/blob/${src.tag}/packages/google-auth/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = [ lib.maintainers.sarahec ];
   };
 }

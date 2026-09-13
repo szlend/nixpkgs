@@ -1,75 +1,117 @@
-{ lib
-, anyascii
-, beautifulsoup4
-, buildPythonPackage
-, callPackage
-, django
-, django-filter
-, django-modelcluster
-, django-taggit
-, django_treebeard
-, djangorestframework
-, draftjs-exporter
-, fetchPypi
-, html5lib
-, l18n
-, openpyxl
-, permissionedforms
-, pillow
-, pythonOlder
-, requests
-, telepath
-, willow
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # frontend
+  fetchNpmDeps,
+  nodejs,
+  npmHooks,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  anyascii,
+  beautifulsoup4,
+  django,
+  django-filter,
+  django-modelcluster,
+  django-taggit,
+  django-tasks,
+  django-treebeard,
+  djangorestframework,
+  draftjs-exporter,
+  laces,
+  modelsearch,
+  openpyxl,
+  permissionedforms,
+  pillow,
+  requests,
+  telepath,
+  willow,
+
+  # tests
+  callPackage,
 }:
 
-buildPythonPackage rec {
+let
+  # updating django-treebeard regularly requires changes in code
+  django-treebeard' = django-treebeard.overridePythonAttrs (old: {
+    version = "5.3.1";
+    src = old.src.override {
+      hash = "sha256-s2s/cN1daeST9YxvjwJSH4mbT/gg5/J3n4F6g+S15Rc=";
+    };
+  });
+in
+buildPythonPackage (finalAttrs: {
   pname = "wagtail";
-  version = "4.2.2";
-  format = "setuptools";
+  version = "7.4.3";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-s89gs3H//Dc3k6BLZUC4APyDgiWY9LetWAkI+kXQTf8=";
+  src = fetchFromGitHub {
+    owner = "wagtail";
+    repo = "wagtail";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-26x2Uv8rkuFiF0Zx5lYtGZgPC2wS2FnbOXBHYQ4EtT0=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "beautifulsoup4>=4.8,<4.12" "beautifulsoup4>=4.8"
+  nativeBuildInputs = [
+    npmHooks.npmConfigHook
+    nodejs
+  ];
+
+  npmDeps = fetchNpmDeps {
+    inherit (finalAttrs) src;
+    hash = "sha256-Z2VOMqsNIBybJpfYxAq2dkmS2vwd8Yuhu7MCFyqNxdI=";
+  };
+
+  preBuild = ''
+    # upstream only provides a hook for sdists, not wheels
+    # https://github.com/wagtail/wagtail/blob/v7.3/setup.py#L22
+    npm run build
   '';
 
-  propagatedBuildInputs = [
+  build-system = [
+    setuptools
+  ];
+
+  dependencies = [
     anyascii
     beautifulsoup4
     django
-    django_treebeard
     django-filter
     django-modelcluster
     django-taggit
+    django-tasks
+    django-treebeard'
     djangorestframework
     draftjs-exporter
-    html5lib
-    l18n
+    laces
+    modelsearch
     openpyxl
     permissionedforms
     pillow
     requests
     telepath
     willow
-  ];
+  ]
+  ++ willow.optional-dependencies.heif;
 
   # Tests are in separate derivation because they require a package that depends
   # on wagtail (wagtail-factories)
   doCheck = false;
 
-  passthru.tests.wagtail = callPackage ./tests.nix {};
+  passthru.tests.wagtail = callPackage ./tests.nix { };
 
-  meta = with lib; {
-    description = "A Django content management system focused on flexibility and user experience";
+  pythonImportsCheck = [ "wagtail" ];
+
+  meta = {
+    description = "Django content management system focused on flexibility and user experience";
+    mainProgram = "wagtail";
     homepage = "https://github.com/wagtail/wagtail";
-    changelog = "https://github.com/wagtail/wagtail/blob/v${version}/CHANGELOG.txt";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ sephi ];
+    changelog = "https://github.com/wagtail/wagtail/blob/${finalAttrs.src.tag}/CHANGELOG.txt";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ sephi ];
   };
-}
+})

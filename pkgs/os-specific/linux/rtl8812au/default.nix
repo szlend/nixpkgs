@@ -1,18 +1,32 @@
-{ lib, stdenv, fetchFromGitHub, kernel, bc, nukeReferences }:
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  kernel,
+  bc,
+  nukeReferences,
+}:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "rtl8812au";
-  version = "${kernel.version}-unstable-2023-05-11";
+  version = "${kernel.version}-unstable-2024-06-13";
 
   src = fetchFromGitHub {
     owner = "morrownr";
-    repo = "8812au-20210629";
-    rev = "765d4e4bd5970f4c1c79e63bbe301667e5e029c9";
-    hash = "sha256-FF2LVfOpITMJ5LiwsGAudrWStlkKsZUlHvzZs03gb9g=";
+    repo = "8812au-20210820";
+    rev = "c0efee9cd121d9f0c815d9771475f76339a8f7d3";
+    hash = "sha256-ZS0iUb77XnXR5BUMeQ1EDuly7hStRt430ECueFW4v4w=";
   };
 
-  nativeBuildInputs = [ bc nukeReferences ] ++ kernel.moduleBuildDependencies;
-  hardeningDisable = [ "pic" "format" ];
+  nativeBuildInputs = [
+    bc
+    nukeReferences
+  ]
+  ++ kernel.moduleBuildDependencies;
+  hardeningDisable = [
+    "pic"
+    "format"
+  ];
 
   prePatch = ''
     substituteInPlace ./Makefile \
@@ -25,7 +39,8 @@ stdenv.mkDerivation rec {
     "ARCH=${stdenv.hostPlatform.linuxArch}"
     ("CONFIG_PLATFORM_I386_PC=" + (if stdenv.hostPlatform.isx86 then "y" else "n"))
     ("CONFIG_PLATFORM_ARM_RPI=" + (if stdenv.hostPlatform.isAarch then "y" else "n"))
-  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+  ]
+  ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
     "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
   ];
 
@@ -39,11 +54,12 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with lib; {
+  meta = {
     description = "Driver for Realtek 802.11ac, rtl8812au, provides the 8812au mod";
-    homepage = "https://github.com/morrownr/8812au-20210629";
-    license = licenses.gpl2Only;
-    platforms = platforms.linux;
-    maintainers = with maintainers; [ fortuneteller2k ];
+    homepage = "https://github.com/morrownr/8812au-20210820";
+    license = lib.licenses.gpl2Only;
+    platforms = lib.platforms.linux;
+    maintainers = with lib.maintainers; [ moni ];
+    broken = kernel.kernelOlder "5.10" || kernel.kernelAtLeast "6.15";
   };
 }

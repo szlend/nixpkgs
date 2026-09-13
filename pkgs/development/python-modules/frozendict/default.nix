@@ -1,53 +1,46 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, pythonAtLeast
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "frozendict";
-  version = "2.3.8";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "2.4.7";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Marco-Sulla";
     repo = "python-frozendict";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-4a0DvZOzNJqpop7wi+FagUR+8oaekz4EDNIYdUaAWC8=";
+    tag = "v${version}";
+    hash = "sha256-ehx8X3jbKls/DVgCzWJ+nTX+m/Cdknnu/sjrAMxnJFo=";
   };
 
-  postPatch = ''
-    # https://github.com/Marco-Sulla/python-frozendict/pull/69
-    substituteInPlace setup.py \
-      --replace 'if impl == "PyPy":' 'if impl == "PyPy" or not src_path.exists():'
+  # build C version if it exists
+  preBuild = ''
+    version_str=$(python -c 'import sys; print("_".join(map(str, sys.version_info[:2])))')
+    if test -f src/frozendict/c_src/$version_str/frozendictobject.c; then
+      export CIBUILDWHEEL=1
+      export FROZENDICT_PURE_PY=0
+    else
+      export CIBUILDWHEEL=0
+      export FROZENDICT_PURE_PY=1
+    fi
   '';
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeBuildInputs = [ setuptools ];
 
-  pythonImportsCheck = [
-    "frozendict"
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  preCheck = ''
-    pushd test
-  '';
+  pythonImportsCheck = [ "frozendict" ];
 
-  disabledTests = lib.optionals (pythonAtLeast "3.11") [
-    # https://github.com/Marco-Sulla/python-frozendict/issues/68
-    "test_c_extension"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Module for immutable dictionary";
     homepage = "https://github.com/Marco-Sulla/python-frozendict";
     changelog = "https://github.com/Marco-Sulla/python-frozendict/releases/tag/v${version}";
-    license = licenses.lgpl3Only;
-    maintainers = with maintainers; [ ];
+    license = lib.licenses.lgpl3Only;
+    maintainers = with lib.maintainers; [ pbsds ];
   };
 }

@@ -1,72 +1,47 @@
-{ lib
-, aiomisc-pytest
-, aiormq
-, buildPythonPackage
-, fetchFromGitHub
-, pamqp
-, poetry-core
-, pytestCheckHook
-, pythonOlder
-, setuptools
-, shortuuid
-, typing-extensions
-, yarl
+{
+  lib,
+  aiormq,
+  buildPythonPackage,
+  fetchFromGitHub,
+  uv-build,
+  yarl,
 }:
 
 buildPythonPackage rec {
   pname = "aio-pika";
-  version = "9.1.3";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "9.6.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mosquito";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-QCM/9Vt9/uXylaU8xymXJEjVd6sFRcVhpr2CGjB0AoY=";
+    repo = "aio-pika";
+    tag = version;
+    hash = "sha256-N5MjFIolMRTTn4aV1NskBwonB/8FSuEZETumUrAa02Y=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-    poetry-core
-  ];
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "uv_build>=0.9.26,<0.10.0" uv_build
+  '';
 
-  propagatedBuildInputs = [
+  build-system = [ uv-build ];
+
+  dependencies = [
     aiormq
     yarl
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    typing-extensions
   ];
 
-  nativeCheckInputs = [
-    aiomisc-pytest
-    pamqp
-    pytestCheckHook
-    shortuuid
-  ];
+  # Tests require running a RabbitMQ server.
+  # They rely on having AMQP_URL set or running Docker.
+  doCheck = false;
 
-  disabledTestPaths = [
-    # Tests attempt to connect to a RabbitMQ server
-    "tests/test_amqp.py"
-    "tests/test_amqp_robust.py"
-    "tests/test_amqp_robust_proxy.py"
-    "tests/test_amqps.py"
-    "tests/test_master.py"
-    "tests/test_memory_leak.py"
-    "tests/test_rpc.py"
-    "tests/test_types.py"
-  ];
+  pythonImportsCheck = [ "aio_pika" ];
 
-  pythonImportsCheck = [
-    "aio_pika"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "AMQP 0.9 client designed for asyncio and humans";
     homepage = "https://github.com/mosquito/aio-pika";
     changelog = "https://github.com/mosquito/aio-pika/blob/${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ emilytrau ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ emilytrau ];
   };
 }

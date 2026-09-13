@@ -1,69 +1,54 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, fetchpatch
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 
-# docs
-, python
-, sphinx
-, sphinx-rtd-theme
+  # build-system
+  setuptools,
 
-# tests
-, hypothesis
-, pytestCheckHook
+  # docs
+  sphinxHook,
+  sphinx-rtd-theme,
+
+  # tests
+  hypothesis,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mutagen";
-  version = "1.46.0";
-  format = "pyproject";
+  version = "1.48.1";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-bl+LqEg2uZ/mC+X7J/hL5K2Rm7trScqmroHnBYS1Xlg=";
+  src = fetchFromGitHub {
+    owner = "quodlibet";
+    repo = "mutagen";
+    tag = "release-${finalAttrs.version}";
+    hash = "sha256-CasNC5oW59WOUr7WSu4lUnYYzs6ow8RuJAylqNW7geA=";
   };
 
-  outputs = [ "out" "doc" ];
+  outputs = [
+    "out"
+    "doc"
+  ];
+
+  build-system = [
+    setuptools
+  ];
 
   nativeBuildInputs = [
-    sphinx
+    sphinxHook
     sphinx-rtd-theme
   ];
-
-  patches = [
-    (fetchpatch {
-      # docs: Make extlinks compatible with sphinx 6.0
-      # https://github.com/quodlibet/mutagen/pull/590
-      url = "https://github.com/quodlibet/mutagen/commit/37b4e6bddc03e1f715425c418ea84bac15116907.patch";
-      hash = "sha256-CnGfHY4RhRhOLvlRTH/NZwzCnAL3VhU6xosuh6fkqGQ=";
-    })
-  ];
-
-  postInstall = ''
-    ${python.pythonForBuild.interpreter} setup.py build_sphinx --build-dir=$doc
-  '';
 
   nativeCheckInputs = [
     hypothesis
     pytestCheckHook
   ];
 
-  disabledTests = [
-    # Hypothesis produces unreliable results: Falsified on the first call but did not on a subsequent one
-    "test_test_fileobj_save"
-    "test_test_fileobj_load"
-    "test_test_fileobj_delete"
-    "test_mock_fileobj"
-  ];
+  pythonImportsCheck = [ "mutagen" ];
 
-  pythonImportsCheck = [
-    "mutagen"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python module for handling audio metadata";
     longDescription = ''
       Mutagen is a Python module to handle audio metadata. It supports
@@ -76,8 +61,10 @@ buildPythonPackage rec {
       manipulate Ogg streams on an individual packet/page level.
     '';
     homepage = "https://mutagen.readthedocs.io";
-    changelog = "https://mutagen.readthedocs.io/en/latest/changelog.html#release-${lib.replaceStrings [ "." ] [ "-" ] version}";
-    license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ ];
+    changelog = "https://mutagen.readthedocs.io/en/latest/changelog.html#release-${
+      lib.replaceString "." "-" finalAttrs.version
+    }";
+    license = lib.licenses.gpl2Plus;
+    maintainers = [ lib.maintainers.dotlambda ];
   };
-}
+})

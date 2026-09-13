@@ -1,43 +1,44 @@
-{ lib
-, buildPythonPackage
-, python
-, runCommand
-, fetchFromGitHub
-, configargparse
-, acme
-, configobj
-, cryptography
-, distro
-, josepy
-, parsedatetime
-, pyRFC3339
-, pyopenssl
-, pytz
-, requests
-, six
-, zope_component
-, zope_interface
-, dialog
-, gnureadline
-, pytest-xdist
-, pytestCheckHook
-, python-dateutil
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  python,
+  runCommand,
+  fetchFromGitHub,
+  configargparse,
+  acme,
+  configobj,
+  cryptography,
+  distro,
+  josepy,
+  parsedatetime,
+  pyrfc3339,
+  setuptools,
+  dialog,
+  gnureadline,
+  pytest-xdist,
+  pytestCheckHook,
+  python-dateutil,
+  writeShellScriptBin,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "certbot";
-  version = "2.4.0";
+  version = "5.6.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-BQsdhlYABZtz5+SORiCVnWMZdMmiWGM9W1YLqObyFo8=";
+    owner = "certbot";
+    repo = "certbot";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-knaEk4bjC0cdnMiO4ENvaDm/i/3tn6ZOJPdyqJxLKOs=";
   };
 
-  sourceRoot = "source/${pname}";
+  sourceRoot = "${finalAttrs.src.name}/certbot";
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     configargparse
     acme
     configobj
@@ -45,54 +46,64 @@ buildPythonPackage rec {
     distro
     josepy
     parsedatetime
-    pyRFC3339
-    pyopenssl
-    pytz
-    requests
-    six
-    zope_component
-    zope_interface
+    pyrfc3339
   ];
 
-  buildInputs = [ dialog gnureadline ];
+  buildInputs = [
+    dialog
+    gnureadline
+  ];
 
   nativeCheckInputs = [
     python-dateutil
     pytestCheckHook
     pytest-xdist
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    (writeShellScriptBin "sw_vers" ''
+      echo 'ProductVersion: 13.0'
+    '')
   ];
 
-  pytestFlagsArray = [
-    "-o cache_dir=$(mktemp -d)"
-    # See https://github.com/certbot/certbot/issues/8746
-    "-W ignore::ResourceWarning"
-    "-W ignore::DeprecationWarning"
+  pytestFlags = [
+    "-pno:cacheprovider"
+    "-Wignore::DeprecationWarning"
   ];
 
-  doCheck = true;
+  disabledTests = [
+    # network access
+    "test_lock_order"
+  ];
+
+  __darwinAllowLocalNetworking = true;
 
   makeWrapperArgs = [ "--prefix PATH : ${dialog}/bin" ];
 
   # certbot.withPlugins has a similar calling convention as python*.withPackages
   # it gets invoked with a lambda, and invokes that lambda with the python package set matching certbot's:
   # certbot.withPlugins (cp: [ cp.certbot-dns-foo ])
-  passthru.withPlugins = f:
+  passthru.withPlugins =
+    f:
     let
       pythonEnv = python.withPackages f;
-
     in
-    runCommand "certbot-with-plugins"
-      { } ''
-      mkdir -p $out/bin
-      cd $out/bin
-      ln -s ${pythonEnv}/bin/certbot
-    '';
+    runCommand "certbot-with-plugins-${finalAttrs.version}"
+      {
+        inherit (finalAttrs) pname version;
+      }
+      ''
+        mkdir -p $out/bin
+        cd $out/bin
+        ln -s ${pythonEnv}/bin/certbot
+      '';
 
-  meta = with lib; {
-    homepage = src.meta.homepage;
+  meta = {
+    homepage = "https://github.com/certbot/certbot";
+    changelog = "https://github.com/certbot/certbot/blob/${finalAttrs.src.tag}/certbot/CHANGELOG.md";
     description = "ACME client that can obtain certs and extensibly update server configurations";
-    platforms = platforms.unix;
-    maintainers = with maintainers; [ domenkozar ];
-    license = with licenses; [ asl20 ];
+    platforms = lib.platforms.unix;
+    mainProgram = "certbot";
+    maintainers = with lib.maintainers; [ miniharinn ];
+    license = lib.licenses.asl20;
   };
-}
+})

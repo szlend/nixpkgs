@@ -1,37 +1,34 @@
-{ lib
-, async-timeout
-, bleak
-, bleak-retry-connector
-, buildPythonPackage
-, cryptography
-, fetchFromGitHub
-, lru-dict
-, poetry-core
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  async-interrupt,
+  bleak,
+  bleak-retry-connector,
+  buildPythonPackage,
+  cryptography,
+  fetchFromGitHub,
+  lru-dict,
+  poetry-core,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "yalexs-ble";
-  version = "2.1.18";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "4.0.5";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "bdraco";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-bLxKq/MNbVIv9CV67NeOqn49cYu7gwcBnbZEtlreQzQ=";
+    owner = "Yale-Libs";
+    repo = "yalexs-ble";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-osvdWeYP/hp21C4Xtv0eBV+fMAg4mQ2JeFUa3NtT1IQ=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  build-system = [ poetry-core ];
 
-  propagatedBuildInputs = [
-    async-timeout
+  dependencies = [
+    async-interrupt
     bleak
     bleak-retry-connector
     cryptography
@@ -40,23 +37,17 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     pytest-asyncio
+    pytest-cov-stub
     pytestCheckHook
   ];
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace " --cov=yalexs_ble --cov-report=term-missing:skip-covered" ""
-  '';
+  pythonImportsCheck = [ "yalexs_ble" ];
 
-  pythonImportsCheck = [
-    "yalexs_ble"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Library for Yale BLE devices";
-    homepage = "https://github.com/bdraco/yalexs-ble";
-    changelog = "https://github.com/bdraco/yalexs-ble/blob/v${version}/CHANGELOG.md";
-    license = with licenses; [ gpl3Only ];
-    maintainers = with maintainers; [ fab ];
+    homepage = "https://github.com/Yale-Libs/yalexs-ble";
+    changelog = "https://github.com/Yale-Libs/yalexs-ble/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.gpl3Only;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

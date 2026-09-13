@@ -1,31 +1,69 @@
-{ lib, stdenv, fetchFromGitHub, libkrb5, openssl, postgresql }:
+{
+  fetchFromGitHub,
+  lib,
+  libkrb5,
+  openssl,
+  postgresql,
+  postgresqlBuildExtension,
+}:
 
-stdenv.mkDerivation rec {
+let
+  sources = {
+    "18" = {
+      version = "18.0";
+      hash = "sha256-+1YKJxMFkok7MsYeA9GRkc2FLxuBGRLpC+JzdK/xqoM=";
+    };
+    "17" = {
+      version = "17.1";
+      hash = "sha256-9St/ESPiFq2NiPKqbwHLwkIyATKUkOGxFcUrWgT+Iqo=";
+    };
+    "16" = {
+      version = "16.1";
+      hash = "sha256-fzoAcXEKmA+xD4HtcHZgcduh1XmSgL8ZS4R72og7RGQ=";
+    };
+    "15" = {
+      version = "1.7.1";
+      hash = "sha256-emwoTowT7WKFX0RQDqJXjIblrzqaUIUkzqSqBCHVKQ8=";
+    };
+    "14" = {
+      version = "1.6.3";
+      hash = "sha256-KgLidJHjUK9BTp6ffmGUj1chcwIe6IzlcadRpGCfNdM=";
+    };
+  };
+
+  source =
+    sources.${lib.versions.major postgresql.version} or {
+      version = "";
+      hash = throw "Source for pgaudit is not available for ${postgresql.version}";
+    };
+in
+postgresqlBuildExtension {
   pname = "pgaudit";
-  version = "1.7.0";
+  inherit (source) version;
 
   src = fetchFromGitHub {
     owner = "pgaudit";
     repo = "pgaudit";
-    rev = version;
-    hash = "sha256-8pShPr4HJaJQPjW1iPJIpj3CutTx8Tgr+rOqoXtgCcw=";
+    tag = source.version;
+    inherit (source) hash;
   };
 
-  buildInputs = [ libkrb5 openssl postgresql ];
+  buildInputs = [
+    libkrb5
+    openssl
+  ];
 
   makeFlags = [ "USE_PGXS=1" ];
 
-  installPhase = ''
-    install -D -t $out/lib *.so
-    install -D -t $out/share/postgresql/extension *.sql
-    install -D -t $out/share/postgresql/extension *.control
-  '';
+  enableUpdateScript = false;
 
-  meta = with lib; {
+  meta = {
+    broken = !builtins.elem (lib.versions.major postgresql.version) (builtins.attrNames sources);
     description = "Open Source PostgreSQL Audit Logging";
     homepage = "https://github.com/pgaudit/pgaudit";
-    maintainers = with maintainers; [ idontgetoutmuch ];
+    changelog = "https://github.com/pgaudit/pgaudit/releases/tag/${source.version}";
+    maintainers = with lib.maintainers; [ idontgetoutmuch ];
     platforms = postgresql.meta.platforms;
-    license = licenses.postgresql;
+    license = lib.licenses.postgresql;
   };
 }

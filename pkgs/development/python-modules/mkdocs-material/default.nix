@@ -1,65 +1,97 @@
-{ lib
-, callPackage
-, buildPythonPackage
-, fetchFromGitHub
-, colorama
-, hatch-requirements-txt
-, hatch-nodejs-version
-, hatchling
-, jinja2
-, markdown
-, mkdocs
-, mkdocs-material-extensions
-, pygments
-, pymdown-extensions
-, pythonOlder
-, regex
-, requests
+{
+  lib,
+  babel,
+  backrefs,
+  buildPythonPackage,
+  cairosvg,
+  colorama,
+  fetchFromGitHub,
+  hatch-nodejs-version,
+  hatch-requirements-txt,
+  hatchling,
+  jinja2,
+  markdown,
+  mkdocs,
+  mkdocs-git-revision-date-localized-plugin,
+  mkdocs-material-extensions,
+  mkdocs-minify-plugin,
+  mkdocs-redirects,
+  mkdocs-rss-plugin,
+  paginate,
+  pillow,
+  pygments,
+  pymdown-extensions,
+  regex,
+  requests,
+  trove-classifiers,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mkdocs-material";
-  version = "9.1.13";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "9.7.6";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "squidfunk";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-S+cCNcQR8Y1UGj+4Nfy9Z10N/9PRq13fSeR2YFntxWI=";
+    repo = "mkdocs-material";
+    tag = finalAttrs.version;
+    hash = "sha256-qQtVnWNSh7rJhVyufkebEq6n4lpBI3tZxHRT07AIZFA=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
     hatch-requirements-txt
     hatch-nodejs-version
     hatchling
+    trove-classifiers
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    babel
+    backrefs
     colorama
     jinja2
     markdown
     mkdocs
     mkdocs-material-extensions
+    paginate
     pygments
     pymdown-extensions
     regex
     requests
   ];
 
+  pythonRelaxDeps = [ "backrefs" ];
+
+  optional-dependencies = {
+    recommended = [
+      mkdocs-minify-plugin
+      mkdocs-redirects
+      mkdocs-rss-plugin
+    ];
+    git = [
+      # TODO: gmkdocs-git-committers-plugin
+      mkdocs-git-revision-date-localized-plugin
+    ];
+    imaging = [
+      cairosvg
+      pillow
+    ];
+  };
+
   # No tests for python
   doCheck = false;
 
-  pythonImportsCheck = [
-    "mkdocs"
-  ];
+  pythonImportsCheck = [ "mkdocs" ];
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/squidfunk/mkdocs-material/blob/${finalAttrs.src.tag}/CHANGELOG";
     description = "Material for mkdocs";
+    downloadPage = "https://github.com/squidfunk/mkdocs-material";
     homepage = "https://squidfunk.github.io/mkdocs-material/";
-    license = licenses.mit;
-    maintainers = with maintainers; [ dandellion ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      dandellion
+      jaysa68
+    ];
   };
-}
+})

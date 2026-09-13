@@ -1,57 +1,45 @@
-{ lib
-, python3
-, fetchFromGitHub
+{
+  lib,
+  python3Packages,
+  fetchFromGitHub,
 }:
 
-python3.pkgs.buildPythonApplication rec {
+python3Packages.buildPythonApplication rec {
   pname = "appdaemon";
-  version = "4.2.1";
-  format = "setuptools";
-
-  disabled = python3.pythonOlder "3.7";
+  version = "4.5.13";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "AppDaemon";
     repo = "appdaemon";
-    rev = "refs/tags/${version}";
-    hash = "sha256-4sN0optkMmyWb5Cd3F7AhcXYHh7aidJE/bieYMEKgSY=";
+    tag = version;
+    hash = "sha256-uVlrLyj8GZo1T8AKBxpVTPPqUrwxmyMbgaopmEGZiR4=";
   };
 
-  postPatch = ''
-    # relax dependencies
-    sed -i 's/==/>=/' requirements.txt
-  '';
+  pythonRelaxDeps = true;
 
-  propagatedBuildInputs = with python3.pkgs; [
-    aiodns
+  build-system = [ python3Packages.setuptools ];
+
+  dependencies = with python3Packages; [
     aiohttp
     aiohttp-jinja2
     astral
-    azure-keyvault-secrets
-    azure-mgmt-compute
-    azure-mgmt-resource
-    azure-mgmt-storage
-    azure-storage-blob
     bcrypt
-    faust-cchardet
     deepdiff
     feedparser
     iso8601
-    jinja2
     paho-mqtt
     pid
-    pygments
+    pydantic
     python-dateutil
-    python-engineio
     python-socketio
     pytz
     pyyaml
     requests
     sockjs
     uvloop
-    voluptuous
-    websocket-client
-    yarl
+    tomli
+    tomli-w
   ];
 
   # no tests implemented
@@ -59,11 +47,12 @@ python3.pkgs.buildPythonApplication rec {
     $out/bin/appdaemon -v | grep -q "${version}"
   '';
 
-  meta = with lib; {
+  meta = {
     description = "Sandboxed Python execution environment for writing automation apps for Home Assistant";
+    mainProgram = "appdaemon";
     homepage = "https://github.com/AppDaemon/appdaemon";
-    changelog = "https://github.com/AppDaemon/appdaemon/blob/${version}/docs/HISTORY.rst";
-    license = licenses.mit;
-    maintainers = teams.home-assistant.members;
+    changelog = "https://github.com/AppDaemon/appdaemon/blob/${version}/docs/HISTORY.md";
+    license = lib.licenses.mit;
+    teams = [ lib.teams.home-assistant ];
   };
 }

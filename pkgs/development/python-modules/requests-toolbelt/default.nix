@@ -1,51 +1,52 @@
-{ lib
-, betamax
-, buildPythonPackage
-, fetchpatch
-, fetchPypi
-, mock
-, pyopenssl
-, pytestCheckHook
-, requests
+{
+  lib,
+  betamax,
+  buildPythonPackage,
+  fetchPypi,
+  pyopenssl,
+  pytestCheckHook,
+  requests,
+  setuptools,
+  trustme,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "requests-toolbelt";
-  version = "0.10.1";
-  format = "setuptools";
+  version = "1.0.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-YuCff/XMvakncqKfOUpJw61ssYHVaLEzdiayq7Yopj0=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-doGgo9BHAStb3A7jfX+PB+vnarCMrsz8OSHOI8iNW8Y=";
   };
 
-  propagatedBuildInputs = [
-    requests
-  ];
+  build-system = [ setuptools ];
+  dependencies = [ requests ];
 
   nativeCheckInputs = [
     betamax
-    mock
+    pyopenssl
     pytestCheckHook
+    trustme
   ];
 
   disabledTests = [
-    # https://github.com/requests/toolbelt/issues/306
-    "test_no_content_length_header"
-    "test_read_file"
-    "test_reads_file_from_url_wrapper"
-    "test_x509_der"
-    "test_x509_pem"
+    # incompatible with urllib3 2.0
+    "test_dump_response"
+    "test_dump_all"
+    "test_prepared_request_override_base"
+    "test_prepared_request_with_base"
+    "test_request_override_base"
+    "test_request_with_base"
   ];
 
-  pythonImportsCheck = [
-    "requests_toolbelt"
-  ];
+  pythonImportsCheck = [ "requests_toolbelt" ];
 
-  meta = with lib; {
+  meta = {
     description = "Toolbelt of useful classes and functions to be used with requests";
     homepage = "http://toolbelt.rtfd.org";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ matthiasbeyer ];
+    changelog = "https://github.com/requests/toolbelt/blob/${finalAttrs.version}/HISTORY.rst";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ matthiasbeyer ];
   };
-}
+})

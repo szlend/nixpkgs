@@ -1,30 +1,30 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  hatchling,
 }:
 
 buildPythonPackage rec {
   pname = "striprtf";
-  version = "0.0.25";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.0.32";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-5soxa3sCeBeYeNsxr4Y96ztTVdeSHgSH/6z8WWUvGQI=";
+    hash = "sha256-fzdaN12ZonAIQhcxaMkMm1RcskQkH/xdho7Z9rr5FV8=";
   };
 
-  pythonImportsCheck = [
-    "striprtf"
-  ];
+  build-system = [ hatchling ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "striprtf" ];
+
+  meta = {
     changelog = "https://github.com/joshy/striprtf/blob/v${version}/CHANGELOG.md";
     homepage = "https://github.com/joshy/striprtf";
-    description = "A simple library to convert rtf to text";
-    maintainers = with maintainers; [ aanderse ];
-    license = with licenses; [ bsd3 ];
+    description = "Simple library to convert rtf to text";
+    mainProgram = "striprtf";
+    maintainers = with lib.maintainers; [ aanderse ];
+    license = lib.licenses.bsd3;
   };
 }

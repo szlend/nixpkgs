@@ -1,71 +1,67 @@
-{ lib
-, python-dateutil
-, buildPythonPackage
-, emoji
-, fetchFromGitHub
-, freezegun
-, tzdata
-, py
-, pyparsing
-, pydantic
-, pytest-asyncio
-, pytest-benchmark
-, pytest-golden
-, pytestCheckHook
-, pythonOlder
-, pythonRelaxDepsHook
-, pyyaml
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  emoji,
+  fetchFromGitHub,
+  freezegun,
+  tzdata,
+  pdoc,
+  pydantic,
+  pytest-aiohttp,
+  pytest-benchmark,
+  pytestCheckHook,
+  python-dateutil,
+  setuptools,
+  syrupy,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "ical";
-  version = "4.5.4";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.9";
+  version = "14.1.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "allenporter";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-UcuJ23yzpRHDUFlwov692UyLXP/9Qb4F+IJIszo12/M=";
+    repo = "ical";
+    tag = finalAttrs.version;
+    hash = "sha256-Rl/tEOG+n7MCd/kHmoluBS4YI8+Jd4pxgvmUyp9eOag=";
   };
 
-  nativeBuildInputs = [
-    pythonRelaxDepsHook
-  ];
+  build-system = [ setuptools ];
 
-  pythonRelaxDeps = [
-    "tzdata"
-  ];
-
-  propagatedBuildInputs = [
-    emoji
+  dependencies = [
     python-dateutil
     tzdata
     pydantic
-    pyparsing
   ];
+
+  optional-dependencies = {
+    async = [ aiohttp ];
+  };
 
   nativeCheckInputs = [
+    emoji
     freezegun
-    py
-    pytest-asyncio
+    pdoc
+    pytest-aiohttp
     pytest-benchmark
-    pytest-golden
     pytestCheckHook
-    pyyaml
-  ];
+    syrupy
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
 
-  pythonImportsCheck = [
-    "ical"
-  ];
+  pytestFlags = [ "--benchmark-disable" ];
 
-  meta = with lib; {
+  __darwinAllowLocalNetworking = true;
+
+  pythonImportsCheck = [ "ical" ];
+
+  meta = {
     description = "Library for handling iCalendar";
     homepage = "https://github.com/allenporter/ical";
-    changelog = "https://github.com/allenporter/ical/releases/tag/${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ dotlambda ];
+    changelog = "https://github.com/allenporter/ical/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

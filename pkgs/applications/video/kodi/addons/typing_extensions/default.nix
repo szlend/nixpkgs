@@ -1,12 +1,18 @@
-{ lib, buildKodiAddon, fetchzip, addonUpdateScript }:
+{
+  lib,
+  rel,
+  buildKodiAddon,
+  fetchzip,
+  addonUpdateScript,
+}:
 buildKodiAddon rec {
   pname = "typing_extensions";
   namespace = "script.module.typing_extensions";
-  version = "3.7.4.3";
+  version = "4.7.1";
 
   src = fetchzip {
-    url = "https://mirrors.kodi.tv/addons/nexus/${namespace}/${namespace}-${version}.zip";
-    sha256 = "sha256-GE9OfOIWtEKQcAmQZAK1uOFN4DQDiWU0YxUWICGDSFw=";
+    url = "https://mirrors.kodi.tv/addons/${lib.toLower rel}/${namespace}/${namespace}-${version}.zip";
+    sha256 = "sha256-bCGPl5fGVyptCenpNXP/Msi7hu+UdtZd2ms7MfzbsbM=";
   };
 
   passthru = {
@@ -16,10 +22,10 @@ buildKodiAddon rec {
     };
   };
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/python/typing/tree/master/typing_extensions";
     description = "Python typing extensions";
-    license = licenses.psfl;
-    maintainers = teams.kodi.members;
+    license = lib.licenses.psfl;
+    teams = [ lib.teams.kodi ];
   };
 }

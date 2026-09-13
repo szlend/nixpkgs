@@ -1,29 +1,29 @@
-{ lib
-, async-timeout
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, pytest-asyncio
-, pytestCheckHook
+{
+  lib,
+  async-timeout,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonAtLeast,
+  pytest-asyncio,
+  setuptools,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "screenlogicpy";
-  version = "0.8.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "0.10.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "dieselrabbit";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-7w2cg+LfL3w2Xxf8s7lFxE/HkqZ6RBYp8LkZTOwgK+I=";
+    repo = "screenlogicpy";
+    tag = "v${version}";
+    hash = "sha256-o/NcLassEaucnWqu5fnYA19wFwCPCT9nYKBeHzFZTKo=";
   };
 
-  propagatedBuildInputs = [
-    async-timeout
-  ];
+  nativeBuildInputs = [ setuptools ];
+
+  propagatedBuildInputs = [ async-timeout ];
 
   nativeCheckInputs = [
     pytest-asyncio
@@ -32,22 +32,29 @@ buildPythonPackage rec {
 
   disabledTests = [
     # Tests require network access
-    "test_gateway_discovery"
     "test_async_discovery"
-    "test_gateway"
     "test_async"
     "test_asyncio_gateway_discovery"
+    "test_discovery_async_discover"
+    "test_gateway_discovery"
+    "test_gateway"
+  ]
+  ++ lib.optionals (pythonAtLeast "3.12") [
+    # Tests block on Python 3.12
+    "test_sub_unsub"
+    "test_attach_existing"
+    "test_login_async_connect_to_gateway"
+    "test_login_async_gateway_connect"
   ];
 
-  pythonImportsCheck = [
-    "screenlogicpy"
-  ];
+  pythonImportsCheck = [ "screenlogicpy" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python interface for Pentair Screenlogic devices";
+    mainProgram = "screenlogicpy";
     homepage = "https://github.com/dieselrabbit/screenlogicpy";
-    changelog = "https://github.com/dieselrabbit/screenlogicpy/releases/tag/v${version}";
-    license = with licenses; [ gpl3Only ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/dieselrabbit/screenlogicpy/releases/tag/${src.tag}";
+    license = lib.licenses.gpl3Only;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

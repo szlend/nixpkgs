@@ -1,23 +1,23 @@
-{ lib, fetchurl, buildDunePackage
-, containers
-, oseq
+{
+  lib,
+  fetchurl,
+  buildDunePackage,
+  alcotest,
 }:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "dscheck";
-  version = "0.1.0";
+  version = "0.6.0";
 
-  minimalOCamlVersion = "5.0";
-  duneVersion = "3";
+  minimalOCamlVersion = "5.2";
 
   src = fetchurl {
-    url = "https://github.com/ocaml-multicore/dscheck/releases/download/${version}/dscheck-${version}.tbz";
-    hash = "sha256-zoouFZJcUp71yeluVb1xLUIMcFv99OpkcQQCHkPTKcI=";
+    url = "https://github.com/ocaml-multicore/dscheck/releases/download/${finalAttrs.version}/dscheck-${finalAttrs.version}.tbz";
+    hash = "sha256-//li4+7Y1kWjU5V3uTUF1kLZr+M7KeJPkOZx03UOe6w=";
   };
 
-  propagatedBuildInputs = [ containers oseq ];
-
   doCheck = true;
+  checkInputs = [ alcotest ];
 
   meta = {
     description = "Traced atomics";
@@ -25,4 +25,4 @@ buildDunePackage rec {
     license = lib.licenses.isc;
     maintainers = [ lib.maintainers.vbgl ];
   };
-}
+})

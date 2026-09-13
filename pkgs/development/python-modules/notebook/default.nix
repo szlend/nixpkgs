@@ -1,99 +1,103 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, argon2-cffi
-, glibcLocales
-, mock
-, jinja2
-, tornado
-, ipython_genutils
-, traitlets
-, jupyter-core
-, jupyter-client
-, nbformat
-, nbclassic
-, nbconvert
-, ipykernel
-, terminado
-, requests
-, send2trash
-, pexpect
-, prometheus-client
-, pytestCheckHook
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # nativeBuildInputs
+  nodejs,
+  yarn-berry_3,
+  distutils,
+
+  # build-system
+  hatch-jupyter-builder,
+  hatchling,
+  jupyter-builder,
+  jupyterlab,
+
+  # dependencies
+  jupyter-server,
+  jupyterlab-server,
+  notebook-shim,
+  tornado,
+
+  # tests
+  pytest-jupyter,
+  pytestCheckHook,
+  versionCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "notebook";
-  version = "6.5.2";
-  disabled = pythonOlder "3.7";
+  version = "7.6.2";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-wYl+UxfiJfx4tFVJpqtLZo5MmW/QOgTpOP5eevK//9A=";
+  src = fetchFromGitHub {
+    owner = "jupyter";
+    repo = "notebook";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-OkwOSluKl5ysMj9Jof91m0M8Zy3ssD2+l9qnNKb/FlI=";
   };
 
-  LC_ALL = "en_US.utf8";
-
-  nativeCheckInputs = [ pytestCheckHook glibcLocales ];
-
-  propagatedBuildInputs = [
-    jinja2
-    tornado
-    ipython_genutils
-    traitlets
-    jupyter-core
-    send2trash
-    jupyter-client
-    nbformat
-    nbclassic
-    nbconvert
-    ipykernel
-    terminado
-    requests
-    pexpect
-    prometheus-client
-    argon2-cffi
-  ];
-
   postPatch = ''
-    # Remove selenium tests
-    rm -rf notebook/tests/selenium
-    export HOME=$TMPDIR
+    substituteInPlace pyproject.toml \
+      --replace-fail "timeout = 300" ""
   '';
 
-  disabledTests = [
-    # a "system_config" is generated, and fails many tests
-    "config"
-    "load_ordered"
-    # requires jupyter, but will cause circular imports
-    "test_run"
-    "TestInstallServerExtension"
-    "launch_socket"
-    "sock_server"
-    "test_list_formats" # tries to find python MIME type
-    "KernelCullingTest" # has a race condition failing on slower hardware
-    "test_connections" # tornado.simple_httpclient.HTTPTimeoutError: Timeout during request"
-  ] ++ lib.optionals stdenv.isDarwin [
-    "test_delete"
-    "test_checkpoints_follow_file"
+  nativeBuildInputs = [
+    nodejs
+    yarn-berry_3.yarnBerryConfigHook
+  ]
+  ++ lib.optionals (stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isAarch64) [
+    distutils
   ];
 
-  disabledTestPaths = lib.optionals stdenv.isDarwin [
-    # requires local networking
-    "notebook/auth/tests/test_login.py"
-    "notebook/bundler/tests/test_bundler_api.py"
+  missingHashes = ./missing-hashes.json;
+  offlineCache = yarn-berry_3.fetchYarnBerryDeps {
+    inherit (finalAttrs) src missingHashes;
+    hash = "sha256-31b81Ubbv7Dt20v/7wl0pn6ROhIcNtL4BfXD6vE4t+4=";
+  };
+
+  build-system = [
+    hatch-jupyter-builder
+    hatchling
+    jupyter-builder
+    jupyterlab
   ];
+
+  dependencies = [
+    jupyter-server
+    jupyterlab
+    jupyterlab-server
+    notebook-shim
+    tornado
+  ];
+
+  nativeCheckInputs = [
+    pytest-jupyter
+    pytestCheckHook
+    versionCheckHook
+  ];
+
+  pytestFlags = [
+    "-Wignore::DeprecationWarning"
+  ];
+
+  env = {
+    CI = 1; # quiet lerna progress bar
+    JUPYTER_PLATFORM_DIRS = 1;
+  };
 
   # Some of the tests use localhost networking.
   __darwinAllowLocalNetworking = true;
 
   meta = {
-    description = "The Jupyter HTML notebook is a web-based notebook environment for interactive computing";
+    description = "Web-based notebook environment for interactive computing";
     homepage = "https://github.com/jupyter/notebook";
+    changelog = "https://github.com/jupyter/notebook/blob/${finalAttrs.src.tag}/CHANGELOG.md";
     license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ fridh ];
+    teams = [ lib.teams.jupyter ];
     mainProgram = "jupyter-notebook";
   };
-}
+})

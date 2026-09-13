@@ -1,11 +1,14 @@
 /**
- * Since Nix does not have a standard location like /usr/share,
- * where GSettings system could look for schemas, we need to point the software to a correct location somehow.
+ * Since Nix does not have a standard location like /usr/share where GSettings system
+ * could look for schemas, we need to point the software to a correct location somehow.
  * For executables, we handle this using wrappers but this is not an option for libraries like e-d-s.
- * Instead, we hardcode the schema path when creating the settings.
- * A schema path (ie org.gnome.evolution) can be replaced by @EVOLUTION_SCHEMA_ID@
- * which is then replaced at build time by substituteAll.
- * The mapping is provided in a json file ./glib-schema-to-var.json
+ * Instead, we patch the source code to look for the schema in a schema source
+ * through a hardcoded path to the schema.
+ *
+ * For each schema id referenced in the source code (e.g. org.gnome.evolution),
+ * a variable name such as `EVOLUTION` must be provided in the ./glib-schema-to-var.json JSON file.
+ * It will end up in the resulting patch as `@EVOLUTION@` placeholder, which should be replaced at build time
+ * with a path to the directory containing a `gschemas.compiled` file that includes the schema.
  */
 
 @initialize:python@
@@ -30,6 +33,17 @@ def get_schema_directory(schema_id):
     if schema_id in schema_to_var:
         return f'"@{schema_to_var[schema_id]}@"'
     raise Exception(f"Unknown schema path {schema_id!r}, please add it to ./glib-schema-to-var.json")
+
+
+@script:python schema_exists_fn@
+fn;
+@@
+import json
+
+with open("./glib-schema-exists-function.json") as fn_file:
+    if (fn := json.load(fn_file)):
+        coccinelle.fn = fn
+
 
 @find_cpp_constants@
 identifier const_name;
@@ -140,3 +154,12 @@ fresh identifier SCHEMA_DIRECTORY = script:python(SCHEMA_ID) { get_schema_direct
 +   schema = g_settings_schema_source_lookup(schema_source, SCHEMA_ID, FALSE);
 +   settings = g_settings_new_full(schema, NULL, PATH);
 +}
+
+
+@replace_schema_exists_fns depends on ever record_cpp_constants || never record_cpp_constants@
+// We want to run after #define constants have been collected but even if there are no #defines.
+expression SCHEMA_ID;
+identifier schema_exists_fn.fn;
+@@
+-fn(SCHEMA_ID)
++TRUE

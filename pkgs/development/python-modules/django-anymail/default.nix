@@ -1,54 +1,82 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, six
-, requests
-, django
-, boto3
-, python
-, mock
-, pytestCheckHook
-, pytest-django
+{
+  lib,
+  boto3,
+  buildPythonPackage,
+  cryptography,
+  django,
+  fetchFromGitHub,
+  hatchling,
+  idna,
+  mock,
+  pytest-django,
+  pytestCheckHook,
+  requests,
+  responses,
+  urllib3,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "django-anymail";
-  version = "9.0";
+  version = "15.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "anymail";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-qEYBHsaHo1gmrsa6q7DQiUJurC7cXhv5e/SQ7R3Tkzc=";
+    repo = "django-anymail";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-Qlqg7nfhH3vDfbnxIyq6uLDWZfzmaKVX95XEXpSeel8=";
   };
 
-  propagatedBuildInputs = [
-    six
-    requests
+  build-system = [ hatchling ];
+
+  dependencies = [
     django
-    boto3
+    idna
+    requests
+    urllib3
   ];
+
+  optional-dependencies = {
+    amazon-ses = [ boto3 ];
+    postal = [ cryptography ];
+    sendgrid = [ cryptography ];
+    # not packaged
+    # resend = [ svix ];
+    # uts46 = [ uts46 ];
+  };
 
   nativeCheckInputs = [
-    pytestCheckHook
-    pytest-django
     mock
-  ];
+    responses
+    pytest-django
+    pytestCheckHook
+  ]
+  ++ lib.flatten (builtins.attrValues finalAttrs.passthru.optional-dependencies);
+
+  disabledTestMarks = [ "live" ];
 
   disabledTests = [
-    # Require networking
-    "test_debug_logging"
-    "test_no_debug_logging"
+    # misrecognized as a fixture due to function name starting with test_
+    "test_file_content"
   ];
+
+  disabledTestPaths = [
+    # likely guessed mime type mismatch
+    "tests/test_resend_backend.py::ResendBackendStandardEmailTests::test_attachments"
+  ];
+
+  preCheck = ''
+    export CONTINOUS_INTEGRATION=1
+    export DJANGO_SETTINGS_MODULE=tests.test_settings.settings_${lib.versions.major django.version}_0
+  '';
 
   pythonImportsCheck = [ "anymail" ];
 
-  DJANGO_SETTINGS_MODULE = "tests.test_settings.settings_3_2";
-
-  meta = with lib; {
+  meta = {
     description = "Django email backends and webhooks for Mailgun";
     homepage = "https://github.com/anymail/django-anymail";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ onny ];
+    changelog = "https://github.com/anymail/django-anymail/blob/${finalAttrs.src.tag}/CHANGELOG.rst";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ onny ];
   };
-}
+})

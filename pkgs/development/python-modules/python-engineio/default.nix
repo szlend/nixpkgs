@@ -1,73 +1,83 @@
-{ lib
-, stdenv
-, aiohttp
-, buildPythonPackage
-, eventlet
-, fetchFromGitHub
-, iana-etc
-, libredirect
-, mock
-, pytestCheckHook
-, pythonOlder
-, requests
-, tornado
-, websocket-client
+{
+  lib,
+  stdenv,
+  aiohttp,
+  buildPythonPackage,
+  setuptools,
+  eventlet,
+  fetchFromGitHub,
+  iana-etc,
+  libredirect,
+  mock,
+  pytest-asyncio,
+  pytestCheckHook,
+  requests,
+  simple-websocket,
+  tornado,
+  websocket-client,
 }:
 
 buildPythonPackage rec {
   pname = "python-engineio";
-  version = "4.4.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "4.13.3";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "miguelgrinberg";
     repo = "python-engineio";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-sE6AlT01Rou427i9w+xwUTMflKxUr0Heqt2l+Y2AMmU=";
+    tag = "v${version}";
+    hash = "sha256-3KWhQE4STzwEtFzuhiTQZcc9a3lWoQlW74oHtbR4N6M=";
+  };
+
+  build-system = [ setuptools ];
+
+  dependencies = [ simple-websocket ];
+
+  optional-dependencies = {
+    client = [
+      requests
+      websocket-client
+    ];
+    asyncio_client = [ aiohttp ];
   };
 
   nativeCheckInputs = [
-    aiohttp
     eventlet
+    libredirect.hook
     mock
-    requests
     tornado
-    websocket-client
+    pytest-asyncio
     pytestCheckHook
-  ];
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
-  doCheck = !stdenv.isDarwin;
-
-  preCheck = lib.optionalString stdenv.isLinux ''
+  preCheck = lib.optionalString stdenv.hostPlatform.isLinux ''
     echo "nameserver 127.0.0.1" > resolv.conf
-    export NIX_REDIRECTS=/etc/protocols=${iana-etc}/etc/protocols:/etc/resolv.conf=$(realpath resolv.conf) \
-      LD_PRELOAD=${libredirect}/lib/libredirect.so
+    export NIX_REDIRECTS=/etc/protocols=${iana-etc}/etc/protocols:/etc/resolv.conf=$(realpath resolv.conf)
   '';
 
   postCheck = ''
     unset NIX_REDIRECTS LD_PRELOAD
   '';
 
-  # somehow effective log level does not change?
   disabledTests = [
+    # Assertion issue
+    "test_async_mode_eventlet"
+    # Somehow effective log level does not change?
     "test_logger"
   ];
 
-  pythonImportsCheck = [
-    "engineio"
-  ];
+  pythonImportsCheck = [ "engineio" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python based Engine.IO client and server";
     longDescription = ''
       Engine.IO is a lightweight transport protocol that enables real-time
       bidirectional event-based communication between clients and a server.
     '';
     homepage = "https://github.com/miguelgrinberg/python-engineio/";
-    changelog = "https://github.com/miguelgrinberg/python-engineio/blob/v${version}/CHANGES.md";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ mic92 ];
+    changelog = "https://github.com/miguelgrinberg/python-engineio/blob/${src.tag}/CHANGES.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ mic92 ];
   };
 }

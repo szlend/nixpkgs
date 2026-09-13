@@ -1,61 +1,85 @@
-{ lib
-, aiounittest
-, buildPythonPackage
-, fetchPypi
-, google-api-core
-, google-cloud-core
-, google-cloud-testutils
-, mock
-, proto-plus
-, protobuf
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiounittest,
+  buildPythonPackage,
+  fetchFromGitHub,
+  freezegun,
+  google-api-core,
+  google-cloud-core,
+  google-cloud-testutils,
+  mock,
+  proto-plus,
+  protobuf,
+  pytest-asyncio,
+  pytestCheckHook,
+  pythonAtLeast,
+  pythonOlder,
+  pyyaml,
+  setuptools,
+  nix-update-script,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "google-cloud-firestore";
-  version = "2.11.1";
-  format = "setuptools";
+  version = "2.28.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-f336hlZ8jWbGbI26i8XvhWd8hTK0IGBVozlBP4BxUl0=";
+  src = fetchFromGitHub {
+    owner = "googleapis";
+    repo = "google-cloud-python";
+    tag = "google-cloud-firestore-v${finalAttrs.version}";
+    hash = "sha256-dct5yBerIMNQgVIvOWdO9yTxSrH1JDUen6I7CYHftC0=";
   };
 
-  propagatedBuildInputs = [
+  sourceRoot = "${finalAttrs.src.name}/packages/google-cloud-firestore";
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     google-api-core
     google-cloud-core
     proto-plus
     protobuf
-  ] ++ google-api-core.optional-dependencies.grpc;
+  ]
+  ++ google-api-core.optional-dependencies.grpc;
+
+  pythonRelaxDeps = [ "protobuf" ];
 
   nativeCheckInputs = [
-    aiounittest
+    freezegun
     google-cloud-testutils
     mock
     pytest-asyncio
     pytestCheckHook
-  ];
+    pyyaml
+  ]
+  ++ lib.optionals (pythonOlder "3.14") [ aiounittest ];
 
   preCheck = ''
     # do not shadow imports
     rm -r google
+  ''
+  + lib.optionalString (pythonAtLeast "3.14") ''
+    # aiounittest is not available for Python 3.14
+    rm -r tests/unit/v1/test_bulk_writer.py
   '';
 
   disabledTestPaths = [
     # Tests are broken
     "tests/system/test_system.py"
     "tests/system/test_system_async.py"
-    # requires credentials
-    "tests/unit/v1/test_bulk_writer.py"
-  ];
-
-  disabledTests = [
-    # requires credentials
-    "test_collections"
+    # Test requires credentials
+    "tests/system/test_pipeline_acceptance.py"
+  ]
+  ++ lib.optionals (pythonOlder "3.14") [
+    # RuntimeError: There is no current event loop in thread 'MainThread'.
+    "tests/unit/v1/test_base_client.py::test_baseclient__emulator_channel"
+    "tests/unit/v1/test_bundle.py::TestAsyncBundle::test_async_query"
+  ]
+  ++ lib.optionals (pythonAtLeast "3.14") [
+    # RuntimeError: There is no current event loop in thread 'MainThread'
+    # due to eliding aiounittest
+    "tests/unit/v1/test_bundle.py::TestAsyncBundle::test_async_query"
   ];
 
   pythonImportsCheck = [
@@ -63,11 +87,18 @@ buildPythonPackage rec {
     "google.cloud.firestore_admin_v1"
   ];
 
-  meta = with lib; {
-    description = "Google Cloud Firestore API client library";
-    homepage = "https://github.com/googleapis/python-firestore";
-    changelog = "https://github.com/googleapis/python-firestore/blob/v${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+  passthru.updateScript = nix-update-script {
+    extraArgs = [
+      "--version-regex"
+      "google-cloud-firestore-v(.*)"
+    ];
   };
-}
+
+  meta = {
+    description = "Google Cloud Firestore API client library";
+    homepage = "https://github.com/googleapis/google-cloud-python/tree/main/packages/google-cloud-firestore";
+    changelog = "https://github.com/googleapis/google-cloud-python/tree/${finalAttrs.src.tag}/packages/google-cloud-firestore/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ sarahec ];
+  };
+})

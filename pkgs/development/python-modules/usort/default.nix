@@ -1,42 +1,38 @@
-{ lib
-, attrs
-, buildPythonPackage
-, click
-, fetchFromGitHub
-, hatch-vcs
-, hatchling
-, libcst
-, moreorless
-, pythonOlder
-, stdlibs
-, toml
-, trailrunner
-, unittestCheckHook
-, volatile
+{
+  lib,
+  attrs,
+  buildPythonPackage,
+  click,
+  fetchFromGitHub,
+  hatch-vcs,
+  hatchling,
+  libcst,
+  moreorless,
+  stdlibs,
+  toml,
+  trailrunner,
+  unittestCheckHook,
+  volatile,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "usort";
-  version = "1.1.0b2";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.2.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "facebook";
     repo = "usort";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-c3gQ+f/BRgM+Nwc+mEP7dcmig7ws7FqL5zwQhNJJlsI=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-hoBk8KAml/YOscno9605I3t4z10vQPlh22wH1XHcQqY=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
-
-  nativeBuildInputs = [
+  build-system = [
     hatch-vcs
     hatchling
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     attrs
     click
     libcst
@@ -51,15 +47,14 @@ buildPythonPackage rec {
     volatile
   ];
 
-  pythonImportsCheck = [
-    "usort"
-  ];
+  pythonImportsCheck = [ "usort" ];
 
-  meta = with lib; {
+  meta = {
     description = "Safe, minimal import sorting for Python projects";
     homepage = "https://github.com/facebook/usort";
-    changelog = "https://github.com/facebook/usort/blob/${version}/CHANGELOG.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/facebook/usort/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "usort";
   };
-}
+})

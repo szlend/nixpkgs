@@ -1,40 +1,43 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, flit-core
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  moreorless,
+  unittestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "stdlibs";
-  version = "2022.10.9";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "2026.9.3";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "omnilib";
     repo = "stdlibs";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-HkGZw58gQGd8mHnCP4aF6JWXxlpIIfe7B//HJiHVwA4=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-W2fj+hGZ5UA/XNO0CUyTbz/Wwhh3pr/2qB8Su5TdKPM=";
   };
 
-  nativeBuildInputs = [
-    flit-core
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "flit_core >=4,<5" "flit_core"
+  '';
+
+  build-system = [ flit-core ];
+
+  nativeCheckInputs = [
+    moreorless
+    unittestCheckHook
   ];
 
-  # Module has no tests
-  doCheck = false;
+  pythonImportsCheck = [ "stdlibs" ];
 
-  pythonImportsCheck = [
-    "stdlibs"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Overview of the Python stdlib";
     homepage = "https://github.com/omnilib/stdlibs";
-    changelog = "https://github.com/omnilib/stdlibs/blob/${version}/CHANGELOG.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/omnilib/stdlibs/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

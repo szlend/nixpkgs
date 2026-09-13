@@ -1,30 +1,37 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, sphinx
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  hatch-vcs,
+  hatchling,
+  sphinx,
 }:
 
 buildPythonPackage rec {
   pname = "sphinx-thebe";
-  version = "0.2.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "0.3.1";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "f4c8c1542054f991b73fcb28c4cf21697e42aba2f83f22348c1c851b82766583";
+    inherit version;
+    pname = "sphinx_thebe";
+    hash = "sha256-V2BH9FVg6C9kql8VIAsesJTc/hxbj1MaimW9II4lpJM=";
   };
+
+  nativeBuildInputs = [
+    hatch-vcs
+    hatchling
+  ];
 
   propagatedBuildInputs = [ sphinx ];
 
   pythonImportsCheck = [ "sphinx_thebe" ];
 
-  meta = with lib; {
+  meta = {
     description = "Integrate interactive code blocks into your documentation with Thebe and Binder";
     homepage = "https://github.com/executablebooks/sphinx-thebe";
-    license = licenses.mit;
-    maintainers = with maintainers; [ marsam ];
+    changelog = "https://github.com/executablebooks/sphinx-thebe/releases/tag/v${version}";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

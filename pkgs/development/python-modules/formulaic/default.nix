@@ -1,62 +1,70 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, hatchling
-, hatch-vcs
-, git
-, astor
-, interface-meta
-, numpy
-, pandas
-, scipy
-, sympy
-, wrapt
-, typing-extensions
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatch-vcs,
+  hatchling,
+  interface-meta,
+  narwhals,
+  numpy,
+  pandas,
+  scipy,
+  typing-extensions,
+  wrapt,
+  pyarrow,
+  polars,
+  sympy,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "formulaic";
-  version = "0.5.2";
-
-  format = "pyproject";
+  version = "1.2.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "matthewwardrop";
     repo = "formulaic";
-    rev = "v${version}";
-    hash = "sha256-sIvHTuUS/nkcDjRgZCoEOY2negIOsarzH0PeXJsavWc=";
+    tag = "v${version}";
+    hash = "sha256-C4IUuyxBbW2DUxF4at8/736ZMmVZrFRRp+RxrJfmLkY=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  # project uses a version-file that is not present in tagged releases
+  env.SETUPTOOLS_SCM_PRETEND_VERSION = version;
 
-  nativeBuildInputs = [
+  build-system = [
     hatchling
     hatch-vcs
   ];
 
-  propagatedBuildInputs = [
-    astor
+  dependencies = [
+    narwhals
     numpy
     pandas
     scipy
     wrapt
     typing-extensions
     interface-meta
-    sympy
   ];
+
+  optional-dependencies = {
+    arrow = [ pyarrow ];
+    polars = [ polars ];
+    calculus = [ sympy ];
+  };
+
+  nativeCheckInputs = [
+    pytestCheckHook
+  ]
+  ++ optional-dependencies.arrow
+  ++ optional-dependencies.calculus;
 
   pythonImportsCheck = [ "formulaic" ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
-
-  disabledTestPaths = [
-    "tests/transforms/test_poly.py"
-  ];
-
   meta = {
+    description = "High-performance implementation of Wilkinson formulas";
     homepage = "https://matthewwardrop.github.io/formulaic/";
-    description = "High-performance implementation of Wilkinson formulas for";
+    changelog = "https://github.com/matthewwardrop/formulaic/releases/tag/${src.tag}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ swflint ];
   };

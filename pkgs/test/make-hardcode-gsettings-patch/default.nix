@@ -1,7 +1,9 @@
-{ runCommandLocal
-, git
-, clang-tools
-, makeHardcodeGsettingsPatch
+{
+  runCommandLocal,
+  lib,
+  git,
+  clang-tools,
+  makeHardcodeGsettingsPatch,
 }:
 
 let
@@ -10,16 +12,19 @@ let
       name,
       expected,
       src,
-      schemaIdToVariableMapping,
+      patches ? [ ],
+      args,
     }:
 
     let
-      patch = makeHardcodeGsettingsPatch {
-        inherit src schemaIdToVariableMapping;
-      };
+      patch = makeHardcodeGsettingsPatch (
+        args
+        // {
+          inherit src patches;
+        }
+      );
     in
-    runCommandLocal
-      "makeHardcodeGsettingsPatch-tests-${name}"
+    runCommandLocal "makeHardcodeGsettingsPatch-tests-${name}"
 
       {
         nativeBuildInputs = [
@@ -33,6 +38,9 @@ let
         cp -r --no-preserve=all "${expected}" src-expected
 
         pushd src
+        for patch in ${lib.escapeShellArgs (map (p: "${p}") patches)}; do
+            patch < "$patch"
+        done
         patch < "${patch}"
         popd
 
@@ -48,11 +56,43 @@ in
   basic = mkTest {
     name = "basic";
     src = ./fixtures/example-project;
-    schemaIdToVariableMapping = {
-      "org.gnome.evolution-data-server.addressbook" = "EDS";
-      "org.gnome.evolution.calendar" = "EVO";
-      "org.gnome.seahorse.nautilus.window" = "SEANAUT";
+    args = {
+      schemaIdToVariableMapping = {
+        "org.gnome.evolution-data-server.addressbook" = "EDS";
+        "org.gnome.evolution.calendar" = "EVO";
+        "org.gnome.seahorse.nautilus.window" = "SEANAUT";
+      };
     };
     expected = ./fixtures/example-project-patched;
   };
+
+  patches = mkTest {
+    name = "patches";
+    src = ./fixtures/example-project-wrapped-settings-constructor;
+    patches = [
+      # Avoid using wrapper function, which the generator cannot handle.
+      ./fixtures/example-project-wrapped-settings-constructor-resolve.patch
+    ];
+    args = {
+      schemaIdToVariableMapping = {
+        "org.gnome.evolution-data-server.addressbook" = "EDS";
+      };
+    };
+    expected = ./fixtures/example-project-wrapped-settings-constructor-patched;
+  };
+
+  existsFn = mkTest {
+    name = "exists-fn";
+    src = ./fixtures/example-project;
+    args = {
+      schemaIdToVariableMapping = {
+        "org.gnome.evolution-data-server.addressbook" = "EDS";
+        "org.gnome.evolution.calendar" = "EVO";
+        "org.gnome.seahorse.nautilus.window" = "SEANAUT";
+      };
+      schemaExistsFunction = "e_ews_common_utils_gsettings_schema_exists";
+    };
+    expected = ./fixtures/example-project-patched-with-exists-fn;
+  };
+
 }

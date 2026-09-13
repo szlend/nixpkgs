@@ -1,16 +1,19 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, attrs
-, funcsigs
-, requests-mock
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  fetchpatch,
+  attrs,
+  funcsigs,
+  requests-mock,
+  pytestCheckHook,
+  setuptools_80,
 }:
 
 buildPythonPackage rec {
   pname = "mock-services";
   version = "0.3.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "peopledoc";
@@ -27,15 +30,15 @@ buildPythonPackage rec {
     })
   ];
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools_80 ];
+
+  dependencies = [
     attrs
     funcsigs
     requests-mock
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   disabledTests = [
     # require networking
@@ -47,10 +50,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "mock_services" ];
 
-  meta = with lib; {
+  meta = {
     description = "Mock an entire service API based on requests-mock";
     homepage = "https://github.com/peopledoc/mock-services";
-    license = licenses.mit;
-    maintainers = with maintainers; [ dotlambda ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

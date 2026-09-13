@@ -1,35 +1,54 @@
-{ lib
-, buildPythonPackage
-, isPy3k
-, fetchPypi
-, substituteAll
-, graphviz
-, coreutils
-, pkg-config
-, pytest
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  replaceVars,
+  graphviz,
+  coreutils,
+  pkg-config,
+  setuptools,
+  swig,
+  pytest,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pygraphviz";
-  version = "1.10";
+  version = "2.0.1";
+  pyproject = true;
 
-  disabled = !isPy3k;
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-RX4JOoiBKJAyUaJmqMwWtLqT8/YzSz6/7ZLHRxp02Gc=";
-    extension = "zip";
+  src = fetchFromGitHub {
+    owner = "pygraphviz";
+    repo = "pygraphviz";
+    tag = "pygraphviz-${finalAttrs.version}";
+    hash = "sha256-l0kAGlO8AFJcSQgoCXM0+HyzyseUJVVeJQ7E8sKCnr0=";
   };
 
   patches = [
     # pygraphviz depends on graphviz executables and wc being in PATH
-    (substituteAll {
-      src = ./path.patch;
-      path = lib.makeBinPath [ graphviz coreutils ];
+    (replaceVars ./path.patch {
+      path = lib.makeBinPath [
+        graphviz
+        coreutils
+      ];
     })
   ];
 
-  nativeBuildInputs = [ pkg-config ];
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail ', "swig>4.1.0"' ""
+  '';
+
+  env.GRAPHVIZ_PREFIX = graphviz;
+
+  build-system = [
+    setuptools
+  ];
+
+  nativeBuildInputs = [
+    graphviz # for dot
+    pkg-config
+    swig
+  ];
 
   buildInputs = [ graphviz ];
 
@@ -43,10 +62,14 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "pygraphviz" ];
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/pygraphviz/pygraphviz/releases/tag/pygraphviz-${finalAttrs.version}";
     description = "Python interface to Graphviz graph drawing package";
     homepage = "https://github.com/pygraphviz/pygraphviz";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ matthiasbeyer dotlambda ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [
+      matthiasbeyer
+      dotlambda
+    ];
   };
-}
+})

@@ -1,63 +1,72 @@
-{ lib
-, fetchFromGitHub
-, pythonOlder
-, buildPythonPackage
-, python
-, hatchling
-, django
-, jinja2
-, sqlparse
-, html5lib
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+
+  # build-system
+  hatchling,
+
+  # dependencies
+  django,
+  sqlparse,
+
+  # tests
+  django-csp,
+  html5lib,
+  jinja2,
+  pygments,
 }:
 
 buildPythonPackage rec {
   pname = "django-debug-toolbar";
-  version = "3.8.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "7.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jazzband";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-GlEw25wem8iwwm3rYLk6TFEAIzC1pYjpSHdAkHwtFcE=";
+    repo = "django-debug-toolbar";
+    tag = version;
+    hash = "sha256-Xwl6LsNW3/VXJ59QaW4l6D+8VEbl45ysv5KaySbS4M4=";
   };
 
-  nativeBuildInputs = [
-    hatchling
-  ];
+  postPatch = ''
+    # not actually used and we don't have django-template-partials packaged
+    sed -i "/template_partials/d" tests/settings.py
+  '';
 
-  propagatedBuildInputs = [
+  build-system = [ hatchling ];
+
+  dependencies = [
     django
-    jinja2
     sqlparse
   ];
 
-  DB_BACKEND = "sqlite3";
-  DB_NAME = ":memory:";
-  TEST_ARGS = "tests";
-  DJANGO_SETTINGS_MODULE = "tests.settings";
+  env = {
+    DB_BACKEND = "sqlite3";
+    DB_NAME = ":memory:";
+    DJANGO_SETTINGS_MODULE = "tests.settings";
+  };
 
   nativeCheckInputs = [
+    django-csp
     html5lib
+    jinja2
+    pygments
   ];
 
   checkPhase = ''
     runHook preCheck
-    ${python.interpreter} -m django test ${TEST_ARGS}
+    python -m django test tests
     runHook postCheck
   '';
 
-  pythonImportsCheck = [
-    "debug_toolbar"
-  ];
+  pythonImportsCheck = [ "debug_toolbar" ];
 
-  meta = with lib; {
+  meta = {
     description = "Configurable set of panels that display debug information about the current request/response";
     homepage = "https://github.com/jazzband/django-debug-toolbar";
     changelog = "https://django-debug-toolbar.readthedocs.io/en/latest/changes.html";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ yuu ];
-};
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
+  };
 }

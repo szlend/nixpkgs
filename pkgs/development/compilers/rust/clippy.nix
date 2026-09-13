@@ -1,4 +1,9 @@
-{ stdenv, lib, rustPlatform, rustc, Security, patchelf }:
+{
+  stdenv,
+  lib,
+  rustPlatform,
+  rustc,
+}:
 
 rustPlatform.buildRustPackage {
   pname = "clippy";
@@ -13,11 +18,10 @@ rustPlatform.buildRustPackage {
   # changes hash of vendor directory otherwise
   dontUpdateAutotoolsGnuConfigScripts = true;
 
-  buildInputs = [ rustc.llvm ]
-    ++ lib.optionals stdenv.isDarwin [ Security ];
+  buildInputs = [ rustc.llvm ];
 
   # fixes: error: the option `Z` is only accepted on the nightly compiler
-  RUSTC_BOOTSTRAP = 1;
+  env.RUSTC_BOOTSTRAP = 1;
 
   # Without disabling the test the build fails with:
   # error: failed to run custom build command for `rustc_llvm v0.0.0
@@ -30,16 +34,21 @@ rustPlatform.buildRustPackage {
   #
   # [0]: https://github.com/rust-lang/rust/blob/f77f4d55bdf9d8955d3292f709bd9830c2fdeca5/src/bootstrap/builder.rs#L1543
   # [1]: https://github.com/rust-lang/rust/blob/f77f4d55bdf9d8955d3292f709bd9830c2fdeca5/compiler/rustc_codegen_ssa/src/back/linker.rs#L323-L331
-  preFixup = lib.optionalString stdenv.isDarwin ''
-    install_name_tool -add_rpath "${rustc}/lib" "$out/bin/clippy-driver"
-    install_name_tool -add_rpath "${rustc}/lib" "$out/bin/cargo-clippy"
+  preFixup = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    install_name_tool -add_rpath "${rustc.unwrapped}/lib" "$out/bin/clippy-driver"
+    install_name_tool -add_rpath "${rustc.unwrapped}/lib" "$out/bin/cargo-clippy"
   '';
 
-  meta = with lib; {
+  meta = {
     homepage = "https://rust-lang.github.io/rust-clippy/";
-    description = "A bunch of lints to catch common mistakes and improve your Rust code";
-    maintainers = with maintainers; [ basvandijk ] ++ teams.rust.members;
-    license = with licenses; [ mit asl20 ];
-    platforms = platforms.unix;
+    description = "Bunch of lints to catch common mistakes and improve your Rust code";
+    mainProgram = "cargo-clippy";
+    maintainers = with lib.maintainers; [ basvandijk ];
+    teams = [ lib.teams.rust ];
+    license = with lib.licenses; [
+      mit
+      asl20
+    ];
+    platforms = lib.platforms.unix;
   };
 }

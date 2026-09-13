@@ -1,20 +1,44 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, grpc
-, protobuf
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  grpc,
+  protobuf,
+  setuptools,
+  nix-update-script,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "googleapis-common-protos";
-  version = "1.58.0";
+  version = "1.73.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-xyclHsAllH1UUYS6F+NXiED8OiSgUWoCBHntq2YEV98=";
+  src = fetchFromGitHub {
+    owner = "googleapis";
+    repo = "google-cloud-python";
+    tag = "googleapis-common-protos-v${finalAttrs.version}";
+    hash = "sha256-LrsmLySAOTsECwxa1NaFuyZAjar0Jbg9DHNi6uqYaxk=";
   };
 
-  propagatedBuildInputs = [ grpc protobuf ];
+  sourceRoot = "${finalAttrs.src.name}/packages/googleapis-common-protos";
+
+  build-system = [ setuptools ];
+
+  pythonRelaxDeps = [
+    "protobuf"
+  ];
+
+  dependencies = [
+    grpc
+    protobuf
+  ];
+
+  passthru.updateScript = nix-update-script {
+    extraArgs = [
+      "--version-regex"
+      "googleapis-common-protos-v([0-9.]+)"
+    ];
+  };
 
   # does not contain tests
   doCheck = false;
@@ -27,10 +51,11 @@ buildPythonPackage rec {
     "google.type"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Common protobufs used in Google APIs";
-    homepage = "https://github.com/googleapis/python-api-common-protos";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    homepage = "https://github.com/googleapis/google-cloud-python/tree/main/packages/googleapis-common-protos";
+    changelog = "https://github.com/googleapis/google-cloud-python/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = [ lib.maintainers.sarahec ];
   };
-}
+})

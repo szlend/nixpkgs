@@ -1,49 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, pythonOlder
-, requests
-, testfixtures
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  requests,
+  setuptools,
+  testfixtures,
 }:
 
 buildPythonPackage rec {
   pname = "openerz-api";
-  version = "0.2.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "0.3.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "misialq";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-6q0mKWyTTlNJ/DCeAsck1meM5dQovYBcV2EqmjlABvc=";
+    repo = "openerz-api";
+    tag = "v${version}";
+    hash = "sha256-CwK61StspZJt0TALv76zfibUzlriwp9HRoYOtX9bU+c=";
   };
 
-  propagatedBuildInputs = [
-    requests
-  ];
+  nativeBuildInputs = [ setuptools ];
+
+  propagatedBuildInputs = [ requests ];
 
   nativeCheckInputs = [
     pytestCheckHook
     testfixtures
   ];
 
-  pythonImportsCheck = [
-    "openerz_api"
-  ];
+  pythonImportsCheck = [ "openerz_api" ];
 
-  disabledTests = [
-    # Assertion issue
-    "test_sensor_make_api_request"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python module to interact with the OpenERZ API";
     homepage = "https://github.com/misialq/openerz-api";
     changelog = "https://github.com/misialq/openerz-api/releases/tag/v${version}";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

@@ -1,78 +1,80 @@
-{ lib
-, attrs
-, beautifulsoup4
-, bitarray
-, boolean-py
-, buildPythonPackage
-, chardet
-, click
-, colorama
-, commoncode
-, container-inspector
-, debian-inspector
-, dparse2
-, extractcode
-, extractcode-7z
-, extractcode-libarchive
-, fasteners
-, fetchPypi
-, fetchpatch
-, fingerprints
-, ftfy
-, gemfileparser2
-, html5lib
-, importlib-metadata
-, intbitset
-, jaraco_functools
-, javaproperties
-, jinja2
-, jsonstreams
-, license-expression
-, lxml
-, markupsafe
-, packageurl-python
-, packaging
-, parameter-expansion-patched
-, pefile
-, pip-requirements-parser
-, pkginfo2
-, pluggy
-, plugincode
-, publicsuffix2
-, pyahocorasick
-, pycryptodome
-, pygmars
-, pygments
-, pymaven-patch
-, pytestCheckHook
-, pythonOlder
-, requests
-, saneyaml
-, spdx-tools
-, text-unidecode
-, toml
-, typecode
-, typecode-libmagic
-, typing
-, urlpy
-, xmltodict
-, zipp
+{
+  lib,
+  attrs,
+  beautifulsoup4,
+  bitarray,
+  boolean-py,
+  buildPythonPackage,
+  chardet,
+  click,
+  colorama,
+  commoncode,
+  container-inspector,
+  debian-inspector,
+  dparse2,
+  extractcode,
+  extractcode-7z,
+  extractcode-libarchive,
+  fasteners,
+  fetchPypi,
+  fingerprints,
+  ftfy,
+  gemfileparser2,
+  html5lib,
+  importlib-metadata,
+  intbitset,
+  jaraco-functools,
+  javaproperties,
+  jinja2,
+  jsonstreams,
+  license-expression,
+  lxml,
+  markupsafe,
+  multiregex,
+  packageurl-python,
+  packaging,
+  parameter-expansion-patched,
+  pefile,
+  pip-requirements-parser,
+  pkginfo2,
+  pluggy,
+  plugincode,
+  publicsuffix2,
+  pyahocorasick,
+  pycryptodome,
+  pygmars,
+  pygments,
+  pymaven-patch,
+  pytestCheckHook,
+  requests,
+  saneyaml,
+  setuptools,
+  spdx-tools,
+  text-unidecode,
+  toml,
+  typecode,
+  typecode-libmagic,
+  urlpy,
+  writableTmpDirAsHomeHook,
+  xmltodict,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "scancode-toolkit";
-  version = "31.2.6";
-
-  disabled = pythonOlder "3.6";
+  version = "32.5.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-VvhgXZpV58DHeY5+7nPbrbTTVuHkawFw5akbm4hPnBY=";
+    pname = "scancode_toolkit";
+    inherit (finalAttrs) version;
+    hash = "sha256-WXAZCk0aRmKb1UU1ud95mZFHAMC9U+gDRd9w7TZTVSA=";
   };
 
   dontConfigure = true;
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     attrs
     beautifulsoup4
     bitarray
@@ -94,13 +96,14 @@ buildPythonPackage rec {
     html5lib
     importlib-metadata
     intbitset
-    jaraco_functools
+    jaraco-functools
     javaproperties
     jinja2
     jsonstreams
     license-expression
     lxml
     markupsafe
+    multiregex
     packageurl-python
     packaging
     parameter-expansion-patched
@@ -124,53 +127,31 @@ buildPythonPackage rec {
     typecode-libmagic
     urlpy
     xmltodict
-  ] ++ lib.optionals (pythonOlder "3.9") [
-    zipp
-  ] ++ lib.optionals (pythonOlder "3.7") [
-    typing
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeBuildInputs = [ writableTmpDirAsHomeHook ];
 
-  patches = [
-    (fetchpatch {
-      name = "${pname}-allow-stable-spdx-tools.patch";
-      url = "https://github.com/nexB/scancode-toolkit/commit/d89ab6584d3df6b7eb1d1394559e9d967d6db6ae.patch";
-      includes = [ "src/*" ];
-      hash = "sha256-AU3vJlOxmCy3yvkupVaAVxAKxJI3ymXEk+A5DWSkfOM=";
-    })
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "pdfminer.six >= 20200101" "pdfminer.six" \
-      --replace "pluggy >= 0.12.0, < 1.0" "pluggy" \
-      --replace "pygmars >= 0.7.0" "pygmars" \
-      --replace "license_expression >= 21.6.14" "license_expression" \
-      --replace "intbitset >= 2.3.0,  < 3.0" "intbitset" \
-      --replace "spdx_tools == 0.7.0a3" "spdx_tools"
-  '';
-
-  # Importing scancode needs a writeable home, and preCheck happens in between
-  # pythonImportsCheckPhase and pytestCheckPhase.
+  # Pre-generating license index
   postInstall = ''
-    export HOME=$(mktemp -d)
+    $out/bin/scancode-reindex-licenses
   '';
 
-  pythonImportsCheck = [
-    "scancode"
-  ];
+  pythonImportsCheck = [ "scancode" ];
 
-  # takes a long time and doesn't appear to do anything
+  # Takes a long time and doesn't appear to do anything
   dontStrip = true;
 
-  meta = with lib; {
+  meta = {
     description = "Tool to scan code for license, copyright, package and their documented dependencies and other interesting facts";
-    homepage = "https://github.com/nexB/scancode-toolkit";
-    changelog = "https://github.com/nexB/scancode-toolkit/blob/v${version}/CHANGELOG.rst";
-    license = with licenses; [ asl20 cc-by-40 ];
-    maintainers = with maintainers; [ ];
+    homepage = "https://github.com/aboutcode-org/scancode-toolkit";
+    changelog = "https://github.com/aboutcode-org/scancode-toolkit/blob/v${finalAttrs.version}/CHANGELOG.rst";
+    license = with lib.licenses; [
+      asl20
+      cc-by-40
+    ];
+    maintainers = with lib.maintainers; [ eljamm ];
+    teams = with lib.teams; [ ngi ];
   };
-}
+})

@@ -1,24 +1,36 @@
-{ lib, buildDunePackage, fetchFromGitHub, stdune, dyn }:
+{
+  lib,
+  buildDunePackage,
+  dyn,
+  fetchurl,
+  ppx_expect,
+  stdune,
+}:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "fiber";
-  version = "unstable-2023-02-28";
+  version = "3.7.0";
 
-  src = fetchFromGitHub {
-    owner = "ocaml-dune";
-    repo = "fiber";
-    rev = "5563b588c1313f128eafa74d66f0626c9128d34d";
-    hash = "sha256-18GfGXpu+uiIiCuLhIx5z5jRkem1nNWaQB6Ms0AE9sE=";
+  src = fetchurl {
+    url = "https://github.com/ocaml-dune/fiber/releases/download/${finalAttrs.version}/fiber-lwt-${finalAttrs.version}.tbz";
+    hash = "sha256-hkihWuk/5pQpmc42iHQpo5E7YoKcRxTlIMwOehw7loI=";
   };
 
-  duneVersion = "3";
+  buildInputs = [
+    stdune
+    dyn
+  ];
 
-  buildInputs = [ stdune dyn ];
+  checkInputs = [ ppx_expect ];
 
-  meta = with lib; {
+  # Tests are Ocaml version dependent
+  # https://github.com/ocaml-dune/fiber/issues/27
+  doCheck = false;
+
+  meta = {
     description = "Structured concurrency library";
     homepage = "https://github.com/ocaml-dune/fiber";
-    maintainers = with lib.maintainers; [ ];
-    license = licenses.mit;
+    maintainers = [ ];
+    license = lib.licenses.mit;
   };
-}
+})

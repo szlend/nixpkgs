@@ -1,42 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, fetchpatch
-, xorg
-, cffi
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  cffi,
+  fetchPypi,
+  pytestCheckHook,
+  setuptools,
+  libxcb,
+  xeyes,
+  xvfb,
 }:
 
 buildPythonPackage rec {
-  version = "1.2.0";
   pname = "xcffib";
+  version = "1.12.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-8yMCFEf55zB40hu5KMSPTavq6z87N+gDxta5hzXoFIM=";
+    hash = "sha256-Q0Ut5QnBJk1bzqS8Alyhv2gnLSQO8m0zQLRuEfY9PUo=";
   };
-
-  patches = [
-    (fetchpatch {
-      name = "remove-leftover-six-import.patch";
-      url = "https://github.com/tych0/xcffib/commit/8a488867d30464913706376ca3a9f4c98ca6c5cf.patch";
-      hash = "sha256-wEms0gC7tVqtmKMjjpH/34kdQ6HUV0h67bUGbgijlqw=";
-    })
-  ];
 
   postPatch = ''
     # Hardcode cairo library path
-    sed -e 's,ffi\.dlopen(,&"${xorg.libxcb.out}/lib/" + ,' -i xcffib/__init__.py
+    substituteInPlace xcffib/__init__.py \
+      --replace-fail "lib = ffi.dlopen(soname)" "lib = ffi.dlopen('${lib.getLib libxcb}/lib/' + soname)"
   '';
 
-  propagatedBuildInputs = [ cffi ];
+  build-system = [ setuptools ];
 
   propagatedNativeBuildInputs = [ cffi ];
 
+  propagatedBuildInputs = [ cffi ];
+
   nativeCheckInputs = [
     pytestCheckHook
-    xorg.xeyes
-    xorg.xorgserver
+    xeyes
+    xvfb
   ];
 
   preCheck = ''
@@ -46,10 +45,15 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "xcffib" ];
 
-  meta = with lib; {
-    description = "A drop in replacement for xpyb, an XCB python binding";
+  # Tests use xvfb
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
+    description = "Drop in replacement for xpyb, an XCB python binding";
     homepage = "https://github.com/tych0/xcffib";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ kamilchm ];
+    changelog = "https://github.com/tych0/xcffib/releases/tag/v${version}";
+    license = lib.licenses.asl20;
+    platforms = lib.platforms.linux ++ lib.platforms.darwin ++ lib.platforms.windows;
+    maintainers = with lib.maintainers; [ kamilchm ];
   };
 }

@@ -1,52 +1,53 @@
-{ lib
-, buildPythonPackage
-, cachecontrol
-, cwl-upgrader
-, cwlformat
-, fetchFromGitHub
-, packaging
-, pytest-mock
-, pytest-xdist
-, pytestCheckHook
-, pythonOlder
-, rdflib
-, requests
-, schema-salad
+{
+  lib,
+  buildPythonPackage,
+  cwl-upgrader,
+  cwlformat,
+  fetchFromGitHub,
+  hatchling,
+  jsonschema,
+  packaging,
+  pytest-mock,
+  pytest-xdist,
+  pytestCheckHook,
+  rdflib,
+  requests,
+  ruamel-yaml,
+  schema-salad,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cwl-utils";
-  version = "0.26";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.43";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "common-workflow-language";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-T82zaXILbQFOIE0/HhNjpYutSdA1UeaxXO/M7Z4sSfo=";
+    repo = "cwl-utils";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-B71B3cpf+ClbhIpUuhtu/deAECLkQEjpspor6jhi2is=";
   };
 
-  propagatedBuildInputs = [
-    cachecontrol
+  build-system = [ hatchling ];
+
+  dependencies = [
     cwl-upgrader
     packaging
     rdflib
     requests
+    ruamel-yaml
     schema-salad
   ];
 
   nativeCheckInputs = [
     cwlformat
+    jsonschema
     pytest-mock
     pytest-xdist
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "cwl_utils"
-  ];
+  pythonImportsCheck = [ "cwl_utils" ];
 
   disabledTests = [
     # Don't run tests which require Node.js
@@ -55,13 +56,17 @@ buildPythonPackage rec {
     "test_graph_split"
     "test_caches_js_processes"
     "test_load_document_with_remote_uri"
+    # Don't run tests which require network access
+    "test_remote_packing"
+    "test_remote_packing_github_soft_links"
+    "test_cwl_inputs_to_jsonschema"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Utilities for CWL";
     homepage = "https://github.com/common-workflow-language/cwl-utils";
-    changelog = "https://github.com/common-workflow-language/cwl-utils/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/common-workflow-language/cwl-utils/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

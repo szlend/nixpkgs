@@ -1,37 +1,31 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "metar";
-  version = "1.10.0";
+  version = "1.11.0";
   format = "setuptools";
-
-  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "python-metar";
     repo = "python-metar";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-53vgnViEYuMVKEnIZ2BNyIUrURR2rwopx7RWyFmF5PA=";
+    tag = "v${version}";
+    hash = "sha256-ZDjlXcSTUcSP7oRdhzLpXf/fLUA7Nkc6nj2I6vovbHg=";
   };
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pythonImportsCheck = [
-    "metar"
-  ];
+  pythonImportsCheck = [ "metar" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python parser for coded METAR weather reports";
     homepage = "https://github.com/python-metar/python-metar";
     changelog = "https://github.com/python-metar/python-metar/blob/v${version}/CHANGELOG.md";
-    license = with licenses; [ bsd1 ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.bsd1;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

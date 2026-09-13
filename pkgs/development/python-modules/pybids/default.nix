@@ -1,68 +1,85 @@
-{ buildPythonPackage
-, lib
-, fetchPypi
-, fetchpatch
-, formulaic
-, click
-, num2words
-, numpy
-, scipy
-, pandas
-, nibabel
-, patsy
-, bids-validator
-, sqlalchemy
-, pytestCheckHook
-, versioneer
-, pythonRelaxDepsHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  formulaic,
+  frozendict,
+  click,
+  num2words,
+  numpy,
+  scipy,
+  pandas,
+  nibabel,
+  bids-validator,
+  sqlalchemy,
+  universal-pathlib,
+  pytestCheckHook,
+  versioneer,
 }:
 
 buildPythonPackage rec {
-  version = "0.15.6";
   pname = "pybids";
+  version = "0.21.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-OjWW08tyVDHkF0X3Pa+10HYD/7Gysp5DkEt9LaVxsdM=";
+  src = fetchFromGitHub {
+    owner = "bids-standard";
+    repo = "pybids";
+    tag = version;
+    hash = "sha256-yCfEE142OQCfgKVJB2lw1Rweax1gakHPoD91SUtZpUs=";
   };
 
-  patches = [
-    # remove after next release
-    (fetchpatch {
-      name = "fix-pybids-sqlalchemy-dep";
-      url = "https://github.com/bids-standard/pybids/commit/5f008dfc282394ef94a68d47dba37ceead9eac9a.patch";
-      hash = "sha256-gx6w35XqDBZ8cTGHeY/mz2xNQqza9E5z8bRJR7mbPcg=";
-      excludes = [ "pyproject.toml" ];  # not in PyPI dist
-    })
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail 'dynamic = ["version"]' 'version = "${version}"'
+  '';
+
+  pythonRelaxDeps = [
+    "formulaic"
+    "sqlalchemy"
   ];
 
-  nativeBuildInputs = [ pythonRelaxDepsHook ];
-
-  pythonRelaxDeps = [ "sqlalchemy" ];
-
-  propagatedBuildInputs = [
-    click
-    formulaic
-    num2words
-    numpy
-    scipy
-    pandas
-    nibabel
-    patsy
-    bids-validator
-    sqlalchemy
+  build-system = [
+    setuptools
     versioneer
   ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
-  pythonImportsCheck = [ "bids" ];
-  # looks for missing data:
-  disabledTests = [ "test_config_filename" ];
+  dependencies = [
+    bids-validator
+    click
+    formulaic
+    frozendict
+    nibabel
+    num2words
+    numpy
+    pandas
+    scipy
+    sqlalchemy
+    universal-pathlib
+  ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "bids" ];
+
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  disabledTestPaths = [
+    # Could not connect to the endpoint URL
+    "src/bids/layout/tests/test_remote_bids.py"
+  ];
+
+  disabledTests = [
+    # Regression associated with formulaic >= 0.6.0
+    # (see https://github.com/bids-standard/pybids/issues/1000)
+    "test_split"
+  ];
+
+  meta = {
     description = "Python tools for querying and manipulating BIDS datasets";
     homepage = "https://github.com/bids-standard/pybids";
-    license = licenses.mit;
-    maintainers = with maintainers; [ jonringer ];
+    changelog = "https://github.com/bids-standard/pybids/blob/${version}/CHANGELOG.rst";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ wegank ];
+    mainProgram = "pybids";
   };
 }

@@ -1,65 +1,65 @@
-{ lib
-, astroid
-, buildPythonPackage
-, fetchPypi
-, jinja2
-, mock
-, pytestCheckHook
-, pythonOlder
-, pyyaml
-, sphinx
-, stdenv
-, typing-extensions
-, unidecode
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  flit-core,
+
+  # dependencies
+  astroid,
+  jinja2,
+  pyyaml,
+  sphinx,
+
+  # tests
+  beautifulsoup4,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "sphinx-autoapi";
-  version = "2.0.1";
-  format = "setuptools";
+  version = "3.8.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-zfR5aMIIUvT+sMzv0J5BS7ggr4r4+C+rFaJLCaPRuro=";
+  src = fetchFromGitHub {
+    owner = "readthedocs";
+    repo = "sphinx-autoapi";
+    tag = "v${version}";
+    hash = "sha256-pEfyVwvAqIg/1F5kX7WLlhdD+5tq3422u8N6nBizRcA=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ flit-core ];
+
+  dependencies = [
     astroid
     jinja2
     pyyaml
     sphinx
-    unidecode
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    typing-extensions
   ];
 
   nativeCheckInputs = [
-    mock
+    beautifulsoup4
     pytestCheckHook
   ];
 
   disabledTests = [
-    # failing typing assertions
+    # require network access
     "test_integration"
-    "test_annotations"
   ];
 
-  pythonImportsCheck = [
-    "autoapi"
-  ];
+  pythonImportsCheck = [ "autoapi" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/readthedocs/sphinx-autoapi";
-    changelog = "https://github.com/readthedocs/sphinx-autoapi/blob/v${version}/CHANGELOG.rst";
+    changelog = "https://github.com/readthedocs/sphinx-autoapi/blob/${src.tag}/CHANGELOG.rst";
     description = "Provides 'autodoc' style documentation";
     longDescription = ''
       Sphinx AutoAPI provides 'autodoc' style documentation for
       multiple programming languages without needing to load, run, or
       import the project being documented.
     '';
-    license = licenses.mit;
-    maintainers = with maintainers; [ karolchmist ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

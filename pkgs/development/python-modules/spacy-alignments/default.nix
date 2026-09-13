@@ -1,31 +1,31 @@
-{ lib
-, stdenv
-, cargo
-, fetchPypi
-, fetchpatch
-, buildPythonPackage
-, isPy3k
-, rustPlatform
-, rustc
-, setuptools-rust
-, libiconv
+{
+  lib,
+  stdenv,
+  cargo,
+  fetchPypi,
+  buildPythonPackage,
+  isPy3k,
+  rustPlatform,
+  rustc,
+  setuptools-rust,
+  libiconv,
 }:
 
 buildPythonPackage rec {
   pname = "spacy-alignments";
-  version = "0.8.4";
+  version = "0.9.0";
+  format = "setuptools";
 
   disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-1HApl/RZ0w5Tf2OPu1QBUa36uIqilp+dDbPjujn0e9s=";
+    hash = "sha256-jcNYghWR9Xbu97/hAYe8ewa5oMQ4ofNGFwY4cY7/EmM=";
   };
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src;
-    name = "${pname}-${version}";
-    hash = "sha256-oFSruBnoodv6/0/OrmJ/2SVoWm3u3FGtzVJ9xgp0+Cg=";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit pname version src;
+    hash = "sha256-0U1ELUMh4YV6M+zrrZGuzvY8SdgyN66F7bJ6sMhOdXs=";
   };
 
   nativeBuildInputs = [
@@ -35,17 +35,17 @@ buildPythonPackage rec {
     rustc
   ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ libiconv ];
 
   # Fails because spacy_alignments module cannot be loaded correctly.
   doCheck = false;
 
   pythonImportsCheck = [ "spacy_alignments" ];
 
-  meta = with lib; {
+  meta = {
     description = "Align tokenizations for spaCy and transformers";
     homepage = "https://github.com/explosion/spacy-alignments";
-    license = licenses.mit;
-    maintainers = with maintainers; [ ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

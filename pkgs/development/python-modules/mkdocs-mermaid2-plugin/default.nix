@@ -1,22 +1,26 @@
-{ lib, buildPythonPackage, fetchFromGitHub
-, beautifulsoup4
-, jsbeautifier
-, mkdocs
-, mkdocs-material
-, pymdown-extensions
-, pyyaml
-, requests
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  beautifulsoup4,
+  jsbeautifier,
+  mkdocs,
+  mkdocs-material,
+  pymdown-extensions,
+  pyyaml,
+  requests,
 }:
 
 buildPythonPackage rec {
   pname = "mkdocs-mermaid2-plugin";
-  version = "0.6.0";
+  version = "1.2.3";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "fralau";
     repo = "mkdocs-mermaid2-plugin";
-    rev = "v${version}";
-    hash = "sha256-Oe6wkVrsB0NWF+HHeifrEogjxdGPINRDJGkh9p+GoHs=";
+    tag = "v${version}";
+    hash = "sha256-EsfcOnfjZpAndYccN8WTpfLoUAlc5JQkgoy1ro1hMRo=";
   };
 
   propagatedBuildInputs = [
@@ -34,10 +38,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "mermaid2" ];
 
-  meta = with lib; {
-    description = "A MkDocs plugin for including mermaid graphs in markdown sources";
+  meta = {
+    description = "MkDocs plugin for including mermaid graphs in markdown sources";
     homepage = "https://github.com/fralau/mkdocs-mermaid2-plugin";
-    license = licenses.mit;
-    maintainers = with maintainers; [ jonringer ];
+    changelog = "https://github.com/fralau/mkdocs-mermaid2-plugin/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

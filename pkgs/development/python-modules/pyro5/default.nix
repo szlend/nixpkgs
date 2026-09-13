@@ -1,32 +1,32 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, serpent
-, pythonOlder
-, pytestCheckHook
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  serpent,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pyro5";
-  version = "5.14";
-  format = "setuptools";
+  version = "5.17";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    pname = "Pyro5";
-    inherit version;
-    hash = "sha256-ZP3OE3sP5TLohhTSRrfJi74KT0JnhsUkU5rNxeaUCGo=";
+  src = fetchFromGitHub {
+    owner = "irmen";
+    repo = "Pyro5";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-WVvUh/XPk+/1iRARAVD3fgmlJu60DZps7kRaZxuiwBo=";
   };
 
-  propagatedBuildInputs = [
-    serpent
-  ];
+  build-system = [ setuptools ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  dependencies = [ serpent ];
+
+  __darwinAllowLocalNetworking = true;
+
+  nativeCheckInputs = [ pytestCheckHook ];
 
   disabledTests = [
     # Ignore network related tests, which fail in sandbox
@@ -35,19 +35,18 @@ buildPythonPackage rec {
     "GetIP"
     "TestNameServer"
     "TestBCSetup"
-  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
-    "Socket"
-  ];
+    # time sensitive tests
+    "testTimeoutCall"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [ "Socket" ];
 
-  pythonImportsCheck = [
-    "Pyro5"
-  ];
+  pythonImportsCheck = [ "Pyro5" ];
 
-  meta = with lib; {
+  meta = {
     description = "Distributed object middleware for Python (RPC)";
     homepage = "https://github.com/irmen/Pyro5";
-    changelog = "https://github.com/irmen/Pyro5/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ peterhoeg ];
+    changelog = "https://github.com/irmen/Pyro5/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ peterhoeg ];
   };
-}
+})

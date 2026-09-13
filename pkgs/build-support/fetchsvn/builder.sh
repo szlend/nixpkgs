@@ -1,6 +1,3 @@
-if [ -e .attrs.sh ]; then source .attrs.sh; fi
-source $stdenv/setup
-
 echo "exporting $url (r$rev) into $out"
 
 if test -n "$http_proxy"; then

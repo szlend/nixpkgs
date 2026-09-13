@@ -1,34 +1,46 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, cffi
-, six
-, pytestCheckHook
-, pytest-mock
-, R
-, rPackages }:
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  cffi,
+  packaging,
+  pytestCheckHook,
+  pytest-mock,
+  R,
+  rPackages,
+  setuptools,
+  setuptools-scm,
+  six,
+}:
 
 buildPythonPackage rec {
   pname = "rchitect";
-  version = "0.3.40";
+  version = "0.4.10";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "randy3k";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "yJMiPmusZ62dd6+5VkA2uSjq57a0C3arG8CgiUUHKpk=";
+    repo = "rchitect";
+    tag = "v${version}";
+    hash = "sha256-CTXvca687RL1aFxf7jptcNIKPUcugzFdVTSyApcaWS4=";
   };
 
   postPatch = ''
-    substituteInPlace setup.py --replace '"pytest-runner"' ""
+    substituteInPlace setup.py \
+      --replace '"pytest-runner"' ""
   '';
+
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
   propagatedBuildInputs = [
     cffi
     six
-  ] ++ (with rPackages; [
-    reticulate
-  ]);
+    packaging
+  ]
+  ++ (with rPackages; [ reticulate ]);
 
   nativeCheckInputs = [
     pytestCheckHook
@@ -43,10 +55,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "rchitect" ];
 
-  meta = with lib; {
+  meta = {
     description = "Interoperate R with Python";
     homepage = "https://github.com/randy3k/rchitect";
-    license = licenses.mit;
-    maintainers = with maintainers; [ savyajha ];
+    changelog = "https://github.com/randy3k/rchitect/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ savyajha ];
   };
 }

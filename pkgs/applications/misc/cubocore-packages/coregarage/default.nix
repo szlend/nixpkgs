@@ -1,34 +1,47 @@
-{ mkDerivation, lib, fetchFromGitLab, qtbase, libarchive, libarchive-qt, cmake, ninja, libcprime, libcsys }:
+{
+  lib,
+  stdenv,
+  fetchFromGitLab,
+  qt6,
+  libarchive,
+  libarchive-qt,
+  cmake,
+  ninja,
+  libcprime,
+  libcsys,
+}:
 
-mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "coregarage";
-  version = "4.4.0";
+  version = "5.0.1";
 
   src = fetchFromGitLab {
     owner = "cubocore/coreapps";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "sha256-NsCJS+FyHWj2aLXlbzxcHEcdZ2cViZmJlh501/48xdI=";
+    repo = "coregarage";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-aPBqlt/bL1cx6mLaf/gEFQB+NEvGQJioBJZ4QAxTwzw=";
   };
 
   nativeBuildInputs = [
     cmake
     ninja
+    qt6.wrapQtAppsHook
   ];
 
   buildInputs = [
-    qtbase
+    qt6.qtbase
     libarchive
     libarchive-qt
     libcprime
     libcsys
   ];
 
-  meta = with lib; {
-    description = "A settings manager for the C Suite";
+  meta = {
+    description = "Settings manager for the C Suite";
+    mainProgram = "coregarage";
     homepage = "https://gitlab.com/cubocore/coreapps/coregarage";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ dan4ik605743 ];
-    platforms = platforms.linux;
+    license = lib.licenses.gpl3Plus;
+    maintainers = [ ];
+    platforms = lib.platforms.linux;
   };
-}
+})

@@ -1,36 +1,45 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, requests
-, pytestCheckHook
-, responses
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  requests,
+  responses,
+  setuptools,
+  setuptools-scm,
 }:
 
 buildPythonPackage rec {
   pname = "testrail-api";
-  version = "1.12.0";
+  version = "1.13.6";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "tolstislon";
     repo = "testrail-api";
-    rev = version;
-    sha256 = "sha256-VuAW5Dl3pkA6mtn/mbzxTFoavO5jPoqFSFVlrxc7KRk=";
+    tag = version;
+    hash = "sha256-xCarEmJM+liyh8T8qG8sqSLXMnFN49yZapbktIElSF0=";
   };
+
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
+
+  dependencies = [ requests ];
 
   nativeCheckInputs = [
     pytestCheckHook
     responses
   ];
 
-  propagatedBuildInputs = [
-    requests
-  ];
+  pythonImportsCheck = [ "testrail_api" ];
 
-  meta = with lib; {
-    description = "A Python wrapper of the TestRail API";
+  meta = {
+    description = "Python wrapper of the TestRail API";
     homepage = "https://github.com/tolstislon/testrail-api";
-    changelog = "https://github.com/tolstislon/ytestrail-api/releases/tag/${version}";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ aanderse ];
+    changelog = "https://github.com/tolstislon/testrail-api/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ aanderse ];
   };
 }

@@ -1,32 +1,74 @@
-{ lib, fetchurl, buildDunePackage, ocaml, findlib
-, alcotest
-, astring, cppo, fmt, logs, ocaml-version, odoc-parser, lwt, re, csexp
-, gitUpdater
+{
+  lib,
+  stdenv,
+  fetchurl,
+  buildDunePackage,
+  ocaml,
+  findlib,
+  alcotest,
+  astring,
+  cmdliner,
+  cppo,
+  fmt,
+  logs,
+  ocaml-version,
+  camlp-streams,
+  lwt,
+  re,
+  result,
+  csexp,
+  gitUpdater,
 }:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "mdx";
-  version = "2.3.0";
-
-  minimalOCamlVersion = "4.08";
-  duneVersion = "3";
+  version = "2.5.2";
 
   src = fetchurl {
-    url = "https://github.com/realworldocaml/mdx/releases/download/${version}/mdx-${version}.tbz";
-    hash = "sha256-MqCDmBAK/S0ueYi8O0XJtplxJx96twiFHe04Q8lHBmE=";
+    url = "https://github.com/realworldocaml/mdx/releases/download/${finalAttrs.version}/mdx-${finalAttrs.version}.tbz";
+    hash = "sha256-yEjCxoDGJmLcSgX1WOXGwY7Sqre7ZQjB1JEJ1uqRo88=";
   };
 
+  env =
+    # Fix build with gcc15
+    lib.optionalAttrs
+      (
+        lib.versionAtLeast ocaml.version "4.10" && lib.versionOlder ocaml.version "4.14"
+        || lib.versions.majorMinor ocaml.version == "5.0"
+      )
+      {
+        NIX_CFLAGS_COMPILE = "-std=gnu11";
+      };
+
   nativeBuildInputs = [ cppo ];
-  propagatedBuildInputs = [ astring fmt logs csexp ocaml-version odoc-parser re findlib ];
-  checkInputs = [ alcotest lwt ];
+  propagatedBuildInputs = [
+    astring
+    fmt
+    logs
+    csexp
+    cmdliner
+    ocaml-version
+    camlp-streams
+    re
+    result
+    findlib
+  ];
+  checkInputs = [
+    alcotest
+    lwt
+  ];
 
-  doCheck = true;
+  doCheck = !stdenv.hostPlatform.isDarwin;
 
-  outputs = [ "bin" "lib" "out" ];
+  outputs = [
+    "bin"
+    "lib"
+    "out"
+  ];
 
   installPhase = ''
     runHook preInstall
-    dune install --prefix=$bin --libdir=$lib/lib/ocaml/${ocaml.version}/site-lib ${pname}
+    dune install --prefix=$bin --libdir=$lib/lib/ocaml/${ocaml.version}/site-lib mdx
     runHook postInstall
   '';
 
@@ -35,9 +77,9 @@ buildDunePackage rec {
   meta = {
     description = "Executable OCaml code blocks inside markdown files";
     homepage = "https://github.com/realworldocaml/mdx";
-    changelog = "https://github.com/realworldocaml/mdx/raw/${version}/CHANGES.md";
+    changelog = "https://github.com/realworldocaml/mdx/raw/${finalAttrs.version}/CHANGES.md";
     license = lib.licenses.isc;
     maintainers = [ lib.maintainers.romildo ];
     mainProgram = "ocaml-mdx";
   };
-}
+})

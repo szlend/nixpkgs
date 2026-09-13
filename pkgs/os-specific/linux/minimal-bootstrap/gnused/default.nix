@@ -1,64 +1,83 @@
-{ lib
-, fetchurl
-, bash
-, tinycc
-, gnumake
+{
+  lib,
+  buildPlatform,
+  hostPlatform,
+  fetchurl,
+  bash,
+  coreutils,
+  gnumake,
+  tinycc,
+  gnused,
+  gnugrep,
+  gnutar,
+  gzip,
 }:
+
 let
+  inherit (import ./common.nix { inherit lib; }) meta;
   pname = "gnused";
-  # last version that can be compiled with mes-libc
-  version = "4.0.9";
+  # last version that can be bootstrapped with our slightly buggy gnused-mes
+  version = "4.2";
 
   src = fetchurl {
     url = "mirror://gnu/sed/sed-${version}.tar.gz";
-    sha256 = "0006gk1dw2582xsvgx6y6rzs9zw8b36rhafjwm288zqqji3qfrf3";
+    hash = "sha256-20XNY/0BDmUFN9ZdXfznaJplJ0UjZgbl5ceCk3Jn2YM=";
   };
 
-  # Thanks to the live-bootstrap project!
-  # See https://github.com/fosslinux/live-bootstrap/blob/1bc4296091c51f53a5598050c8956d16e945b0f5/sysa/sed-4.0.9/sed-4.0.9.kaem
-  makefile = fetchurl {
-    url = "https://github.com/fosslinux/live-bootstrap/raw/1bc4296091c51f53a5598050c8956d16e945b0f5/sysa/sed-4.0.9/mk/main.mk";
-    sha256 = "0w1f5ri0g5zla31m6l6xyzbqwdvandqfnzrsw90dd6ak126w3mya";
-  };
+  # config.sub was generated with outdated autotools, which get confused by
+  # 4-component target tuples
+  fakeBuildPlatform = lib.strings.removeSuffix "-musl" buildPlatform.config;
+  fakeHostPlatform = lib.strings.removeSuffix "-musl" hostPlatform.config;
 in
-bash.runCommand "${pname}-${version}" {
-  inherit pname version;
+bash.runCommand "${pname}-${version}"
+  {
+    inherit pname version meta;
 
-  nativeBuildInputs = [
-    tinycc.compiler
-    gnumake
-  ];
+    nativeBuildInputs = [
+      coreutils
+      gnumake
+      tinycc.compiler
+      gnused
+      gnugrep
+      gnutar
+      gzip
+    ];
 
-  passthru.tests.get-version = result:
-    bash.runCommand "${pname}-get-version-${version}" {} ''
-      ${result}/bin/sed --version
-      mkdir ''${out}
-    '';
+    passthru.tests.get-version =
+      result:
+      bash.runCommand "${pname}-get-version-${version}" { } ''
+        ${result}/bin/sed --version
+        mkdir ''${out}
+      '';
+  }
+  ''
+    # Unpack
+    tar xzf ${src}
+    cd sed-${version}
 
-  meta = with lib; {
-    description = "GNU sed, a batch stream editor";
-    homepage = "https://www.gnu.org/software/sed";
-    license = licenses.gpl3Plus;
-    maintainers = teams.minimal-bootstrap.members;
-    mainProgram = "sed";
-    platforms = platforms.unix;
-  };
-} ''
-  # Unpack
-  ungz --file ${src} --output sed.tar
-  untar --file sed.tar
-  rm sed.tar
-  cd sed-${version}
+    # Defeat parallel-build automake regen race: refresh generated-file
+    # mtimes and restore +x on autotools helpers.
+    touch Makefile.in Makefile aclocal.m4 config.h.in configure 2>/dev/null || true
+    for f in */Makefile.in; do touch "$f" 2>/dev/null || true; done
+    chmod +x configure config.guess config.sub install-sh missing compile \
+      depcomp mkinstalldirs help2man 2>/dev/null || true
+    [ -d build-aux ] && chmod +x build-aux/* 2>/dev/null || true
 
-  # Configure
-  cp ${makefile} Makefile
-  catm config.h
+    # Configure
+    export CC="tcc -B ${tinycc.libs}/lib"
+    export LD=tcc
+    ./configure \
+      --build=${fakeBuildPlatform} \
+      --host=${fakeHostPlatform} \
+      --disable-shared \
+      --disable-nls \
+      --disable-dependency-tracking \
+      --prefix=$out
 
-  # Build
-  make \
-    CC="tcc -B ${tinycc.libs}/lib" \
-    LIBC=mes
+    # Build
+    # NOTE: parallel build (-j) under tcc-musl is unstable; keep serial.
+    make AR="tcc -ar"
 
-  # Install
-  make install PREFIX=$out
-''
+    # Install
+    make install
+  ''

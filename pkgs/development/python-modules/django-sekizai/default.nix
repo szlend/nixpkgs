@@ -1,23 +1,23 @@
-{ lib
-, fetchPypi
-, buildPythonPackage
-, django_classytags
-, pytestCheckHook
-, pytest-django
+{
+  lib,
+  fetchPypi,
+  buildPythonPackage,
+  django-classy-tags,
+  pytestCheckHook,
+  pytest-django,
 }:
 
 buildPythonPackage rec {
   pname = "django-sekizai";
   version = "4.1.0";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-Kso2y64LXAzv7ZVlQW7EQjNXZ/sxRb/xHlhiL8ZTza0=";
+    hash = "sha256-Kso2y64LXAzv7ZVlQW7EQjNXZ/sxRb/xHlhiL8ZTza0=";
   };
 
-  propagatedBuildInputs = [
-    django_classytags
-  ];
+  propagatedBuildInputs = [ django-classy-tags ];
 
   checkInputs = [
     pytestCheckHook
@@ -26,12 +26,12 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "sekizai" ];
 
-  DJANGO_SETTINGS_MODULE = "tests.settings";
+  env.DJANGO_SETTINGS_MODULE = "tests.settings";
 
-  meta = with lib; {
+  meta = {
     description = "Define placeholders where your blocks get rendered and append to those blocks";
     homepage = "https://github.com/django-cms/django-sekizai";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ onny ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ onny ];
   };
 }

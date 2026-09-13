@@ -8,9 +8,11 @@ if (( "${NIX_DEBUG:-0}" >= 7 )); then
     set -x
 fi
 
-cc_wrapper="${NIX_CC:-@default_cc_wrapper@}"
+cc_wrapper="@cc_wrapper@"
 
 source $cc_wrapper/nix-support/utils.bash
+
+source $cc_wrapper/nix-support/darwin-sdk-setup.bash
 
 expandResponseParams "$@"
 
@@ -105,7 +107,7 @@ dontLink=$isFrontend
 
 for p in "${params[@]}"; do
     case "$p" in
-        -enable-cxx-interop | -enable-experimental-cxx-interop)
+        -cxx-interoperability-mode=default | -enable-cxx-interop | -enable-experimental-cxx-interop)
             isCxx=1 ;;
     esac
 done
@@ -156,6 +158,14 @@ if [ -z "${NIX_CC_WRAPPER_FLAGS_SET_@suffixSalt@:-}" ]; then
     source $cc_wrapper/nix-support/add-flags.sh
 fi
 
+# Only add darwin min version flag and set up `DEVELOPER_DIR` if a default darwin min version is set,
+# which is a signal that we're targeting darwin. (Copied from add-flags in libc but tailored for Swift).
+if [ "@darwinMinVersion@" ]; then
+    # Make sure the wrapped Swift compiler can find the overlays in the SDK.
+    NIX_SWIFTFLAGS_COMPILE+=" -I $SDKROOT/usr/lib/swift"
+    NIX_LDFLAGS_@suffixSalt@+=" -L $SDKROOT/usr/lib/swift"
+fi
+
 if [[ "$isCxx" = 1 ]]; then
     if [[ "$cxxInclude" = 1 ]]; then
         NIX_CFLAGS_COMPILE_@suffixSalt@+=" $NIX_CXXSTDLIB_COMPILE_@suffixSalt@"
@@ -178,7 +188,7 @@ addCFlagsToList() {
             # Pass through using -Xcc, but also convert to Swift -I.
             # These have slightly different meaning for Clang, but Swift
             # doesn't have exact equivalents.
-            -isystem | -idirafter)
+            -isystem | -cxx-isystem | -idirafter)
                 i=$((i + 1))
                 list+=("-Xcc" "$val" "-Xcc" "${!i}" "-I" "${!i}")
                 ;;
@@ -238,21 +248,33 @@ fi
 # TODO: If we ever need to expand functionality of this hook, it may no longer
 # be compatible with Swift. Right now, it is only used on Darwin to force
 # -target, which also happens to work with Swift.
+# As of 369cc5c66b1efdbca2f136aa0055fedca1117304 (#445119), this hook also sets
+# the -Werror=unguarded-availability flag, which Swift can't accept. We prefix
+# that flag with -Xcc in the for loop below
 if [[ -e $cc_wrapper/nix-support/add-local-cc-cflags-before.sh ]]; then
     source $cc_wrapper/nix-support/add-local-cc-cflags-before.sh
 fi
 
-# May need to transform the triple injected by the above.
-for ((i = 1; i < ${#extraBefore[@]}; i++)); do
-    if [[ "${extraBefore[i]}" = -target ]]; then
+for ((i=0; i < ${#extraBefore[@]}; i++));do
+    case "${extraBefore[i]}" in
+    -target)
         i=$((i + 1))
         # On Darwin only, need to change 'aarch64' to 'arm64'.
         extraBefore[i]="${extraBefore[i]/aarch64-apple-/arm64-apple-}"
         # On Darwin, Swift requires the triple to be annotated with a version.
         # TODO: Assumes macOS.
         extraBefore[i]="${extraBefore[i]/-apple-darwin/-apple-macosx${MACOSX_DEPLOYMENT_TARGET:-11.0}}"
-        break
-    fi
+        ;;
+    -march=*|-mcpu=*|-mfloat-abi=*|-mfpu=*|-mmode=*|-mthumb|-marm|-mtune=*|-Werror=*)
+        [[ i -gt 0 && ${extraBefore[i-1]} == -Xcc ]] && continue
+        extraBefore=(
+            "${extraBefore[@]:0:i}"
+            -Xcc
+            "${extraBefore[@]:i:${#extraBefore[@]}}"
+        )
+        i=$((i + 1))
+        ;;
+    esac
 done
 
 # As a very special hack, if the arguments are just `-v', then don't

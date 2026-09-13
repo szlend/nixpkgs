@@ -1,40 +1,33 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, fetchpatch
-, hatchling
-, platformdirs
-, traitlets
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  platformdirs,
+  traitlets,
+  pip,
+  pytestCheckHook,
+
+  # Reverse dependency
+  sage,
 }:
 
 buildPythonPackage rec {
   pname = "jupyter-core";
-  version = "5.2.0";
-  disabled = pythonOlder "3.7";
+  version = "5.9.1";
 
-  format = "pyproject";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jupyter";
     repo = "jupyter_core";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-X3P3bTLhpWIa6EHdxZ/KFiQNAnhszha2cfZ8PynZPRs=";
+    tag = "v${version}";
+    hash = "sha256-mAvfyiN8Fdm9U3Ar7xicwOinKfTqk9qrfq/SGiaxNvU=";
   };
 
-  patches = [
-    ./tests_respect_pythonpath.patch
-    (fetchpatch {
-      # add support for platformdirs>=3
-      url = "https://github.com/jupyter/jupyter_core/commit/ff4086cdbdac2ea79c18632e4e35acebc1f7cf57.patch";
-      hash = "sha256-UhHO58xZ4hH47NBhOhsfBjgsUtA+1EIHxPBvnKA5w28=";
-    })
-  ];
+  patches = [ ./tests_respect_pythonpath.patch ];
 
-  nativeBuildInputs = [
-    hatchling
-  ];
+  nativeBuildInputs = [ hatchling ];
 
   propagatedBuildInputs = [
     platformdirs
@@ -42,12 +35,18 @@ buildPythonPackage rec {
   ];
 
   nativeCheckInputs = [
+    pip
     pytestCheckHook
   ];
 
   preCheck = ''
     export HOME=$TMPDIR
   '';
+
+  pytestFlags = [
+    # suppress pytest.PytestUnraisableExceptionWarning: Exception ignored in: <socket.socket fd=-1, family=AddressFamily.AF_UNIX, type=SocketKind.SOCK_STREAM, proto=0>
+    "-Wignore::pytest.PytestUnraisableExceptionWarning"
+  ];
 
   disabledTests = [
     # creates a temporary script, which isn't aware of PYTHONPATH
@@ -60,10 +59,15 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "jupyter_core" ];
 
-  meta = with lib; {
+  passthru.tests = {
+    inherit sage;
+  };
+
+  meta = {
     description = "Base package on which Jupyter projects rely";
     homepage = "https://jupyter.org/";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ fridh ];
+    changelog = "https://github.com/jupyter/jupyter_core/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.bsd3;
+    teams = [ lib.teams.jupyter ];
   };
 }

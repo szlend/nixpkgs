@@ -1,32 +1,43 @@
-{ mkDerivation, lib, fetchFromGitLab, qtbase, cmake, ninja, libcprime, libcsys }:
+{
+  lib,
+  stdenv,
+  fetchFromGitLab,
+  qt6,
+  cmake,
+  ninja,
+  libcprime,
+  libcsys,
+}:
 
-mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "corehunt";
-  version = "4.4.0";
+  version = "5.0.1";
 
   src = fetchFromGitLab {
     owner = "cubocore/coreapps";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "sha256-txQ/uoSwseo0i4/CqdQm3wN9/3p3gioRG9IuJTsgSF4=";
+    repo = "corehunt";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-D3O1RnhXZmIGlk75OxfYvQI+8sytXTho2MvccI5Xyvg=";
   };
 
   nativeBuildInputs = [
     cmake
     ninja
+    qt6.wrapQtAppsHook
   ];
 
   buildInputs = [
-    qtbase
+    qt6.qtbase
     libcprime
     libcsys
   ];
 
-  meta = with lib; {
-    description = "A file finder utility from the C Suite";
+  meta = {
+    description = "File finder utility from the C Suite";
+    mainProgram = "corehunt";
     homepage = "https://gitlab.com/cubocore/coreapps/corehunt";
-    license = licenses.gpl3Only;
-    maintainers = with maintainers; [ dan4ik605743 ];
-    platforms = platforms.linux;
+    license = lib.licenses.gpl3Only;
+    maintainers = [ ];
+    platforms = lib.platforms.linux;
   };
-}
+})

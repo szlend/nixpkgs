@@ -1,66 +1,48 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, setuptools
-, mypy
-, pytestCheckHook
-, python-lsp-server
-, pythonOlder
-, tomli
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  mypy,
+  pytestCheckHook,
+  python-lsp-server,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pylsp-mypy";
-  version = "0.6.7";
-  format = "pyproject";
+  version = "0.8.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchFromGitHub {
-    owner = "python-lsp";
-    repo = "pylsp-mypy";
-    rev = "refs/tags/${version}";
-    hash = "sha256-ZsNIw0xjxnU9Ue0C7TlhzVOCOCKEbCa2CsiiqeMb14I=";
+  src = fetchPypi {
+    pname = "pylsp_mypy";
+    inherit (finalAttrs) version;
+    hash = "sha256-ANhur6TlRO6Bpzl57/GpmPvUDUrpwYIf6IAjMmp1bcI=";
   };
 
-  patches = [
-    # https://github.com/python-lsp/pylsp-mypy/pull/64
-    (fetchpatch {
-      name = "fix-hanging-test.patch";
-      url = "https://github.com/python-lsp/pylsp-mypy/commit/90d28edb474135007804f1e041f88713a95736f9.patch";
-      hash = "sha256-3DVyUXVImRemXCuyoXlYbPJm6p8OnhBdEKmwjx88ets=";
-    })
-  ];
+  build-system = [ setuptools ];
 
-  nativeBuildInputs = [
-    setuptools
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
     mypy
     python-lsp-server
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pythonImportsCheck = [
-    "pylsp_mypy"
-  ];
+  pythonImportsCheck = [ "pylsp_mypy" ];
 
   disabledTests = [
     # Tests wants to call dmypy
     "test_option_overrides_dmypy"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Mypy plugin for the Python LSP Server";
-    homepage = "https://github.com/python-lsp/pylsp-mypy";
-    license = licenses.mit;
-    maintainers = with maintainers; [ cpcloud ];
+    homepage = "https://pypi.org/project/pylsp-mypy/";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ cpcloud ];
   };
-}
+})

@@ -1,33 +1,28 @@
-{ lib, stdenv, fetchFromGitHub, postgresql }:
+{
+  fetchFromGitHub,
+  lib,
+  postgresql,
+  postgresqlBuildExtension,
+}:
 
-stdenv.mkDerivation rec {
+postgresqlBuildExtension (finalAttrs: {
   pname = "pg_partman";
-  version = "4.7.3";
-
-  buildInputs = [ postgresql ];
+  version = "5.5.0";
 
   src = fetchFromGitHub {
-    owner  = "pgpartman";
-    repo   = pname;
-    rev    = "refs/tags/v${version}";
-    sha256 = "sha256-njw7/+C3nMNRKeJ4AMCNTihTVXcouH/VY2vaFeyA5v8=";
+    owner = "pgpartman";
+    repo = "pg_partman";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-hcss99fhb78GSq1+ZngoU8A5NPD1kSndE+4scXVya6c=";
   };
 
-  installPhase = ''
-    mkdir -p $out/{lib,share/postgresql/extension}
-
-    cp src/*.so      $out/lib
-    cp updates/*     $out/share/postgresql/extension
-    cp -r sql/*      $out/share/postgresql/extension
-    cp *.control     $out/share/postgresql/extension
-  '';
-
-  meta = with lib; {
+  meta = {
     description = "Partition management extension for PostgreSQL";
-    homepage    = "https://github.com/pgpartman/pg_partman";
-    changelog   = "https://github.com/pgpartman/pg_partman/raw/v${version}/CHANGELOG.txt";
-    maintainers = with maintainers; [ ggpeti ];
-    platforms   = postgresql.meta.platforms;
-    license     = licenses.postgresql;
+    homepage = "https://github.com/pgpartman/pg_partman";
+    changelog = "https://github.com/pgpartman/pg_partman/blob/v${finalAttrs.version}/CHANGELOG.md";
+    maintainers = with lib.maintainers; [ ggpeti ];
+    platforms = postgresql.meta.platforms;
+    license = lib.licenses.postgresql;
+    broken = lib.versionOlder postgresql.version "14";
   };
-}
+})

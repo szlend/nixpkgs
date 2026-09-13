@@ -1,36 +1,42 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, sphinx
-, requests
-, flit-core
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  sphinx,
+  requests,
+  flit-core,
 }:
 
 buildPythonPackage rec {
   pname = "sphinxcontrib-youtube";
-  version = "1.2.0";
-  format = "pyproject";
+  version = "1.5.0";
+  pyproject = true;
 
   nativeBuildInputs = [ flit-core ];
 
   src = fetchFromGitHub {
     owner = "sphinx-contrib";
     repo = "youtube";
-    rev = "v${version}";
-    hash = "sha256-SUnnrzYJ6cOktE0IdnRWTvPGcL/eVS9obtHBMpS2s4A=";
+    tag = "v${version}";
+    hash = "sha256-vzF1SC4fUIeR0OYesOq60eWjlX+N+YYA/h7mNfxWEtk=";
   };
 
-  propagatedBuildInputs = [ sphinx requests ];
+  propagatedBuildInputs = [
+    sphinx
+    requests
+  ];
 
   # tests require internet access
   doCheck = false;
 
   pythonImportsCheck = [ "sphinxcontrib.youtube" ];
 
-  meta = with lib; {
+  pythonNamespaces = [ "sphinxcontrib" ];
+
+  meta = {
     description = "Youtube extension for Sphinx";
     homepage = "https://github.com/sphinx-contrib/youtube";
-    maintainers = with maintainers; [ gador ];
-    license = licenses.bsd3;
+    maintainers = with lib.maintainers; [ gador ];
+    license = lib.licenses.bsd3;
   };
 }

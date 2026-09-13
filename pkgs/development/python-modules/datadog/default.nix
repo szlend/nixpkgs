@@ -1,38 +1,43 @@
-{ lib
-, buildPythonPackage
-, click
-, fetchPypi
-, freezegun
-, hatchling
-, mock
-, pytest-vcr
-, pytestCheckHook
-, python-dateutil
-, pythonAtLeast
-, pythonOlder
-, requests
-, vcrpy
+{
+  lib,
+  stdenvNoCC,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonAtLeast,
+
+  # build-system
+  hatchling,
+
+  # dependencies
+  requests,
+
+  # testing
+  click,
+  freezegun,
+  mock,
+  pytest-vcr,
+  pytestCheckHook,
+  python-dateutil,
+  vcrpy,
 }:
 
 buildPythonPackage rec {
   pname = "datadog";
-  version = "0.45.0";
-  format = "pyproject";
+  version = "0.53.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-a//tZ0SMtL9d/1WfsqzuHAbn2oYSuOKnNPJ4tQs5ZgM=";
+  src = fetchFromGitHub {
+    owner = "DataDog";
+    repo = "datadogpy";
+    tag = "v${version}";
+    hash = "sha256-CCbeHDaRg+BV+nwoLbrhMUqtWFkjbvyq1XHAEtkXgW4=";
   };
 
-  nativeBuildInputs = [
-    hatchling
-  ];
+  build-system = [ hatchling ];
 
-  propagatedBuildInputs = [
-    requests
-  ];
+  dependencies = [ requests ];
+
+  __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
     click
@@ -46,24 +51,40 @@ buildPythonPackage rec {
 
   disabledTestPaths = [
     "tests/performance"
+    # https://github.com/DataDog/datadogpy/issues/800
+    "tests/integration/api/test_*.py"
   ];
 
   disabledTests = [
     "test_default_settings_set"
-  ] ++ lib.optionals (pythonAtLeast "3.11") [
     # https://github.com/DataDog/datadogpy/issues/746
     "TestDogshell"
+
+    # Flaky: test execution time against magic values
+    "test_distributed"
+    "test_timed"
+    "test_timed_in_ms"
+    "test_timed_start_stop_calls"
+
+    # OSError: AF_UNIX path too long
+    "test_socket_connection"
+  ]
+  ++ lib.optionals (pythonAtLeast "3.13") [
+    # https://github.com/DataDog/datadogpy/issues/880
+    "test_timed_coroutine"
+  ]
+  ++ lib.optionals stdenvNoCC.hostPlatform.isDarwin [
+    # PermissionError: [Errno 1] Operation not permitted
+    "test_dedicated_uds_telemetry_dest"
   ];
 
-  pythonImportsCheck = [
-    "datadog"
-  ];
+  pythonImportsCheck = [ "datadog" ];
 
-  meta = with lib; {
-    description = "The Datadog Python library";
+  meta = {
+    description = "Datadog Python library";
     homepage = "https://github.com/DataDog/datadogpy";
-    changelog = "https://github.com/DataDog/datadogpy/blob/v${version}/CHANGELOG.md";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ ];
+    changelog = "https://github.com/DataDog/datadogpy/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.bsd3;
+    maintainers = [ lib.maintainers.sarahec ];
   };
 }

@@ -1,57 +1,75 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, pytestCheckHook
-, pytest-lazy-fixture
-, numpy
-, networkx
-, pydicom
-, colorama
-, typeguard
-, versioneer
+{
+  lib,
+  buildPythonPackage,
+  colorama,
+  fetchFromGitHub,
+  networkx,
+  numpy,
+  pytest-lazy-fixture,
+  pytestCheckHook,
+  setuptools,
+  tritonclient,
+  typeguard,
+  versioneer,
 }:
 
 buildPythonPackage rec {
-  pname = "monai";
-  version = "0.5.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  pname = "monai-deploy";
+  version = "3.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Project-MONAI";
     repo = "monai-deploy-app-sdk";
-    rev = "refs/tags/${version}";
-    hash = "sha256-oaNZ0US0YR/PSwAZ5GfRpAW+HRYVhdCZI83fC00rgok=";
+    tag = version;
+    hash = "sha256-W2GXVd4gWgfGLjXR+8m/Ztm52Agj4FGWtEFrh4mjYk0=";
   };
 
-  nativeBuildInputs = [ versioneer ];
+  postPatch = ''
+    # Asked in https://github.com/Project-MONAI/monai-deploy-app-sdk/issues/450
+    # if this patch can be incorporated upstream.
+    substituteInPlace pyproject.toml \
+      --replace-fail 'versioneer-518' 'versioneer'
+  '';
 
-  propagatedBuildInputs = [
+  build-system = [
+    versioneer
+    setuptools
+  ];
+
+  dependencies = [
     numpy
     networkx
     colorama
+    tritonclient
     typeguard
   ];
 
-  nativeCheckInputs = [ pytestCheckHook pytest-lazy-fixture ];
+  nativeCheckInputs = [
+    pytestCheckHook
+    pytest-lazy-fixture
+  ];
+
   disabledTests = [
     # requires Docker daemon:
     "test_packager"
   ];
+
   pythonImportsCheck = [
     "monai.deploy"
     "monai.deploy.core"
     # "monai.deploy.operators" should be imported as well but
     # requires some "optional" dependencies
-    # like highdicom (which is not packaged yet) and pydicom
+    # like highdicom and pydicom
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Framework and tools to design, develop and verify AI applications in healthcare imaging";
+    mainProgram = "monai-deploy";
     homepage = "https://monai.io/deploy.html";
-    license = licenses.asl20;
-    maintainers = [ maintainers.bcdarwin ];
+    changelog = "https://github.com/Project-MONAI/monai-deploy-app-sdk/blob/main/docs/source/release_notes/${src.tag}.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ bcdarwin ];
+    broken = true; # requires holoscan and holoscan-cli, not in Nixpkgs
   };
 }

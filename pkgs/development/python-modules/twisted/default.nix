@@ -1,153 +1,212 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonAtLeast
-, pythonOlder
-, fetchPypi
-, fetchpatch
-, python
-, appdirs
-, attrs
-, automat
-, bcrypt
-, constantly
-, cryptography
-, git
-, glibcLocales
-, h2
-, hyperlink
-, hypothesis
-, idna
-, incremental
-, priority
-, pyasn1
-, pyhamcrest
-, pynacl
-, pyopenssl
-, pyserial
-, service-identity
-, setuptools
-, typing-extensions
-, zope_interface
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  pythonAtLeast,
+  pythonOlder,
+  fetchFromGitHub,
+  fetchpatch,
+  python,
+
+  # build-system
+  hatchling,
+  hatch-fancy-pypi-readme,
+
+  # dependencies
+  attrs,
+  automat,
+  constantly,
+  hyperlink,
+  incremental,
+  typing-extensions,
+  zope-interface,
+
+  # optional-dependencies
+  appdirs,
+  bcrypt,
+  cryptography,
+  h2,
+  idna,
+  priority,
+  pyopenssl,
+  pyserial,
+  service-identity,
+
+  # tests
+  cython-test-exception-raiser,
+  gitMinimal,
+  glibcLocales,
+  pyhamcrest,
+  hypothesis,
 
   # for passthru.tests
-, cassandra-driver
-, klein
-, magic-wormhole
-, scrapy
-, treq
-, txaio
-, txamqp
-, txrequests
-, txtorcon
-, thrift
-, nixosTests
+  cassandra-driver,
+  httpx,
+  klein,
+  magic-wormhole,
+  scrapy,
+  treq,
+  txaio,
+  txamqp,
+  txrequests,
+  txtorcon,
+  thrift,
+  nixosTests,
 }:
 
 buildPythonPackage rec {
   pname = "twisted";
-  version = "22.10.0";
-  format = "setuptools";
+  version = "26.4.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    pname = "Twisted";
-    inherit version;
-    extension = "tar.gz";
-    hash = "sha256-Mqy9QKlPX0bntCwQm/riswIlCUVWF4Oot6BZBI8tTTE=";
+  src = fetchFromGitHub {
+    owner = "twisted";
+    repo = "twisted";
+    tag = "twisted-${version}";
+    hash = "sha256-D6vDa+8qwjryKnElPBZgXCNokMX2l3i2bMdtk4FhEp4=";
   };
 
   patches = [
+    # pyOpenSSL 26.3.0 dropped some deprecated APIs, which breaks various
+    # functionality in twisted. We include the patch which replaces these
+    # with equivalent functionality from pyca/cryptography.
+    # https://github.com/twisted/twisted/issues/12660
+    # https://github.com/twisted/twisted/pull/12661
     (fetchpatch {
-      url = "https://github.com/twisted/twisted/pull/11787.diff";
-      hash = "sha256-bQgUmbvDa61Vg8p/o/ivfkOAHyj1lTgHkrRVEGLM9aU=";
-    })
-    (fetchpatch {
-      # Conditionally skip tests that require METHOD_CRYPT
-      # https://github.com/twisted/twisted/pull/11827
-      url = "https://github.com/mweinelt/twisted/commit/e69e652de671aac0abf5c7e6c662fc5172758c5a.patch";
-      hash = "sha256-LmvKUTViZoY/TPBmSlx4S9FbJNZfB5cxzn/YcciDmoI=";
-    })
-    # remove half broken pyasn1 integration that blow up with pyasn 0.5.0
-    # https://github.com/twisted/twisted/pull/11843
-    (fetchpatch {
-      url = "https://github.com/twisted/twisted/commit/bdee0eb835a76b2982beaf10c85269ff25ea09fa.patch";
-      excludes = [ "pyproject.toml" "tox.ini" ];
-      hash = "sha256-oGAHmZMpMWfK+2zEDjHD115sW7exCYqfORVOLw+Wa6M=";
-    })
-  ] ++ lib.optionals (pythonAtLeast "3.11") [
-    (fetchpatch {
-      url = "https://github.com/twisted/twisted/pull/11734.diff";
-      excludes = [ ".github/workflows/*" ];
-      hash = "sha256-Td08pDxHwl7fPLCA6rUySuXpy8YmZfvXPHGsBpdcmSo=";
-    })
-    (fetchpatch {
-      url = "https://github.com/twisted/twisted/commit/00bf5be704bee022ba4d9b24eb6c2c768b4a1921.patch";
-      hash = "sha256-fnBzczm3OlhbjRcePIQ7dSX6uldlCZ9DJTS+UFO2nAQ=";
+      name = "twisted-replace-pyopenssl-x509req-with-cryptography-csr.patch";
+      url = "https://github.com/twisted/twisted/commit/5b4601c9965ffc92d6aa952b8c05127d5ac37307.patch";
+      hash = "sha256-mbSZOvzinfUolfOHJl+vEdAEGjy8OF2S/SrTsAbvjIw=";
     })
   ];
 
   __darwinAllowLocalNetworking = true;
 
-  propagatedBuildInputs = [
+  build-system = [
+    hatchling
+    hatch-fancy-pypi-readme
+    incremental
+  ];
+
+  dependencies = [
     attrs
     automat
     constantly
     hyperlink
     incremental
-    setuptools
     typing-extensions
-    zope_interface
+    zope-interface
   ];
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace '"pyasn1 >= 0.4",' ""
-
-    echo 'ListingTests.test_localeIndependent.skip = "Timezone issue"'>> src/twisted/conch/test/test_cftp.py
-    echo 'ListingTests.test_newFile.skip = "Timezone issue"'>> src/twisted/conch/test/test_cftp.py
-    echo 'ListingTests.test_newSingleDigitDayOfMonth.skip = "Timezone issue"'>> src/twisted/conch/test/test_cftp.py
-    echo 'ListingTests.test_oldFile.skip = "Timezone issue"'>> src/twisted/conch/test/test_cftp.py
-    echo 'ListingTests.test_oldSingleDigitDayOfMonth.skip = "Timezone issue"'>> src/twisted/conch/test/test_cftp.py
-
-    echo 'UNIXTestsBuilder_AsyncioSelectorReactorTests.test_sendFileDescriptorTriggersPauseProducing.skip = "sendFileDescriptor producer was not paused"'>> src/twisted/internet/test/test_unix.py
-    echo 'UNIXTestsBuilder_SelectReactorTests.test_sendFileDescriptorTriggersPauseProducing.skip = "sendFileDescriptor producer was not paused"'>> src/twisted/internet/test/test_unix.py
-
-    echo 'FileObserverTests.test_getTimezoneOffsetEastOfUTC.skip = "mktime argument out of range"'>> src/twisted/test/test_log.py
-    echo 'FileObserverTests.test_getTimezoneOffsetWestOfUTC.skip = "mktime argument out of range"'>> src/twisted/test/test_log.py
-    echo 'FileObserverTests.test_getTimezoneOffsetWithoutDaylightSavingTime.skip = "tuple differs, values not"'>> src/twisted/test/test_log.py
-
-    echo 'MulticastTests.test_joinLeave.skip = "No such device"'>> src/twisted/test/test_udp.py
-    echo 'MulticastTests.test_loopback.skip = "No such device"'>> src/twisted/test/test_udp.py
-    echo 'MulticastTests.test_multicast.skip = "Reactor was unclean"'>> src/twisted/test/test_udp.py
-    echo 'MulticastTests.test_multiListen.skip = "No such device"'>> src/twisted/test/test_udp.py
-
-    # fails since migrating to libxcrypt
-    echo 'HelperTests.test_refuteCryptedPassword.skip = "OSError: Invalid argument"' >> src/twisted/conch/test/test_checkers.py
-
-    # not packaged
-    substituteInPlace src/twisted/test/test_failure.py \
-      --replace "from cython_test_exception_raiser import raiser  # type: ignore[import]" "raiser = None"
-  '' + lib.optionalString stdenv.isLinux ''
-    echo 'PTYProcessTestsBuilder_EPollReactorTests.test_openFileDescriptors.skip = "invalid syntax"'>> src/twisted/internet/test/test_process.py
-    echo 'PTYProcessTestsBuilder_PollReactorTests.test_openFileDescriptors.skip = "invalid syntax"'>> src/twisted/internet/test/test_process.py
-    echo 'UNIXTestsBuilder_EPollReactorTests.test_sendFileDescriptorTriggersPauseProducing.skip = "sendFileDescriptor producer was not paused"'>> src/twisted/internet/test/test_unix.py
-    echo 'UNIXTestsBuilder_PollReactorTests.test_sendFileDescriptorTriggersPauseProducing.skip = "sendFileDescriptor producer was not paused"'>> src/twisted/internet/test/test_unix.py
-
-    # Patch t.p._inotify to point to libc. Without this,
-    # twisted.python.runtime.platform.supportsINotify() == False
-    substituteInPlace src/twisted/python/_inotify.py --replace \
-      "ctypes.util.find_library(\"c\")" "'${stdenv.cc.libc}/lib/libc.so.6'"
-  '' + lib.optionalString (stdenv.isAarch64 && stdenv.isDarwin) ''
-    echo 'AbortConnectionTests_AsyncioSelectorReactorTests.test_fullWriteBufferAfterByteExchange.skip = "Timeout after 120 seconds"' >> src/twisted/internet/test/test_tcp.py
-    echo 'AbortConnectionTests_AsyncioSelectorReactorTests.test_resumeProducingAbort.skip = "Timeout after 120 seconds"' >> src/twisted/internet/test/test_tcp.py
-
-    echo 'PosixReactorBaseTests.test_removeAllSkipsInternalReaders.skip = "Fails due to unclosed event loop"' >> src/twisted/internet/test/test_posixbase.py
-    echo 'PosixReactorBaseTests.test_wakerIsInternalReader.skip = "Fails due to unclosed event loop"' >> src/twisted/internet/test/test_posixbase.py
-
-    echo 'TCPPortTests.test_connectionLostFailed.skip = "Fails due to unclosed event loop"' >> src/twisted/internet/test/test_posixbase.py
-  '';
+  postPatch =
+    let
+      skippedTests = {
+        "src/twisted/conch/test/test_cftp.py" = [
+          # timezone issues
+          "ListingTests.test_localeIndependent"
+          "ListingTests.test_newSingleDigitDayOfMonth"
+          "ListingTests.test_oldFile"
+          "ListingTests.test_oldSingleDigitDayOfMonth"
+          "ListingTests.test_newFile"
+        ];
+        "src/twisted/test/test_log.py" = [
+          # wrong timezone offset calculation
+          "FileObserverTests.test_getTimezoneOffsetEastOfUTC"
+          "FileObserverTests.test_getTimezoneOffsetWestOfUTC"
+          "FileObserverTests.test_getTimezoneOffsetWithoutDaylightSavingTime"
+        ];
+        "src/twisted/test/test_udp.py" = [
+          # "No such device" (No multicast support in the build sandbox)
+          "MulticastTests.test_joinLeave"
+          "MulticastTests.test_loopback"
+          "MulticastTests.test_multicast"
+          "MulticastTests.test_multiListen"
+        ];
+        "src/twisted/trial/test/test_script.py" = [
+          # Fails in LXC containers with less than all cores available (limits.cpu)
+          "AutoJobsTests.test_cpuCount"
+        ];
+        "src/twisted/internet/test/test_unix.py" = [
+          # flaky?
+          "UNIXTestsBuilder.test_sendFileDescriptorTriggersPauseProducing"
+        ];
+      }
+      // lib.optionalAttrs (pythonAtLeast "3.12") {
+        "src/twisted/trial/_dist/test/test_workerreporter.py" = [
+          "WorkerReporterTests.test_addSkipPyunit"
+        ];
+        "src/twisted/trial/_dist/test/test_worker.py" = [
+          "LocalWorkerAMPTests.test_runSkip"
+        ];
+      }
+      // lib.optionalAttrs (pythonOlder "3.13") {
+        # missing ciphers in the crypt module due to libxcrypt
+        "src/twisted/web/test/test_tap.py" = [
+          "ServiceTests.test_HTTPSFailureOnMissingSSL"
+          "ServiceTests.test_HTTPSFailureOnMissingSSL"
+        ];
+        "src/twisted/conch/test/test_checkers.py" = [
+          "HelperTests.test_refuteCryptedPassword"
+          "HelperTests.test_verifyCryptedPassword"
+          "HelperTests.test_verifyCryptedPasswordMD5"
+          "UNIXPasswordDatabaseTests.test_defaultCheckers"
+          "UNIXPasswordDatabaseTests.test_passInCheckers"
+        ];
+        "src/twisted/cred/test/test_strcred.py" = [
+          "UnixCheckerTests.test_isChecker"
+          "UnixCheckerTests.test_unixCheckerFailsPassword"
+          "UnixCheckerTests.test_unixCheckerFailsPasswordBytes"
+          "UnixCheckerTests.test_unixCheckerFailsUsername"
+          "UnixCheckerTests.test_unixCheckerFailsUsernameBytes"
+          "UnixCheckerTests.test_unixCheckerSucceeds"
+          "UnixCheckerTests.test_unixCheckerSucceedsBytes"
+          "CryptTests.test_verifyCryptedPassword"
+          "CryptTests.test_verifyCryptedPasswordOSError"
+        ];
+        # dependant on UnixCheckerTests.test_isChecker
+        "src/twisted/cred/test/test_cred.py" = [
+          "HashedPasswordOnDiskDatabaseTests.testBadCredentials"
+          "HashedPasswordOnDiskDatabaseTests.testGoodCredentials"
+          "HashedPasswordOnDiskDatabaseTests.testGoodCredentials_login"
+          "HashedPasswordOnDiskDatabaseTests.testHashedCredentials"
+        ];
+      }
+      // lib.optionalAttrs (pythonAtLeast "3.13") {
+        "src/twisted/web/test/test_flatten.py" = [
+          "FlattenerErrorTests.test_asynchronousFlattenError"
+          "FlattenerErrorTests.test_cancel"
+        ];
+      }
+      // lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+        "src/twisted/internet/test/test_process.py" = [
+          # invalid syntaax
+          "ProcessTestsBuilder_AsyncioSelectorReactorTests.test_openFileDescriptors"
+          "ProcessTestsBuilder_SelectReactorTests.test_openFileDescriptors"
+          # exit code 120
+          "ProcessTestsBuilder_AsyncioSelectorReactorTests.test_processEnded"
+          "ProcessTestsBuilder_SelectReactorTests.test_processEnded"
+        ];
+        "src/twisted/internet/test/test_tcp.py" = [
+          # flaky on macOS, suspected kernel bug in socket notifications
+          # https://github.com/twisted/twisted/issues/12151
+          "AbortConnectionTests_AsyncioSelectorReactorTests.test_fullWriteBufferAfterByteExchange"
+          "AbortConnectionTests_AsyncioSelectorReactorTests.test_resumeProducingAbort"
+          "AbortConnectionTests_AsyncioSelectorReactorTests.test_resumeProducingAbortLater"
+          # Times out in Hydra on x86_64-darwin
+          "AbortConnectionTests_AsyncioSelectorReactorTests.test_fullWriteBufferAfterByteExchange"
+        ];
+      };
+    in
+    lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        file: tests: lib.concatMapStringsSep "\n" (test: ''echo '${test}.skip = ""' >> "${file}"'') tests
+      ) skippedTests
+    )
+    + lib.optionalString stdenv.hostPlatform.isLinux ''
+      # Patch t.p._inotify to point to libc. Without this,
+      # twisted.python.runtime.platform.supportsINotify() == False
+      substituteInPlace src/twisted/python/_inotify.py --replace-fail \
+        "ctypes.util.find_library(\"c\")" "'${stdenv.cc.libc}/lib/libc.so.6'"
+    '';
 
   # Generate Twisted's plug-in cache. Twisted users must do it as well. See
   # http://twistedmatrix.com/documents/current/core/howto/plugin.html#auto3
@@ -157,31 +216,53 @@ buildPythonPackage rec {
   '';
 
   nativeCheckInputs = [
-    git
+    gitMinimal
     glibcLocales
-    hypothesis
-    pyhamcrest
   ]
-  ++ passthru.optional-dependencies.conch
-  # not supported on aarch64-darwin: https://github.com/pyca/pyopenssl/issues/873
-  ++ lib.optionals (!(stdenv.isDarwin && stdenv.isAarch64)) passthru.optional-dependencies.tls;
+  ++ optional-dependencies.test
+  ++ optional-dependencies.conch
+  ++ optional-dependencies.http2
+  ++ optional-dependencies.serial
+  ++ optional-dependencies.tls;
 
-  checkPhase = ''
+  preCheck = ''
     export SOURCE_DATE_EPOCH=315532800
     export PATH=$out/bin:$PATH
-    # race conditions when running in paralell
-    ${python.interpreter} -m twisted.trial twisted
   '';
 
-  passthru = {
-    optional-dependencies = rec {
-      conch = [ appdirs bcrypt cryptography pyasn1 ];
-      conch_nacl = conch ++ [ pynacl ];
-      http2 = [ h2 priority ];
-      serial = [ pyserial ];
-      tls = [ idna pyopenssl service-identity ];
-    };
+  checkPhase = ''
+    runHook preCheck
+    # race conditions when running in paralell
+    ${python.interpreter} -m twisted.trial -j1 twisted
+    runHook postCheck
+  '';
 
+  optional-dependencies = {
+    conch = [
+      appdirs
+      bcrypt
+      cryptography
+    ];
+    http2 = [
+      h2
+      priority
+    ];
+    serial = [ pyserial ];
+    test = [
+      cython-test-exception-raiser
+      pyhamcrest
+      hypothesis
+      httpx
+    ]
+    ++ httpx.optional-dependencies.http2;
+    tls = [
+      idna
+      pyopenssl
+      service-identity
+    ];
+  };
+
+  passthru = {
     tests = {
       inherit
         cassandra-driver
@@ -193,15 +274,17 @@ buildPythonPackage rec {
         txamqp
         txrequests
         txtorcon
-        thrift;
+        thrift
+        ;
       inherit (nixosTests) buildbot matrix-synapse;
     };
   };
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/twisted/twisted/blob/twisted-${version}/NEWS.rst";
     homepage = "https://github.com/twisted/twisted";
     description = "Asynchronous networking framework written in Python";
-    license = licenses.mit;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

@@ -1,34 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, google-api-core
-, mock
-, proto-plus
-, protobuf
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  google-api-core,
+  google-auth,
+  mock,
+  proto-plus,
+  protobuf,
+  pytest-asyncio,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "google-cloud-speech";
-  version = "2.20.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "2.40.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-5sW4b/6OR0ucgraZ75AvdclHjnfkTqOd45l7PvivPi4=";
+    pname = "google_cloud_speech";
+    inherit version;
+    hash = "sha256-6J5ojkzguSZ1QDi/mS0NDwZcXxw1A7sg5sRtCLY2WPw=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  pythonRelaxDeps = [
+    "protobuf"
+  ];
+
+  dependencies = [
     google-api-core
+    google-auth
     proto-plus
     protobuf
-    setuptools
-  ] ++ google-api-core.optional-dependencies.grpc;
+  ]
+  ++ google-api-core.optional-dependencies.grpc;
 
   nativeCheckInputs = [
     mock
@@ -36,10 +43,9 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  disabledTestPaths = [
-    # Requrire credentials
-    "tests/system/gapic/v1/test_system_speech_v1.py"
-    "tests/system/gapic/v1p1beta1/test_system_speech_v1p1beta1.py"
+  disabledTests = [
+    # Test requires project ID
+    "test_list_phrase_set"
   ];
 
   pythonImportsCheck = [
@@ -48,11 +54,11 @@ buildPythonPackage rec {
     "google.cloud.speech_v1p1beta1"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Google Cloud Speech API client library";
-    homepage = "https://github.com/googleapis/python-speech";
-    changelog = "https://github.com/googleapis/python-speech/blob/v${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    homepage = "https://github.com/googleapis/google-cloud-python/tree/main/packages/google-cloud-speech";
+    changelog = "https://github.com/googleapis/google-cloud-python/blob/google-cloud-speech-v${version}/packages/google-cloud-speech/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
 }

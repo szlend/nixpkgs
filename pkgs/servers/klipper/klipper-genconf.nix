@@ -1,13 +1,13 @@
-{ writeShellApplication
-, klipper
-, python3
-, gnumake
-, pkgsCross
-}: writeShellApplication {
+{
+  writeShellApplication,
+  klipper,
+  python3,
+  gnumake,
+}:
+writeShellApplication {
   name = "klipper-genconf";
   runtimeInputs = [
     python3
-    pkgsCross.avr.stdenv.cc
     gnumake
   ];
   text = ''

@@ -1,19 +1,25 @@
-{ lib
-, buildDunePackage
-, tar
-, cstruct-lwt
-, lwt
+{
+  buildDunePackage,
+  tar,
+  fpath,
+  logs,
+  lwt,
+  git,
 }:
 
-buildDunePackage rec {
+buildDunePackage {
   pname = "tar-unix";
   inherit (tar) version src doCheck;
-  duneVersion = "3";
 
   propagatedBuildInputs = [
     tar
-    cstruct-lwt
+    fpath
+    logs
     lwt
+  ];
+
+  nativeCheckInputs = [
+    git
   ];
 
   meta = tar.meta // {

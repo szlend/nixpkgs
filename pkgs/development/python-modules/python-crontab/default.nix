@@ -1,49 +1,50 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, python-dateutil
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitLab,
+  pytestCheckHook,
+  python-dateutil,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-crontab";
-  version = "2.7.1";
-  format = "setuptools";
+  version = "3.4.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-shr0ZHx7u4SP7y8CBhbGsCidy5+UtPmRpVMQ/5vsV0k=";
+  src = fetchFromGitLab {
+    owner = "doctormo";
+    repo = "python-crontab";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-MVQNZDCEsX8cjDQQviTfwOarul8+CkdCvWfJMc5Sbq0=";
   };
 
-  propagatedBuildInputs = [
-    python-dateutil
-  ];
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace-fail "= '3.3.0'," "= '${finalAttrs.version}',"
+  '';
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  build-system = [ setuptools ];
 
-  disabledTests = [
-    "test_07_non_posix_shell"
-    # doctest that assumes /tmp is writeable, awkward to patch
-    "test_03_usage"
-  ];
+  dependencies = [ python-dateutil ];
 
-  pythonImportsCheck = [
-    "crontab"
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "crontab" ];
+
+  meta = {
     description = "Python API for crontab";
     longDescription = ''
       Crontab module for reading and writing crontab files
       and accessing the system cron automatically and simply using a direct API.
     '';
     homepage = "https://gitlab.com/doctormo/python-crontab/";
-    license = licenses.lgpl3Plus;
-    maintainers = with maintainers; [ kfollesdal ];
+    license = lib.licenses.lgpl21Only;
+    maintainers = with lib.maintainers; [
+      fab
+      kfollesdal
+    ];
   };
-}
+})

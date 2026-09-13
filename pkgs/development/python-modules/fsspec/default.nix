@@ -1,160 +1,148 @@
-{ lib
-, stdenv
-, aiohttp
-, buildPythonPackage
-, fetchFromGitHub
-, numpy
-, paramiko
-, pytest-asyncio
-, pytest-mock
-, pytest-vcr
-, pytestCheckHook
-, pythonOlder
-, requests
-, smbprotocol
-, tqdm
-, adlfs
-, dask
-, distributed
-, dropbox
-, fusepy
-, gcsfs
-, libarchive-c
-, ocifs
-, panel
-, pyarrow
-, pygit2
-, s3fs
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  hatchling,
+  hatch-vcs,
+
+  # optional-dependencies
+  adlfs,
+  pyarrow,
+  dask,
+  distributed,
+  requests,
+  dropbox,
+  aiohttp,
+  fusepy,
+  gcsfs,
+  libarchive-c,
+  ocifs,
+  panel,
+  paramiko,
+  pygit2,
+  s3fs,
+  smbprotocol,
+  tqdm,
+
+  # tests
+  numpy,
+  pytest-asyncio,
+  pytest-mock,
+  pytest-vcr,
+  pytestCheckHook,
+  writableTmpDirAsHomeHook,
 }:
 
 buildPythonPackage rec {
   pname = "fsspec";
-  version = "2023.4.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "2026.6.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "fsspec";
     repo = "filesystem_spec";
-    rev = version;
-    hash = "sha256-qkvhmXJNxA8v+kbZ6ulxJAQr7ReQpb+JkbhOUnL59KM=";
+    tag = version;
+    hash = "sha256-MQkrSqXILUkIwm1r1Ins4ZLSATBvFDbylgRLTWQyQOQ=";
   };
 
-  propagatedBuildInputs = [
-    aiohttp
-    paramiko
-    requests
-    smbprotocol
-    tqdm
+  build-system = [
+    hatchling
+    hatch-vcs
   ];
 
-  passthru.optional-dependencies = {
-    entrypoints = [
-    ];
-    abfs = [
-      adlfs
-    ];
-    adl = [
-      adlfs
-    ];
+  optional-dependencies = {
+    abfs = [ adlfs ];
+    adl = [ adlfs ];
+    arrow = [ pyarrow ];
     dask = [
       dask
       distributed
     ];
     dropbox = [
-      # missing dropboxdrivefs
-      requests
       dropbox
-    ];
-    gcs = [
-      gcsfs
-    ];
-    git = [
-      pygit2
-    ];
-    github = [
+      # dropboxdrivefs
       requests
     ];
-    gs = [
-      gcsfs
-    ];
-    hdfs = [
-      pyarrow
-    ];
-    arrow = [
-      pyarrow
-    ];
-    http = [
+    entrypoints = [ ];
+    full = [
+      adlfs
       aiohttp
-      requests
-    ];
-    sftp = [
-      paramiko
-    ];
-    s3 = [
-      s3fs
-    ];
-    oci = [
-      ocifs
-    ];
-    smb = [
-      smbprotocol
-    ];
-    ssh = [
-      paramiko
-    ];
-    fuse = [
+      dask
+      distributed
+      dropbox
+      # dropboxdrivefs
       fusepy
-    ];
-    libarchive = [
+      gcsfs
       libarchive-c
-    ];
-    gui = [
+      ocifs
       panel
-    ];
-    tqdm = [
+      paramiko
+      pyarrow
+      pygit2
+      requests
+      s3fs
+      smbprotocol
       tqdm
     ];
+    fuse = [ fusepy ];
+    gcs = [ gcsfs ];
+    git = [ pygit2 ];
+    github = [ requests ];
+    gs = [ gcsfs ];
+    gui = [ panel ];
+    hdfs = [ pyarrow ];
+    http = [ aiohttp ];
+    libarchive = [ libarchive-c ];
+    oci = [ ocifs ];
+    s3 = [ s3fs ];
+    sftp = [ paramiko ];
+    smb = [ smbprotocol ];
+    ssh = [ paramiko ];
+    tqdm = [ tqdm ];
   };
 
   nativeCheckInputs = [
+    aiohttp
     numpy
     pytest-asyncio
     pytest-mock
     pytest-vcr
     pytestCheckHook
+    requests
+    writableTmpDirAsHomeHook
   ];
 
   __darwinAllowLocalNetworking = true;
 
   disabledTests = [
-    # Test assumes user name is part of $HOME
-    # AssertionError: assert 'nixbld' in '/homeless-shelter/foo/bar'
-    "test_strip_protocol_expanduser"
-    # test accesses this remote ftp server:
-    # https://ftp.fau.de/debian-cd/current/amd64/log/success
-    "test_find"
-    # Tests want to access S3
-    "test_urlpath_inference_errors"
-    "test_mismatch"
-  ] ++ lib.optionals (stdenv.isDarwin) [
+    # network access to aws s3
+    "test_async_cat_file_ranges"
+  ]
+  ++ lib.optionals (stdenv.hostPlatform.isDarwin) [
     # works locally on APFS, fails on hydra with AssertionError comparing timestamps
     # darwin hydra builder uses HFS+ and has only one second timestamp resolution
-    # this two tests however, assume nanosecond resolution
+    # this two tests however, assume nanosecond resolution
     "test_modified"
     "test_touch"
+    # tries to access /home, ignores $HOME
+    "test_directories"
   ];
 
-  pythonImportsCheck = [
-    "fsspec"
+  disabledTestPaths = [
+    # network access to github.com
+    "fsspec/implementations/tests/test_github.py"
   ];
 
-  meta = with lib; {
-    description = "A specification that Python filesystems should adhere to";
+  pythonImportsCheck = [ "fsspec" ];
+
+  meta = {
+    description = "Specification that Python filesystems should adhere to";
     homepage = "https://github.com/fsspec/filesystem_spec";
-    changelog = "https://github.com/fsspec/filesystem_spec/raw/${version}/docs/source/changelog.rst";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ costrouc ];
+    changelog = "https://github.com/fsspec/filesystem_spec/raw/${src.tag}/docs/source/changelog.rst";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ nickcao ];
   };
 }

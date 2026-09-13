@@ -1,14 +1,17 @@
-{ buildDunePackage, lib, fetchurl, cppo }:
+{
+  buildDunePackage,
+  lib,
+  fetchurl,
+  cppo,
+}:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "extlib";
-  version = "1.7.9";
-
-  minimalOCamlVersion = "4.02";
+  version = "1.8.0";
 
   src = fetchurl {
-    url = "https://ygrek.org/p/release/ocaml-${pname}/${pname}-${version}.tar.gz";
-    sha512 = "2386ac69f037ea520835c0624d39ae9fbffe43a20b18e247de032232ed6f419d667b53d2314c6f56dc71d368bf0b6201a56c2f3f2a5bdfd933766c5a6cb98768";
+    url = "https://github.com/ygrek/ocaml-extlib/releases/download/${finalAttrs.version}/extlib-${finalAttrs.version}.tar.gz";
+    hash = "sha256-lkJ38AEoCo7d/AjgcB1Zygxr3F0FIxOz5A5QiPbUXXA=";
   };
 
   nativeBuildInputs = [ cppo ];
@@ -21,4 +24,4 @@ buildDunePackage rec {
     license = lib.licenses.lgpl21Only;
     maintainers = [ lib.maintainers.sternenseemann ];
   };
-}
+})

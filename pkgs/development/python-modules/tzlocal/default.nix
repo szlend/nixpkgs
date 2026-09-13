@@ -1,46 +1,42 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, pytz-deprecation-shim
-, pytest-mock
-, pytestCheckHook
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  pytest-mock,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "tzlocal";
-  version = "4.2"; # version needs to be compatible with APScheduler
+  version = "5.4.4"; # version needs to be compatible with APScheduler
+  pyproject = true;
+  __structuredAttrs = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "ee5842fa3a795f023514ac2d801c4a81d1743bbe642e3940143326b3a00addd7";
+  src = fetchFromGitHub {
+    owner = "regebro";
+    repo = "tzlocal";
+    tag = finalAttrs.version;
+    hash = "sha256-kZ3+YpmJJ7ZHKbEp5RELVnGtwAOJph19Wf32lwuokNM=";
   };
 
-  propagatedBuildInputs = [
-    pytz-deprecation-shim
-  ];
+  build-system = [ setuptools ];
 
   nativeCheckInputs = [
     pytest-mock
     pytestCheckHook
   ];
 
-  disabledTests = [
-    "test_conflicting"
-    "test_noconflict"
-    "test_symlink_localtime"
-  ] ++ lib.optional stdenv.isDarwin "test_assert_tz_offset";
+  disabledTests = lib.optional stdenv.hostPlatform.isDarwin "test_assert_tz_offset";
 
   pythonImportsCheck = [ "tzlocal" ];
 
-  meta = with lib; {
+  meta = {
     description = "Tzinfo object for the local timezone";
     homepage = "https://github.com/regebro/tzlocal";
-    changelog = "https://github.com/regebro/tzlocal/blob/${version}/CHANGES.txt";
-    license = licenses.cddl;
-    maintainers = with maintainers; [ dotlambda ];
+    changelog = "https://github.com/regebro/tzlocal/blob/${finalAttrs.src.tag}/CHANGES.txt";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

@@ -1,37 +1,34 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, unittestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  unittestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "gitignore-parser";
-  version = "0.1.4";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.1.13";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mherrmann";
     repo = "gitignore_parser";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-kc1Y3kHcVVao9zqQMbUeMi/9s+W2aUAapCx3h8VyWRQ=";
+    tag = "v${version}";
+    hash = "sha256-jd5C8whfdLuEC+ebDAAYso33o2H963P+8RWcm26koVM=";
   };
 
-  nativeCheckInputs = [
-    unittestCheckHook
-  ];
+  build-system = [ setuptools ];
 
-  pythonImportsCheck = [
-    "gitignore_parser"
-  ];
+  nativeCheckInputs = [ unittestCheckHook ];
 
-  meta = with lib; {
-    description = "A spec-compliant gitignore parser";
+  pythonImportsCheck = [ "gitignore_parser" ];
+
+  meta = {
+    description = "Spec-compliant gitignore parser";
     homepage = "https://github.com/mherrmann/gitignore_parser";
-    changelog = "https://github.com/mherrmann/gitignore_parser/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/mherrmann/gitignore_parser/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

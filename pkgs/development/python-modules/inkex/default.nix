@@ -1,55 +1,69 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitLab
-, poetry-core
-, cssselect
-, lxml
-, numpy
-, packaging
-, pillow
-, pygobject3
-, pyserial
-, scour
-, gobject-introspection
-, pytestCheckHook
-, gtk3
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchpatch,
+  inkscape,
+  poetry-core,
+  cssselect,
+  lxml,
+  numpy,
+  pillow,
+  pygobject3,
+  pyparsing,
+  pyserial,
+  scour,
+  tinycss2,
+  gobject-introspection,
+  pytestCheckHook,
+  gtk3,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage {
   pname = "inkex";
-  version = "1.2.2";
+  inherit (inkscape) version;
+  pyproject = true;
 
-  format = "pyproject";
+  inherit (inkscape) src;
 
-  src = fetchFromGitLab {
-    owner = "inkscape";
-    repo = "extensions";
-    rev = "EXTENSIONS_AT_INKSCAPE_${version}";
-    hash = "sha256-jw7daZQTBxLHWOpjZkMYtP1vIQvd/eLgiktWqVSjEgU=";
-  };
+  patches = [
+    # Fix tests with newer libxml2
+    # https://gitlab.com/inkscape/extensions/-/merge_requests/712
+    (fetchpatch {
+      url = "https://gitlab.com/inkscape/extensions/-/commit/b04ab718b400778a264f2085bbc779faebc08368.patch";
+      hash = "sha256-BXRcfoeX7X8+x6CuKKBhrnzUHIwgnPay22Z8+rPZS54=";
+      stripLen = 1;
+      extraPrefix = "share/extensions/";
+    })
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace '"1.2.0"' '"${version}"' \
-      --replace 'scour = "^0.37"' 'scour = ">=0.37"'
-  '';
-
-  nativeBuildInputs = [
-    poetry-core
+    # Fix binary DXF parsing on big-endian
+    # https://gitlab.com/inkscape/extensions/-/merge_requests/721
+    ./1001-dxf-fix-binary-dxf-double-parsing-on-big-endian.patch
   ];
 
-  propagatedBuildInputs = [
+  build-system = [ poetry-core ];
+
+  pythonRelaxDeps = [
+    "lxml"
+    "numpy"
+  ];
+
+  dependencies = [
     cssselect
     lxml
     numpy
-    packaging
     pillow
     pygobject3
+    pyparsing
     pyserial
     scour
+    tinycss2
   ];
 
   pythonImportsCheck = [ "inkex" ];
+
+  # The inkex version isn't update in tandem with inkscape
+  dontCheckPythonMetadata = true;
 
   nativeCheckInputs = [
     gobject-introspection
@@ -63,6 +77,14 @@ buildPythonPackage rec {
   disabledTests = [
     "test_extract_multiple"
     "test_lookup_and"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    "test_image_extract"
+    "test_path_number_nodes"
+    "test_plotter" # Hangs
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isMusl [
+    "test_ellipse_arc"
   ];
 
   disabledTestPaths = [
@@ -73,6 +95,13 @@ buildPythonPackage rec {
     # Failed to find pixmap 'image-missing' in /build/source/tests/data/
     "tests/test_inkex_gui_pixmaps.py"
   ];
+
+  postPatch = ''
+    cd share/extensions
+
+    substituteInPlace pyproject.toml \
+      --replace-fail 'scour = "^0.37"' 'scour = ">=0.37"'
+  '';
 
   meta = {
     description = "Library for manipulating SVG documents which is the basis for Inkscape extensions";

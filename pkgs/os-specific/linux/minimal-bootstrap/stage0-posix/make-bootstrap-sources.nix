@@ -8,52 +8,45 @@
 #
 # To build:
 #
-#   nix-build '<nixpkgs>' -o sources.nar.xz -A make-minimal-bootstrap-sources
+#   nix-build '<nixpkgs>' -A make-minimal-bootstrap-sources
 #
 
-{ lib
-, fetchFromGitHub
-, runCommand
-, nix
-, xz
+{
+  lib,
+  hostPlatform,
+  fetchFromGitHub,
+  fetchpatch,
 }:
+
 let
-  inherit (import ./bootstrap-sources.nix { }) name rev;
-
-  src = fetchFromGitHub {
-    owner = "oriansj";
-    repo = "stage0-posix";
-    inherit rev;
-    sha256 = "sha256-FpMp7z+B3cR3LkQ+PooH/b1/NlxH8NHVJNWifaPWt4U=";
-    fetchSubmodules = true;
-    postFetch = ''
-      # Seed binaries will be fetched separately
-      echo "Removing seed binaries"
-      rm -rf $out/bootstrap-seeds/*
-
-      # Remove vendored/duplicate M2libc's
-      echo "Removing duplicate M2libc"
-      rm -rf \
-        $out/M2-Mesoplanet/M2libc \
-        $out/M2-Planet/M2libc \
-        $out/mescc-tools/M2libc \
-        $out/mescc-tools-extra/M2libc
-    '';
-  };
-
+  expected = import ./bootstrap-sources.nix { inherit hostPlatform; };
 in
-runCommand "${name}.nar.xz" {
-  nativeBuildInputs = [ nix xz ];
 
-  passthru = { inherit src; };
+fetchFromGitHub {
+  inherit (expected) name rev;
+  owner = "oriansj";
+  repo = "stage0-posix";
+  sha256 = expected.outputHash;
+  fetchSubmodules = true;
+  postFetch = ''
+    # Seed binaries will be fetched separately
+    echo "Removing seed binaries"
+    rm -rf $out/bootstrap-seeds/*
 
-  meta = with lib; {
+    # Remove vendored/duplicate M2libc's
+    echo "Removing duplicate M2libc"
+    rm -rf \
+      $out/M2-Mesoplanet/M2libc \
+      $out/M2-Planet/M2libc \
+      $out/mescc-tools/M2libc \
+      $out/mescc-tools-extra/M2libc
+  '';
+
+  meta = {
     description = "Packaged sources for the first bootstrapping stage";
     homepage = "https://github.com/oriansj/stage0-posix";
-    license = licenses.gpl3Plus;
-    maintainers = teams.minimal-bootstrap.members;
-    platforms = platforms.all;
+    license = lib.licenses.gpl3Plus;
+    teams = [ lib.teams.minimal-bootstrap ];
+    platforms = lib.platforms.all;
   };
-} ''
-  nix-store --dump ${src} | xz -c > $out
-''
+}

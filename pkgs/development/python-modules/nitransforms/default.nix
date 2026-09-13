@@ -1,31 +1,36 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, pythonRelaxDepsHook
-, h5py
-, nibabel
-, numpy
-, scipy
-, setuptools-scm
-, toml
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  h5py,
+  nibabel,
+  numpy,
+  scipy,
+  setuptools,
+  setuptools-scm,
 }:
 
 buildPythonPackage rec {
   pname = "nitransforms";
-  version = "23.0.0";
-  disabled = pythonOlder "3.7";
+  version = "25.1.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-Jzb0W3HHxkNPyPcAT2G9T8zLOfq7xQTwGA6IUO5a6KA=";
+    hash = "sha256-Wcs0iV/ENCLhsjH6hTDmxoAsNAN9qzd9n+wWbiA04aU=";
   };
 
-  nativeBuildInputs = [ pythonRelaxDepsHook ];
-  buildInputs = [ setuptools-scm toml ];
-  propagatedBuildInputs = [ h5py nibabel numpy scipy ];
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
-  pythonRelaxDeps = [ "scipy" ];
+  dependencies = [
+    h5py
+    nibabel
+    numpy
+    scipy
+  ];
 
   doCheck = false;
   # relies on data repo (https://github.com/nipreps-data/nitransforms-tests);
@@ -41,11 +46,12 @@ buildPythonPackage rec {
     "nitransforms.patched"
   ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://nitransforms.readthedocs.io";
     description = "Geometric transformations for images and surfaces";
+    mainProgram = "nb-transform";
     changelog = "https://github.com/nipy/nitransforms/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ bcdarwin ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ bcdarwin ];
   };
 }

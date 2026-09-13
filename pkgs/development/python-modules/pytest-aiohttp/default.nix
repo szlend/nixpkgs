@@ -1,56 +1,53 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, setuptools-scm
-, aiohttp
-, pytest
-, pytest-asyncio
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  setuptools-scm,
+  aiohttp,
+  pytest,
+  pytest-asyncio,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pytest-aiohttp";
-  version = "1.0.4";
-
-  format = "setuptools";
+  version = "1.1.1";
+  pyproject = true;
 
   __darwinAllowLocalNetworking = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "39ff3a0d15484c01d1436cbedad575c6eafbf0f57cdf76fb94994c97b5b8c5a4";
+  src = fetchFromGitHub {
+    owner = "aio-libs";
+    repo = "pytest-aiohttp";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-SYMwVmcgPLOasW6TQGqqNO+sbp8zQQtDHb3IyAVO6KI=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
+    setuptools
     setuptools-scm
   ];
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  buildInputs = [ pytest ];
 
-  buildInputs = [
-    pytest
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
     aiohttp
     pytest-asyncio
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  pytestFlags = [
+    "-Wignore::DeprecationWarning"
+    "-Wignore::pytest.PytestDeprecationWarning"
   ];
 
-  disabledTestPaths = [
-    # pytest 7.2.0 incompatibilities
-    # https://github.com/aio-libs/pytest-aiohttp/issues/50
-    "tests/test_fixtures.py"
-  ];
-
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/aio-libs/pytest-aiohttp/";
-    changelog = "https://github.com/aio-libs/pytest-aiohttp/blob/v${version}/CHANGES.rst";
+    changelog = "https://github.com/aio-libs/pytest-aiohttp/blob/${finalAttrs.src.tag}/CHANGES.rst";
     description = "Pytest plugin for aiohttp support";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ dotlambda ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

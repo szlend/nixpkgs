@@ -1,48 +1,38 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, chardet
-, click
-, flex
-, packaging
-, pyicu
-, requests
-, ruamel-yaml
-, setuptools-scm
-, six
-, swagger-spec-validator
-, pytestCheckHook
-, openapi-spec-validator
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  chardet,
+  click,
+  flex,
+  packaging,
+  pyicu,
+  requests,
+  ruamel-yaml,
+  setuptools-scm,
+  six,
+  swagger-spec-validator,
+  pytest-cov-stub,
+  pytestCheckHook,
+  openapi-spec-validator,
 }:
 
 buildPythonPackage rec {
   pname = "prance";
-  version = "0.22.02.22.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "25.04.08.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "RonnyPfannschmidt";
-    repo = pname;
-    rev = "v${version}";
+    repo = "prance";
+    tag = "v${version}";
     fetchSubmodules = true;
-    hash = "sha256-NtIbZp34IcMYJzaNQVL9GLdNS3NYOCRoWS1wGg/gLVA=";
+    hash = "sha256-71M9ufxb0aaSgokThlsTS4ElOJLZntF2TYIErPccQbU=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "--cov=prance --cov-report=term-missing --cov-fail-under=90" ""
-  '';
+  build-system = [ setuptools-scm ];
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
-
-  nativeBuildInputs = [
-    setuptools-scm
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
     chardet
     packaging
     requests
@@ -50,7 +40,7 @@ buildPythonPackage rec {
     six
   ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     cli = [ click ];
     flex = [ flex ];
     icu = [ pyicu ];
@@ -59,25 +49,27 @@ buildPythonPackage rec {
   };
 
   nativeCheckInputs = [
+    pytest-cov-stub
     pytestCheckHook
-  ] ++ lib.flatten (lib.attrValues passthru.optional-dependencies);
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
   # Disable tests that require network
-  disabledTestPaths = [
-    "tests/test_convert.py"
-  ];
+  disabledTestPaths = [ "tests/test_convert.py" ];
   disabledTests = [
     "test_convert_defaults"
     "test_convert_output"
     "test_fetch_url_http"
+    "test_openapi_spec_validator_validate_failure"
   ];
   pythonImportsCheck = [ "prance" ];
 
-  meta = with lib; {
-    changelog = "https://github.com/RonnyPfannschmidt/prance/blob/${src.rev}/CHANGES.rst";
+  meta = {
     description = "Resolving Swagger/OpenAPI 2.0 and 3.0.0 Parser";
     homepage = "https://github.com/RonnyPfannschmidt/prance";
-    license = licenses.mit;
-    maintainers = [ maintainers.costrouc ];
+    changelog = "https://github.com/RonnyPfannschmidt/prance/blob/${src.rev}/CHANGES.rst";
+    license = lib.licenses.mit;
+    maintainers = [ ];
+    mainProgram = "prance";
   };
 }

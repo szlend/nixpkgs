@@ -1,27 +1,54 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, python
-, pygments
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  matplotlib,
+  pygments,
+  rich,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "catppuccin";
-  version = "1.1.1";
+  version = "2.5.0";
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-mHNuV3yIuFL2cixDOr+//+/b9iD2fN82cfLzZkegxKc=";
+  pyproject = true;
+
+  src = fetchFromGitHub {
+    owner = "catppuccin";
+    repo = "python";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-wumJ8kpr+C2pdw8jYf+IqYTdSB6Iy37yZqPKycYmOSs=";
   };
 
-  propagatedBuildInputs = [ pygments ];
+  patches = [
+    # https://github.com/catppuccin/python/pull/130
+    ./matplotlib-3.11.patch
+  ];
+
+  build-system = [ hatchling ];
+
+  optional-dependencies = {
+    matplotlib = [ matplotlib ];
+    pygments = [ pygments ];
+    rich = [ rich ];
+  };
+
+  nativeCheckInputs = [
+    pytestCheckHook
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
 
   pythonImportsCheck = [ "catppuccin" ];
 
-  meta = with lib; {
+  meta = {
     description = "Soothing pastel theme for Python";
     homepage = "https://github.com/catppuccin/python";
-    maintainers = with maintainers; [ fufexan ];
-    license = licenses.mit;
+    maintainers = with lib.maintainers; [
+      fufexan
+      tomasajt
+    ];
+    license = lib.licenses.mit;
   };
-}
+})

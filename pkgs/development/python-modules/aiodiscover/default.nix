@@ -1,62 +1,62 @@
-{ lib
-, async-timeout
-, buildPythonPackage
-, dnspython
-, fetchFromGitHub
-, ifaddr
-, netifaces
-, pyroute2
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiodns,
+  buildPythonPackage,
+  cached-ipaddress,
+  fetchFromGitHub,
+  ifaddr,
+  libredirect,
+  netifaces,
+  poetry-core,
+  pyroute2,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aiodiscover";
-  version = "1.4.16";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "3.3.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "bdraco";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-umHw9DFLIsoxBNlUSuSmaRy5O270lP0tLZ8rilw0oWg=";
+    repo = "aiodiscover";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-yrXy665O9VZ3aWn23QQCJm5USBV0P5aTSsQU5QGIcP8=";
   };
 
-  propagatedBuildInputs = [
-    async-timeout
-    dnspython
+  build-system = [ poetry-core ];
+
+  dependencies = [
+    aiodns
+    cached-ipaddress
+    ifaddr
     netifaces
     pyroute2
-    ifaddr
   ];
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace '"pytest-runner>=5.2",' ""
-  '';
+  pythonRelaxDeps = [ "aiodns" ];
 
   nativeCheckInputs = [
+    libredirect.hook
     pytest-asyncio
+    pytest-cov-stub
     pytestCheckHook
   ];
 
-  disabledTests = [
-    # Tests require access to /etc/resolv.conf
-    "test_async_discover_hosts"
-  ];
+  preCheck = ''
+    echo "nameserver 127.0.0.1" > resolv.conf
+    export NIX_REDIRECTS=/etc/resolv.conf=$(realpath resolv.conf)
+  '';
 
-  pythonImportsCheck = [
-    "aiodiscover"
-  ];
+  pythonImportsCheck = [ "aiodiscover" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python module to discover hosts via ARP and PTR lookup";
     homepage = "https://github.com/bdraco/aiodiscover";
-    changelog = "https://github.com/bdraco/aiodiscover/releases/tag/v${version}";
-    license = with licenses; [ asl20 ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/bdraco/aiodiscover/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

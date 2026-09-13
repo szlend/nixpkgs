@@ -1,28 +1,28 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, coreutils
-, jinja2
-, pandas
-, pyparsing
-, pytestCheckHook
-, pythonOlder
-, which
-, yosys
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  setuptools-scm,
+  coreutils,
+  jinja2,
+  pandas,
+  pyparsing,
+  pytestCheckHook,
+  which,
+  yosys,
 }:
 
 buildPythonPackage rec {
   pname = "edalize";
-  version = "0.5.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.6.8";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "olofk";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-jsrJr/iuezh9/KL0PykWB1XKev4Wr5QeDh0ZWNMZSp8=";
+    repo = "edalize";
+    tag = "v${version}";
+    hash = "sha256-FQ2SGshzWrZdGEF46ENM2OIBgDSADTJFki5xyiakohI=";
   };
 
   postPatch = ''
@@ -31,11 +31,14 @@ buildPythonPackage rec {
     patchShebangs tests/mock_commands/vsim
   '';
 
-  propagatedBuildInputs = [
-    jinja2
+  build-system = [
+    setuptools
+    setuptools-scm
   ];
 
-  passthru.optional-dependencies = {
+  propagatedBuildInputs = [ jinja2 ];
+
+  optional-dependencies = {
     reporting = [
       pandas
       pyparsing
@@ -46,10 +49,24 @@ buildPythonPackage rec {
     pytestCheckHook
     which
     yosys
-  ] ++ lib.flatten (builtins.attrValues passthru.optional-dependencies);
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
-  pythonImportsCheck = [
-    "edalize"
+  pythonImportsCheck = [ "edalize" ];
+
+  disabledTests = [
+    # disable failures related to pandas 2.1.0 apply(...,errors="ignore")
+    # behavior change. upstream pins pandas to 2.0.3 as of 2023-10-10
+    # https://github.com/olofk/edalize/commit/2a3db6658752f97c61048664b478ebfe65a909f8
+    "test_picorv32_artix7_summary"
+    "test_picorv32_artix7_resources"
+    "test_picorv32_artix7_timing"
+    "test_picorv32_kusp_summary"
+    "test_picorv32_kusp_resources"
+    "test_picorv32_kusp_timing"
+    "test_linux_on_litex_vexriscv_arty_a7_summary"
+    "test_linux_on_litex_vexriscv_arty_a7_resources"
+    "test_linux_on_litex_vexriscv_arty_a7_timing"
   ];
 
   disabledTestPaths = [
@@ -79,11 +96,12 @@ buildPythonPackage rec {
     "tests/test_xsim.py"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Abstraction library for interfacing EDA tools";
+    mainProgram = "el_docker";
     homepage = "https://github.com/olofk/edalize";
-    changelog = "https://github.com/olofk/edalize/releases/tag/v${version}";
-    license = licenses.bsd2;
-    maintainers = with maintainers; [ astro ];
+    changelog = "https://github.com/olofk/edalize/releases/tag/${src.tag}";
+    license = lib.licenses.bsd2;
+    maintainers = with lib.maintainers; [ astro ];
   };
 }

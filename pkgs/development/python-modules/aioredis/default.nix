@@ -1,36 +1,52 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, async-timeout
-, typing-extensions
-, hiredis
-, isPyPy
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchpatch,
+  fetchPypi,
+  setuptools,
+  async-timeout,
+  typing-extensions,
+  hiredis,
+  isPyPy,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aioredis";
   version = "2.0.1";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
+  __structuredAttrs = true;
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "eaa51aaf993f2d71f54b70527c440437ba65340588afeb786cd87c55c89cd98e";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-6qUar5k/LXH1S3BSfEQEN7plNAWIr+t4bNh8Vcic2Y4=";
   };
 
-  propagatedBuildInputs = [
+  patches = [
+    # https://github.com/aio-libs-abandoned/aioredis-py/pull/1490
+    (fetchpatch {
+      name = "python-3.11-compatibility.patch";
+      url = "https://github.com/aio-libs-abandoned/aioredis-py/commit/1b951502dc8f149fa66beafeea40c782f1c5c1d3.patch";
+      hash = "sha256-EqkiYktxISg0Rv4ShXOksGvuUyljPxjJsfNOVaaax2o=";
+      includes = [ "aioredis/exceptions.py" ];
+    })
+  ];
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     async-timeout
     typing-extensions
-  ] ++ lib.optional (!isPyPy) hiredis;
+  ]
+  ++ lib.optional (!isPyPy) hiredis;
 
   # Wants to run redis-server, hardcoded FHS paths, too much trouble.
   doCheck = false;
 
-  meta = with lib; {
+  meta = {
     description = "Asyncio (PEP 3156) Redis client library";
-    homepage = "https://github.com/aio-libs/aioredis";
-    license = licenses.mit;
-    maintainers = with maintainers; [ mmai ];
+    homepage = "https://github.com/aio-libs-abandoned/aioredis-py";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
-}
+})

@@ -1,36 +1,60 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, pytestCheckHook
-, flit-core
-, mock
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  flit-core,
+  installer,
+  mock,
 }:
 
 buildPythonPackage rec {
   pname = "installer";
-  version = "0.7.0";
-  format = "pyproject";
+  version = "1.0.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "pradyunsg";
-    repo = pname;
+    owner = "pypa";
+    repo = "installer";
     rev = version;
-    hash = "sha256-thHghU+1Alpay5r9Dc3v7ATRFfYKV8l9qR0nbGOOX/A=";
+    hash = "sha256-GkHLZfzHfTcBL8wQmIGlNkVodEw9Pih4i1SS36mSfBo=";
   };
+
+  patches = [
+    # Add -m flag to installer to correctly support cross
+    # https://github.com/pypa/installer/pull/258
+    ./cross.patch
+  ];
 
   nativeBuildInputs = [ flit-core ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-    mock
-  ];
+  # We need to disable tests because this package is part of the bootstrap chain
+  # and its test dependencies cannot be built yet when this is being built.
+  doCheck = false;
 
-  meta = with lib; {
+  passthru.tests = {
+    pytest = buildPythonPackage {
+      pname = "${pname}-pytest";
+      inherit version;
+      pyproject = false;
+
+      dontBuild = true;
+      dontInstall = true;
+
+      nativeCheckInputs = [
+        installer
+        mock
+        pytestCheckHook
+      ];
+    };
+  };
+
+  meta = {
+    description = "Low-level library for installing a Python package from a wheel distribution";
+    homepage = "https://github.com/pypa/installer";
     changelog = "https://github.com/pypa/installer/blob/${src.rev}/docs/changelog.md";
-    homepage = "https://github.com/pradyunsg/installer";
-    description = "A low-level library for installing a Python package from a wheel distribution";
-    license = licenses.mit;
-    maintainers = with maintainers; [ cpcloud fridh ];
+    license = lib.licenses.mit;
+    maintainers = [ lib.maintainers.cpcloud ];
+    teams = [ lib.teams.python ];
   };
 }

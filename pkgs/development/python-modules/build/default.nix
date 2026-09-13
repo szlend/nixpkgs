@@ -1,82 +1,102 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchFromGitHub
-, flit-core
-, filelock
-, packaging
-, pyproject-hooks
-, pytest-mock
-, pytest-rerunfailures
-, pytest-xdist
-, pytestCheckHook
-, pythonOlder
-, setuptools
-, toml
-, tomli
+{
+  lib,
+  stdenv,
+  build,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  filelock,
+  packaging,
+  pyproject-hooks,
+  pytest-mock,
+  pytest-rerunfailures,
+  pytest-xdist,
+  pytestCheckHook,
+  setuptools,
+  uv,
+  virtualenv,
+  wheel,
 }:
 
 buildPythonPackage rec {
   pname = "build";
-  version = "0.10.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.6";
+  version = "1.5.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pypa";
-    repo = pname;
-    rev = version;
-    hash = "sha256-kXFrfTb7+68EV+gSENL81IFSR+ue7Fl6R2gsuFFBJhI=";
+    repo = "build";
+    tag = version;
+    hash = "sha256-vm47wuSEKfU4CjonokylTyGe62jGS/5m2dhLKhY5TPc=";
   };
 
-  nativeBuildInputs = [
-    flit-core
-  ];
+  build-system = [ flit-core ];
 
-  propagatedBuildInputs = [
+  pythonRemoveDeps = [ "importlib-metadata" ];
+
+  dependencies = [
     packaging
     pyproject-hooks
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
   ];
 
-  nativeCheckInputs = [
-    filelock
-    pytest-mock
-    pytest-rerunfailures
-    pytest-xdist
-    pytestCheckHook
-    setuptools
-    toml
-  ];
+  # We need to disable tests because this package is part of the bootstrap chain
+  # and its test dependencies cannot be built yet when this is being built.
+  doCheck = false;
 
-  pytestFlagsArray = [
-    "-W"
-    "ignore::DeprecationWarning"
-  ];
+  passthru.tests = {
+    pytest = buildPythonPackage {
+      pname = "${pname}-pytest";
+      inherit src version;
+      pyproject = false;
 
-  __darwinAllowLocalNetworking = true;
+      dontBuild = true;
+      dontInstall = true;
 
-  disabledTests = [
-    # Tests often fail with StopIteration
-    "test_isolat"
-    "test_default_pip_is_never_too_old"
-    "test_build"
-    "test_with_get_requires"
-    "test_init"
-    "test_output"
-    "test_wheel_metadata"
-  ] ++ lib.optionals stdenv.isDarwin [
-    # Expects Apple's Python and its quirks
-    "test_can_get_venv_paths_with_conflicting_default_scheme"
-  ];
+      nativeCheckInputs = [
+        build
+        filelock
+        pytest-mock
+        pytest-rerunfailures
+        pytest-xdist
+        pytestCheckHook
+        setuptools
+        uv
+        virtualenv
+        wheel
+      ];
 
-  pythonImportsCheck = [
-    "build"
-  ];
+      pytestFlags = [
+        "-Wignore::DeprecationWarning"
+      ];
 
-  meta = with lib; {
+      __darwinAllowLocalNetworking = true;
+
+      disabledTests = [
+        # Tests often fail with StopIteration
+        "test_isolat"
+        "test_default_pip_is_never_too_old"
+        "test_build"
+        "test_with_get_requires"
+        "test_init"
+        "test_output"
+        "test_wheel_metadata"
+        # Tests require network access to run pip install
+        "test_logging_output"
+        "test_pythonpath_does_not_interfere_with_outer_pip"
+        "test_requirement_installation"
+        "test_verbose_logging_output"
+        "test_verbose_output"
+      ]
+      ++ lib.optionals stdenv.hostPlatform.isDarwin [
+        # Expects Apple's Python and its quirks
+        "test_can_get_venv_paths_with_conflicting_default_scheme"
+      ];
+    };
+  };
+
+  pythonImportsCheck = [ "build" ];
+
+  meta = {
     mainProgram = "pyproject-build";
     description = "Simple, correct PEP517 package builder";
     longDescription = ''
@@ -84,8 +104,9 @@ buildPythonPackage rec {
       is a simple build tool and does not perform any dependency management.
     '';
     homepage = "https://github.com/pypa/build";
-    changelog = "https://github.com/pypa/build/blob/${version}/CHANGELOG.rst";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/pypa/build/blob/${src.tag}/CHANGELOG.rst";
+    license = lib.licenses.mit;
+    maintainers = [ lib.maintainers.fab ];
+    teams = [ lib.teams.python ];
   };
 }

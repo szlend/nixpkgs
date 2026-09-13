@@ -1,37 +1,29 @@
-{ lib, buildDunePackage, fetchFromGitHub, ocaml, cpu, domainslib }:
+{
+  lib,
+  buildDunePackage,
+  fetchFromGitHub,
+  cpu,
+}:
 
-let params =
-  if lib.versionAtLeast ocaml.version "5.00" then {
-    version = "13.0.1";
-    hash = "sha256-OYa0uLsDyzjmXZgWcYUxLhqco4Kp/icfDamNe3En5JQ=";
-    propagatedBuildInputs = [ domainslib ];
-  } else {
-    version = "12.2.2";
-    hash = "sha256-woZ4XJqqoRr/7mDurXYvTbSUUcLBEylzVYBQp1BAOqc=";
-    propagatedBuildInputs = [ cpu ];
-  }
-; in
-
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "parany";
-  inherit (params) version;
+  version = "14.0.1";
 
-  duneVersion = "3";
   minimalOCamlVersion = "4.08";
 
   src = fetchFromGitHub {
     owner = "UnixJunkie";
-    repo = pname;
-    rev = "v${version}";
-    inherit (params) hash;
+    repo = "parany";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-QR3Rq30iKhft+9tVCgJLOq9bwJe7bcay/kMTXjjCLjE=";
   };
 
-  inherit (params) propagatedBuildInputs;
+  propagatedBuildInputs = [ cpu ];
 
-  meta = with lib; {
-    inherit (src.meta) homepage;
+  meta = {
+    homepage = "https://github.com/UnixJunkie/parany";
     description = "Generalized map/reduce for multicore computing";
-    maintainers = [ maintainers.bcdarwin ];
-    license = licenses.lgpl2;
+    maintainers = [ lib.maintainers.bcdarwin ];
+    license = lib.licenses.lgpl2;
   };
-}
+})

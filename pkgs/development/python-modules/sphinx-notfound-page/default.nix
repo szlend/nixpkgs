@@ -1,35 +1,39 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, flit-core
-, pythonImportsCheckHook
-# documentation build dependencies
-, sphinxHook
-, sphinx-prompt
-, sphinx-rtd-theme
-, sphinx-tabs
-, sphinx-autoapi
-, sphinxemoji
-# runtime dependencies
-, sphinx
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  # documentation build dependencies
+  sphinxHook,
+  sphinx-prompt,
+  sphinx-rtd-theme,
+  sphinx-tabs,
+  sphinx-autoapi,
+  sphinxemoji,
+  # runtime dependencies
+  sphinx,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "sphinx-notfound-page";
-  version = "0.8.3";
-  format = "flit";
-  outputs = [ "out" "doc" ];
+  version = "1.1.0";
+  pyproject = true;
+
+  outputs = [
+    "out"
+    "doc"
+  ];
 
   src = fetchFromGitHub {
     owner = "readthedocs";
     repo = "sphinx-notfound-page";
-    rev = version;
-    hash = "sha256-9iP6X2dqtMC3+CIrNI3fGDLL8xyXVAWNhN90DlMa9JU=";
+    tag = version;
+    hash = "sha256-KkdbK8diuQtZQk6FC9xDK/U7mfRBwwUmXp4YYuKueLQ=";
   };
 
   nativeBuildInputs = [
     flit-core
-    pythonImportsCheckHook
     sphinxHook
     sphinx-prompt
     sphinx-rtd-theme
@@ -38,14 +42,17 @@ buildPythonPackage rec {
     sphinxemoji
   ];
 
-  propagatedBuildInputs = [ sphinx ];
+  buildInputs = [ sphinx ];
+
+  propagatedBuildInputs = [ setuptools ];
 
   pythonImportsCheck = [ "notfound" ];
 
-  meta = with lib; {
-    description = "A sphinx extension to create a custom 404 page with absolute URLs hardcoded";
+  meta = {
+    description = "Sphinx extension to create a custom 404 page with absolute URLs hardcoded";
     homepage = "https://github.com/readthedocs/sphinx-notfound-page";
-    license = licenses.mit;
-    maintainers = with maintainers; [ kaction ];
+    changelog = "https://github.com/readthedocs/sphinx-notfound-page/blob/${version}/CHANGELOG.rst";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ kaction ];
   };
 }

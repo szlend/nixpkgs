@@ -1,30 +1,37 @@
-{ lib
-, stdenv
-, fetchurl
-, jre
-, makeWrapper
+{
+  lib,
+  stdenv,
+  fetchurl,
+  jre,
+  makeWrapper,
 }:
 
 stdenv.mkDerivation rec {
   pname = "kotlin-native";
-  version = "1.8.22";
+  version = "2.2.21";
 
-  src = let
-    getArch = {
-      "aarch64-darwin" = "macos-aarch64";
-      "x86_64-darwin" = "macos-x86_64";
-      "x86_64-linux" = "linux-x86_64";
-    }.${stdenv.system} or (throw "${pname}-${version}: ${stdenv.system} is unsupported.");
+  src =
+    let
+      getArch =
+        {
+          "aarch64-darwin" = "macos-aarch64";
+          "x86_64-linux" = "linux-x86_64";
+        }
+        .${stdenv.system} or (throw "${pname}-${version}: ${stdenv.system} is unsupported.");
 
-    getUrl = version: arch:
-      "https://github.com/JetBrains/kotlin/releases/download/v${version}/kotlin-native-${arch}-${version}.tar.gz";
+      getUrl =
+        version: arch:
+        "https://github.com/JetBrains/kotlin/releases/download/v${version}/kotlin-native-prebuilt-${arch}-${version}.tar.gz";
 
-    getHash = arch: {
-      "macos-aarch64" = "05z4jdq52lxhbs0sgv43zbfx8dkl16k04ky578b3raqf4brmm019";
-      "macos-x86_64" = "03f2nxp8xajpap8fw0fccacs45fp5lcjgy01ygr8yjwsaq96nvhd";
-      "linux-x86_64" = "12z5jxkdnraivc0in4m9qagca06jiasfnjalk9fpsd0b07y43yx1";
-    }.${arch};
-  in
+      getHash =
+        arch:
+        {
+          "macos-aarch64" = "sha256-UnDl9wj/7RXrEaApuAaLczIfz0lscQPf+pCeSdJxJeY=";
+          "macos-x86_64" = "sha256-mmsBQrx0yKqvvhnD8CU+oxqhWsOT1RzvzSniN3CeG7g=";
+          "linux-x86_64" = "sha256-oTW6qe+SklxcKu8gwc8DZzTKj+L65duYYXO+uWp6gfg=";
+        }
+        .${arch};
+    in
     fetchurl {
       url = getUrl version getArch;
       sha256 = getHash getArch;
@@ -50,13 +57,14 @@ stdenv.mkDerivation rec {
 
   meta = {
     homepage = "https://kotlinlang.org/";
-    description = "A modern programming language that makes developers happier";
+    description = "Modern programming language that makes developers happier";
     longDescription = ''
       Kotlin/Native is a technology for compiling Kotlin code to native
       binaries, which can run without a virtual machine. It is an LLVM based
       backend for the Kotlin compiler and native implementation of the Kotlin
       standard library.
     '';
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ fabianhjr ];
     platforms = [ "x86_64-linux" ] ++ lib.platforms.darwin;

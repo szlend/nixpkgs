@@ -1,44 +1,49 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, argostranslate
-, beautifulsoup4
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  writableTmpDirAsHomeHook,
+  setuptools,
+  argostranslate,
+  beautifulsoup4,
 }:
 
-buildPythonPackage rec {
+let
+  inherit (stdenv.hostPlatform) isLinux isAarch64;
+  isAarch64Linux = isLinux && isAarch64;
+in
+buildPythonPackage (finalAttrs: {
   pname = "translatehtml";
-  version = "1.5.2";
+  version = "1.5.3";
+  pyproject = true;
 
-  format = "setuptools";
-
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "6b30ceb8b6f174917e2660caf2d2ccbaa71d8d24c815316edf56b061d678820d";
+  src = fetchFromGitHub {
+    owner = "argosopentech";
+    repo = "translate-html";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-A94N/nfYSVwi0M3SpNFqlXrRNOCpIi9agOCAlH66QcI=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  pythonRelaxDeps = [ "beautifulsoup4" ];
+
+  dependencies = [
     argostranslate
     beautifulsoup4
   ];
 
-  postPatch = ''
-    ln -s */requires.txt requirements.txt
+  # aarch64-linux fails cpuinfo test, because /sys/devices/system/cpu/ does not exist in the sandbox:
+  # terminate called after throwing an instance of 'onnxruntime::OnnxRuntimeException'
+  pythonImportsCheck = lib.optional (!isAarch64Linux) "translatehtml";
+  nativeCheckInputs = [ writableTmpDirAsHomeHook ];
+  doCheck = !isAarch64Linux;
 
-    substituteInPlace requirements.txt  \
-      --replace "==" ">="
-  '';
-
-  # required for import check to work (argostranslate)
-  env.HOME = "/tmp";
-
-  pythonImportsCheck = [ "translatehtml" ];
-
-  doCheck = false; # no tests
-
-  meta = with lib; {
-    description = "Translate HTML using Beautiful Soup and Argos Translate.";
+  meta = {
+    description = "Translate HTML using Beautiful Soup and Argos Translate";
     homepage = "https://www.argosopentech.com";
-    license = licenses.mit;
-    maintainers = with maintainers; [ misuzu ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ misuzu ];
   };
-}
+})

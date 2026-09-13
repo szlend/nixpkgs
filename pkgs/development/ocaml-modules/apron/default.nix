@@ -1,30 +1,54 @@
-{ stdenv, lib, fetchFromGitHub, perl, gmp, mpfr, ppl, ocaml, findlib, camlidl, mlgmpidl
-, gnumake42
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  perl,
+  gmp,
+  mpfr,
+  ppl,
+  ocaml,
+  findlib,
+  camlidl,
+  mlgmpidl,
+  flint,
+  pplite,
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "ocaml${ocaml.version}-apron";
-  version = "0.9.13";
+  version = "0.9.15";
   src = fetchFromGitHub {
     owner = "antoinemine";
     repo = "apron";
-    rev = "v${version}";
-    sha256 = "14ymjahqdxj26da8wik9d5dzlxn81b3z1iggdl7rn2nn06jy7lvy";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-gHLCurydxX1pS66DTAWUJGl9Yqu9RWRjkZh6lXzM7YY=";
   };
 
-  # fails with make 4.4
-  nativeBuildInputs = [ ocaml findlib perl gnumake42 ];
-  buildInputs = [ gmp mpfr ppl camlidl ];
-  propagatedBuildInputs = [ mlgmpidl ];
+  nativeBuildInputs = [
+    ocaml
+    findlib
+    perl
+  ];
+  buildInputs = [
+    gmp
+    ppl
+    flint
+    pplite
+  ];
+  propagatedBuildInputs = [
+    camlidl
+    mlgmpidl
+    mpfr
+  ];
 
-  # TODO: Doesn't produce the library correctly if true
-  strictDeps = false;
-
-  outputs = [ "out" "bin" "dev" ];
+  outputs = [
+    "out"
+    "dev"
+  ];
 
   configurePhase = ''
     runHook preConfigure
-    ./configure -prefix $out
+    ./configure -prefix $out ${lib.optionalString stdenv.hostPlatform.isDarwin "--no-strip"}
     mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/stublibs
     runHook postConfigure
   '';
@@ -32,8 +56,6 @@ stdenv.mkDerivation rec {
   postInstall = ''
     mkdir -p $dev/lib
     mv $out/lib/ocaml $dev/lib/
-    mkdir -p $bin
-    mv $out/bin $bin/
   '';
 
   meta = {
@@ -43,4 +65,4 @@ stdenv.mkDerivation rec {
     description = "Numerical abstract domain library";
     inherit (ocaml.meta) platforms;
   };
-}
+})

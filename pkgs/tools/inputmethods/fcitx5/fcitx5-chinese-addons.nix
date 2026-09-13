@@ -1,53 +1,55 @@
-{ lib
-, mkDerivation
-, fetchurl
-, fetchFromGitHub
-, cmake
-, extra-cmake-modules
-, boost
-, libime
-, fcitx5
-, fcitx5-qt
-, fcitx5-lua
-, qtwebengine
-, opencc
-, curl
-, fmt
-, luaSupport ? true
+{
+  lib,
+  stdenv,
+  fetchurl,
+  fetchpatch,
+  fetchFromGitHub,
+  cmake,
+  pkg-config,
+  kdePackages,
+  boost,
+  gettext,
+  libime,
+  fcitx5,
+  fcitx5-qt,
+  fcitx5-lua,
+  qtwebengine,
+  opencc,
+  curl,
+  fmt,
+  qtbase,
+  luaSupport ? true,
 }:
 
 let
-  pyStrokeVer = "20121124";
+  pyStrokeVer = "20250329";
   pyStroke = fetchurl {
     url = "http://download.fcitx-im.org/data/py_stroke-${pyStrokeVer}.tar.gz";
-    sha256 = "0j72ckmza5d671n2zg0psg7z9iils4gyxz7jgkk54fd4pyljiccf";
+    hash = "sha256-wafKciXTYUq4M1P8gnUDAGqYBEd2IBj1N2BCXXtTA6Y=";
   };
   pyTableVer = "20121124";
   pyTable = fetchurl {
     url = "http://download.fcitx-im.org/data/py_table-${pyTableVer}.tar.gz";
-    sha256 = "011cg7wssssm6hm564cwkrrnck2zj5rxi7p9z5akvhg6gp4nl522";
+    hash = "sha256-QhRqyX3mwT1V+eme2HORX0xmc56cEVMqNFVrrfl5LAQ=";
   };
 in
 
-mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "fcitx5-chinese-addons";
-  version = "5.0.17";
+  version = "5.1.12";
 
   src = fetchFromGitHub {
     owner = "fcitx";
     repo = pname;
     rev = version;
-    sha256 = "sha256-Licj/sZ2rZablsk/ytCZlkdjSHszr31JURrQkXs1BXE=";
+    hash = "sha256-bAx5m+tU8hT1WdaLChpQV3J0l+QJzDLzMEPTgjEGCuw=";
   };
-
-  cmakeFlags = [
-    "-DUSE_WEBKIT=off"
-  ];
 
   nativeBuildInputs = [
     cmake
-    extra-cmake-modules
-    boost
+    pkg-config
+    kdePackages.extra-cmake-modules
+    gettext
     fcitx5-lua
   ];
 
@@ -57,6 +59,7 @@ mkDerivation rec {
   '';
 
   buildInputs = [
+    boost
     fcitx5
     fcitx5-qt
     libime
@@ -64,13 +67,21 @@ mkDerivation rec {
     opencc
     qtwebengine
     fmt
-  ] ++ lib.optional luaSupport fcitx5-lua;
+    qtbase
+  ]
+  ++ lib.optional luaSupport fcitx5-lua;
 
-  meta = with lib; {
+  dontWrapQtApps = true;
+
+  meta = {
     description = "Addons related to Chinese, including IME previous bundled inside fcitx4";
+    mainProgram = "scel2org5";
     homepage = "https://github.com/fcitx/fcitx5-chinese-addons";
-    license = with licenses; [ gpl2Plus lgpl21Plus ];
-    maintainers = with maintainers; [ poscat ];
-    platforms = platforms.linux;
+    license = with lib.licenses; [
+      gpl2Plus
+      lgpl21Plus
+    ];
+    maintainers = with lib.maintainers; [ poscat ];
+    platforms = lib.platforms.linux;
   };
 }

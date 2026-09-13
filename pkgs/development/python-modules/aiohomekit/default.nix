@@ -1,52 +1,48 @@
-{ lib
-, buildPythonPackage
-, aiocoap
-, bleak
-, bleak-retry-connector
-, chacha20poly1305
-, chacha20poly1305-reuseable
-, commentjson
-, cryptography
-, fetchFromGitHub
-, orjson
-, poetry-core
-, pytest-aiohttp
-, pytestCheckHook
-, pythonOlder
-, zeroconf
+{
+  lib,
+  buildPythonPackage,
+  aiocoap,
+  aiohappyeyeballs,
+  async-interrupt,
+  bleak,
+  bleak-retry-connector,
+  chacha20poly1305,
+  chacha20poly1305-reuseable,
+  cryptography,
+  fetchFromGitHub,
+  orjson,
+  poetry-core,
+  pytest-aiohttp,
+  pytestCheckHook,
+  zeroconf,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aiohomekit";
-  version = "2.6.5";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "4.0.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Jc2k";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-Q5pz/irC+yA/A2GhGCug+jmxr4tCnPpkAV/AZEhd64A=";
+    repo = "aiohomekit";
+    tag = finalAttrs.version;
+    hash = "sha256-ozVIT9JGi4rcW3LRcp1QR1kj0gl5APLv9y4Imqe99yE=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  build-system = [ poetry-core ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     aiocoap
+    aiohappyeyeballs
+    async-interrupt
     bleak
     bleak-retry-connector
     chacha20poly1305
     chacha20poly1305-reuseable
-    commentjson
     cryptography
     orjson
     zeroconf
   ];
-
-  doCheck = lib.versionAtLeast pytest-aiohttp.version "1.0.0";
 
   nativeCheckInputs = [
     pytest-aiohttp
@@ -58,19 +54,18 @@ buildPythonPackage rec {
     "tests/test_ip_pairing.py"
   ];
 
-  pythonImportsCheck = [
-    "aiohomekit"
-  ];
+  pythonImportsCheck = [ "aiohomekit" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python module that implements the HomeKit protocol";
     longDescription = ''
       This Python library implements the HomeKit protocol for controlling
       Homekit accessories.
     '';
     homepage = "https://github.com/Jc2k/aiohomekit";
-    changelog = "https://github.com/Jc2k/aiohomekit/releases/tag/${version}";
-    license = with licenses; [ asl20 ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/Jc2k/aiohomekit/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "aiohomekitctl";
   };
-}
+})

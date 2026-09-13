@@ -1,63 +1,51 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, poetry-core
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 
-# propagates
-, importlib-resources
-, jsonschema
-, jsonschema-spec
-, lazy-object-proxy
-, openapi-schema-validator
-, pyyaml
+  # build-system
+  poetry-core,
 
-# optional
-, requests
+  # propagates
+  jsonschema,
+  jsonschema-path,
+  lazy-object-proxy,
+  openapi-schema-validator,
 
-# tests
-, mock
-, pytestCheckHook
+  # tests
+  pytestCheckHook,
+  pytest-cov-stub,
 }:
 
 buildPythonPackage rec {
   pname = "openapi-spec-validator";
-  version = "0.5.6";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.8.4";
+  pyproject = true;
 
   # no tests via pypi sdist
   src = fetchFromGitHub {
-    owner = "p1c2u";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-BIGHaZhrEc7wcIesBIXdVRzozllCNOz67V+LmQfZ8oY=";
+    owner = "python-openapi";
+    repo = "openapi-spec-validator";
+    tag = version;
+    hash = "sha256-KY9mDnF/R2UO8WZ0WyBzpZQsVBxzxnTK6zyqvUb+hVw=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
+  build-system = [ poetry-core ];
+
+  pythonRelaxDeps = [
+    "jsonschema"
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     jsonschema
-    jsonschema-spec
+    jsonschema-path
     lazy-object-proxy
     openapi-schema-validator
-  ] ++ lib.optionals (pythonOlder "3.9") [
-    importlib-resources
   ];
-
-  passthru.optional-dependencies.requests = [
-    requests
-  ];
-
-  preCheck = ''
-    sed -i '/--cov/d' pyproject.toml
-  '';
 
   nativeCheckInputs = [
     pytestCheckHook
+    pytest-cov-stub
   ];
 
   disabledTests = [
@@ -72,11 +60,11 @@ buildPythonPackage rec {
     "openapi_spec_validator.readers"
   ];
 
-  meta = with lib; {
-    changelog = "https://github.com/p1c2u/openapi-spec-validator/releases/tag/${version}";
+  meta = {
+    changelog = "https://github.com/p1c2u/openapi-spec-validator/releases/tag/${src.tag}";
     description = "Validates OpenAPI Specs against the OpenAPI 2.0 (aka Swagger) and OpenAPI 3.0.0 specification";
+    mainProgram = "openapi-spec-validator";
     homepage = "https://github.com/p1c2u/openapi-spec-validator";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ rvl ];
+    license = lib.licenses.asl20;
   };
 }

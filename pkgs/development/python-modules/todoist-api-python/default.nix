@@ -1,45 +1,33 @@
-{ lib
-, attrs
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, poetry-core
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
-, requests
-, responses
+{
+  lib,
+  annotated-types,
+  buildPythonPackage,
+  dataclass-wizard,
+  fetchFromGitHub,
+  hatchling,
+  pytest-asyncio,
+  pytestCheckHook,
+  requests,
+  responses,
 }:
 
 buildPythonPackage rec {
   pname = "todoist-api-python";
-  version = "2.0.2";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "3.2.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Doist";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-CKOsUb35+7WjSNf4Xo0SK5loIqWJbEnHdmhw9QXWFAI=";
+    repo = "todoist-api-python";
+    tag = "v${version}";
+    hash = "sha256-udYFWTrWW2G6JBKQUkiqKpyBz1D4dwq7Pix6bzuWnDY=";
   };
 
-  patches = [
-    # Switch to poetry-core, https://github.com/Doist/todoist-api-python/pull/81
-    (fetchpatch {
-      name = "switch-to-poetry-core.patch";
-      url = "https://github.com/Doist/todoist-api-python/commit/42288e066d2f0c69611ab50cb57ca98b8c6bd1ca.patch";
-      hash = "sha256-yq+VVvjPYywvUn+ydyWVQPkiYPYWe9U6w38G54L2lkE=";
-    })
-  ];
+  build-system = [ hatchling ];
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
-
-  propagatedBuildInputs = [
-    attrs
+  dependencies = [
+    annotated-types
+    dataclass-wizard
     requests
   ];
 
@@ -49,15 +37,13 @@ buildPythonPackage rec {
     responses
   ];
 
-  pythonImportsCheck = [
-    "todoist_api_python"
-  ];
+  pythonImportsCheck = [ "todoist_api_python" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library for the Todoist REST API";
     homepage = "https://github.com/Doist/todoist-api-python";
-    changelog = "https://github.com/Doist/todoist-api-python/blob/v${version}/CHANGELOG.md";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/Doist/todoist-api-python/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

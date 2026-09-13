@@ -1,63 +1,140 @@
-{ lib, stdenv, curl, jq, htmlq, xorg, alsa-lib, freetype, p7zip, autoPatchelfHook, writeShellScript, zlib, libjack2, makeWrapper }:
+{
+  lib,
+  stdenv,
+  alsa-lib,
+  autoPatchelfHook,
+  copyDesktopItems,
+  curl,
+  freetype,
+  htmlq,
+  jq,
+  libglvnd,
+  librsvg,
+  makeDesktopItem,
+  makeWrapper,
+  p7zip,
+  gnutar,
+  writeShellScript,
+}:
 let
-  versionForFile = v: builtins.replaceStrings ["."] [""] v;
+  versionForFile = v: builtins.replaceStrings [ "." ] [ "" ] v;
 
-  mkPianoteq = { name, src, version, archdir ? if (stdenv.hostPlatform.system == "aarch64-linux") then "arm-64bit" else "x86-64bit", ... }:
-    stdenv.mkDerivation rec {
+  archdirs =
+    if stdenv.hostPlatform.isx86_64 then
+      [
+        "x86-64bit"
+        "amd64"
+      ]
+    else if stdenv.hostPlatform.isAarch64 then
+      [
+        "arm-64bit"
+        "arm"
+      ]
+    else
+      throw "unsupported platform";
+
+  mkPianoteq =
+    {
+      name,
+      mainProgram,
+      startupWMClass,
+      src,
+      version,
+      ...
+    }:
+    stdenv.mkDerivation (finalAttrs: {
       inherit src version;
 
       pname = "pianoteq-${name}";
 
-      unpackPhase = ''
-        ${p7zip}/bin/7z x $src
-      '';
+      unpackPhase =
+        if lib.hasSuffix ".7z" src then
+          ''
+            ${p7zip}/bin/7z x $src
+          ''
+        else if lib.hasSuffix ".tar.xz" src then
+          ''
+            ${gnutar}/bin/tar -xf $src
+          ''
+        else
+          throw "unexpected file format";
 
       nativeBuildInputs = [
         autoPatchelfHook
+        copyDesktopItems
         makeWrapper
+        librsvg
       ];
 
       buildInputs = [
-        stdenv.cc.cc.lib
-        xorg.libX11      # libX11.so.6
-        xorg.libXext     # libXext.so.6
-        alsa-lib          # libasound.so.2
-        freetype         # libfreetype.so.6
+        (lib.getLib stdenv.cc.cc) # libgcc_s.so.1, libstdc++.so.6
+        alsa-lib # libasound.so.2
+        freetype # libfreetype.so.6
+        libglvnd # libGL.so.1
+      ];
+
+      desktopItems = [
+        (makeDesktopItem {
+          name = finalAttrs.pname;
+          exec = ''"${mainProgram}"'';
+          desktopName = mainProgram;
+          icon = "pianoteq";
+          comment = finalAttrs.meta.description;
+          categories = [
+            "AudioVideo"
+            "Audio"
+            "Recorder"
+          ];
+          startupNotify = false;
+          inherit startupWMClass;
+        })
       ];
 
       installPhase = ''
+        runHook preInstall
         mkdir -p $out/bin
-        mv -t $out/bin Pianoteq*/${archdir}/*
-        for f in $out/bin/Pianoteq*; do
-          if [ -x "$f" ] && [ -f "$f" ]; then
-            wrapProgram "$f" --prefix LD_LIBRARY_PATH : ${
-              lib.makeLibraryPath (buildInputs ++ [
-                xorg.libXcursor
-                xorg.libXinerama
-                xorg.libXrandr
-                libjack2
-                zlib
-              ])
-            }
-          fi
+        mv -t $out/bin ${builtins.concatStringsSep " " (map (dir: "Pianoteq*/${dir}/*") archdirs)}
+        install -Dm644 ${./pianoteq.svg} $out/share/icons/hicolor/scalable/apps/pianoteq.svg
+        for size in 16 22 32 48 64 128 256; do
+          dir=$out/share/icons/hicolor/"$size"x"$size"/apps
+          mkdir -p $dir
+          rsvg-convert \
+            --keep-aspect-ratio \
+            --width $size \
+            --height $size \
+            --output $dir/pianoteq.png \
+            ${./pianoteq.svg}
         done
+        runHook postInstall
       '';
 
-      meta = with lib; {
+      meta = {
         homepage = "https://www.modartt.com/pianoteq";
         description = "Software synthesizer that features real-time MIDI-control of digital physically modeled pianos and related instruments";
-        license = licenses.unfree;
-        platforms = [ "x86_64-linux" "aarch64-linux" ];
-        maintainers = [ maintainers.mausch ];
+        license = lib.licenses.unfree;
+        inherit mainProgram;
+        platforms = [
+          "x86_64-linux"
+          "aarch64-linux"
+        ];
+        maintainers = with lib.maintainers; [
+          mausch
+          ners
+        ];
+        sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
       };
-    };
+    });
 
-  fetchWithCurlScript = { name, sha256, script, impureEnvVars ? [] }:
+  fetchWithCurlScript =
+    {
+      name,
+      hash,
+      script,
+      impureEnvVars ? [ ],
+    }:
     stdenv.mkDerivation {
       inherit name;
       builder = writeShellScript "builder.sh" ''
-        source $stdenv/setup
-
         curlVersion=$(${curl}/bin/curl -V | head -1 | cut -d' ' -f2)
 
         # Curl flags to handle redirects, not use EPSV, handle cookies for
@@ -81,17 +158,21 @@ let
       '';
       nativeBuildInputs = [ curl ];
       outputHashAlgo = "sha256";
-      outputHash = sha256;
+      outputHash = hash;
 
-      impureEnvVars = lib.fetchers.proxyImpureEnvVars ++ impureEnvVars ++ [
-        # This variable allows the user to pass additional options to curl
-        "NIX_CURL_FLAGS"
-      ];
+      impureEnvVars =
+        lib.fetchers.proxyImpureEnvVars
+        ++ impureEnvVars
+        ++ [
+          # This variable allows the user to pass additional options to curl
+          "NIX_CURL_FLAGS"
+        ];
     };
 
-  fetchPianoteqTrial = { name, sha256 }:
+  fetchPianoteqTrial =
+    { name, hash }:
     fetchWithCurlScript {
-      inherit name sha256;
+      inherit name hash;
       script = ''
         html=$(
           "''${curl[@]}" --silent --request GET \
@@ -122,11 +203,15 @@ let
       '';
     };
 
-  fetchPianoteqWithLogin = { name, sha256 }:
+  fetchPianoteqWithLogin =
+    { name, hash }:
     fetchWithCurlScript {
-      inherit name sha256;
+      inherit name hash;
 
-      impureEnvVars = [ "NIX_MODARTT_USERNAME" "NIX_MODARTT_PASSWORD" ];
+      impureEnvVars = [
+        "NIX_MODARTT_USERNAME"
+        "NIX_MODARTT_PASSWORD"
+      ];
 
       script = ''
         if [ -z "''${NIX_MODARTT_USERNAME}" -o -z "''${NIX_MODARTT_PASSWORD}" ]; then
@@ -164,40 +249,113 @@ let
       '';
     };
 
-in {
-  # TODO currently can't install more than one because `lame` clashes
-  stage-trial = mkPianoteq rec {
-    name = "stage-trial";
-    version = "8.0.8";
-    src = fetchPianoteqTrial {
-      name = "pianoteq_stage_linux_trial_v${versionForFile version}.7z";
-      sha256 = "sha256-dp0bTzzh4aQ2KQ3z9zk+3meKQY4YRYQ86rccHd3+hAQ=";
+  version6 = "6.7.3";
+  version7 = "7.5.4";
+  version8 = "8.4.3";
+  version9 = "9.2.1";
+
+  mkStandard =
+    version: hash:
+    mkPianoteq {
+      name = "standard";
+      mainProgram = "Pianoteq ${lib.versions.major version}";
+      startupWMClass = "Pianoteq";
+      inherit version;
+      src = fetchPianoteqWithLogin {
+        name = "pianoteq_linux_v${versionForFile version}.7z";
+        inherit hash;
+      };
     };
-  };
-  standard-trial = mkPianoteq rec {
-    name = "standard-trial";
-    version = "8.0.8";
-    src = fetchPianoteqTrial {
-      name = "pianoteq_linux_trial_v${versionForFile version}.7z";
-      sha256 = "sha256-LSrnrjkEhsX9TirUUFs9tNqH2A3cTt3I7YTfcTT6EP8=";
+  mkStage =
+    version: hash:
+    mkPianoteq {
+      name = "stage";
+      mainProgram = "Pianoteq ${lib.versions.major version} STAGE";
+      startupWMClass = "Pianoteq STAGE";
+      inherit version;
+      src = fetchPianoteqWithLogin {
+        name = "pianoteq_stage_linux_v${versionForFile version}.7z";
+        inherit hash;
+      };
     };
-  };
-  stage-6 = mkPianoteq rec {
-    name = "stage-6";
-    version = "6.7.3";
-    archdir = if (stdenv.hostPlatform.system == "aarch64-linux") then throw "Pianoteq stage-6 is not supported on aarch64-linux" else "amd64";
-    src = fetchPianoteqWithLogin {
-      name = "pianoteq_stage_linux_v${versionForFile version}.7z";
-      sha256 = "0jy0hkdynhwv0zhrqkby0hdphgmcc09wxmy74rhg9afm1pzl91jy";
+  mkStandardTrial =
+    version: hash:
+    mkPianoteq {
+      name = "standard-trial";
+      mainProgram = "Pianoteq ${lib.versions.major version}";
+      startupWMClass = "Pianoteq Trial";
+      inherit version;
+      src = fetchPianoteqTrial {
+        name = "pianoteq_linux_trial_v${versionForFile version}.7z";
+        inherit hash;
+      };
     };
-  };
-  stage-7 = mkPianoteq rec {
-    name = "stage-7";
-    version = "7.3.0";
-    src = fetchPianoteqWithLogin {
-      name = "pianoteq_stage_linux_v${versionForFile version}.7z";
-      sha256 = "05w7sv9v38r6ljz9xai816w5z2qqwx88hcfjm241fvgbs54125hx";
+  mkStageTrial =
+    version: hash:
+    mkPianoteq {
+      name = "stage-trial";
+      mainProgram = "Pianoteq ${lib.versions.major version} STAGE";
+      startupWMClass = "Pianoteq STAGE Trial";
+      inherit version;
+      src = fetchPianoteqTrial {
+        name = "pianoteq_stage_linux_trial_v${versionForFile version}.7z";
+        inherit hash;
+      };
     };
-  };
-  # TODO other paid binaries, I don't own that so I don't know their hash.
+  mkTrial9 =
+    hash:
+    mkPianoteq {
+      name = "trial";
+      version = version9;
+      mainProgram = "Pianoteq 9";
+      startupWMClass = "Pianoteq Trial";
+      src = fetchPianoteqTrial {
+        name = "pianoteq_trial_v${versionForFile version9}.tar.xz";
+        inherit hash;
+      };
+    };
+  mkStage9 =
+    hash:
+    mkPianoteq {
+      name = "stage";
+      version = version9;
+      mainProgram = "Pianoteq 9 STAGE";
+      startupWMClass = "Pianoteq STAGE";
+      src = fetchPianoteqWithLogin {
+        name = "pianoteq_setup_v${versionForFile version9}.tar.xz";
+        inherit hash;
+      };
+    };
+  mkStandard9 =
+    hash:
+    mkPianoteq {
+      name = "standard";
+      mainProgram = "Pianoteq 9";
+      startupWMClass = "Pianoteq";
+      version = version9;
+      src = fetchPianoteqWithLogin {
+        name = "pianoteq_setup_v${versionForFile version9}.tar.xz";
+        inherit hash;
+      };
+    };
+in
+{
+  standard_9 = mkStandard9 "sha256-iIKYmXy7d5mGkONUqR91Qjo7IIGJE9eBN4pCr0+D7no=";
+  trial_9 = mkTrial9 "sha256-QQMLYvn7KW7u4JYeNCqxE+7Yn36bR+bTA2bP2IcQGZg=";
+  stage_9 = mkStage9 "sha256-iIKYmXy7d5mGkONUqR91Qjo7IIGJE9eBN4pCr0+D7no=";
+
+  standard_8 = mkStandard version8 "sha256-72eV+d3jwRZJSs6I4e055ZrR/dvnhwAaM63eZEQAtOg=";
+  stage_8 = mkStage version8 "";
+  standard-trial_8 = mkStandardTrial version8 "sha256-P5f+eZcV/y1+0W85PRvpz9CejLwGYmvRdPcvbXOiITw=";
+  stage-trial_8 = mkStageTrial version8 "sha256-m4lqnRyLTs2/x2w/raE1RQAc2+7kwtmUl0uUgUTC0lE=";
+
+  standard_7 = mkStandard version7 "sha256-TA9CiuT21fQedlMUGz7bNNxYun5ArmRjvIxjOGqXDCs=";
+  stage_7 = mkStage version7 "";
+  standard-trial_7 = mkStandardTrial version7 "sha256-3a3+SKTEhvDtqK5Kg4E6KiLvn5+j6JN6ntIb72u2bdQ=";
+  stage-trial_7 = mkStageTrial version7 "sha256-ybtq+hjnaQxpLxv2KE0ZcbQXtn5DJJsnMwCmh3rlrIc=";
+
+  standard_6 = mkStandard version6 "sha256-u6ZNpmHFVOk+r+6Q8OURSfAi41cxMoDvaEXrTtHEAVY=";
+  stage_6 = mkStage version6 "";
+  standard-trial_6 = mkStandardTrial version6 "sha256-nHTAqosOJqC0VnRw2/xVpZ6y02vvau6CgfNmgiN/AHs=";
+  stage-trial_6 = mkStageTrial version6 "sha256-zrv0c/Mxt1EysR7ZvmxtksXAF5MyXTFMNj4KAdO3QnE=";
 }

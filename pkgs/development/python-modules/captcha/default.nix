@@ -1,37 +1,36 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, nose
-, pillow
-, wheezy-captcha
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+  pillow,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "captcha";
-  version = "0.4";
-  format = "setuptools";
+  version = "0.7.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "lepture";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-uxUjoACN65Cx5LMKpT+bZhKpf2JRSaEyysnYUgZntp8=";
+    repo = "captcha";
+    tag = "v${version}";
+    hash = "sha256-wMnfPkHexiRprtDL6Kkmh9dms4NtW3u37DKtDMPb2ZI=";
   };
 
-  propagatedBuildInputs = [ pillow ];
+  dependencies = [ pillow ];
+
+  nativeBuildInputs = [ setuptools ];
 
   pythonImportsCheck = [ "captcha" ];
 
-  nativeCheckInputs = [ nose wheezy-captcha ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  checkPhase = ''
-    nosetests -s
-  '';
-
-  meta = with lib; {
-    description = "A captcha library that generates audio and image CAPTCHAs";
+  meta = {
+    description = "Captcha library that generates audio and image CAPTCHAs";
     homepage = "https://github.com/lepture/captcha";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ Flakebi ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ Flakebi ];
   };
 }

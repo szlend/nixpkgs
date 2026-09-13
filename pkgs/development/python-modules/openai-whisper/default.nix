@@ -1,97 +1,87 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, substituteAll
-, cudaSupport ? false
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  buildPythonPackage,
+  replaceVars,
 
-# runtime
-, ffmpeg
+  # build-system
+  setuptools,
 
-# propagates
-, numpy
-, torch
-, torchWithCuda
-, tqdm
-, more-itertools
-, transformers
-, ffmpeg-python
-, numba
-, openai-triton
-, scipy
-, tiktoken
+  # runtime
+  ffmpeg-headless,
 
-# tests
-, pytestCheckHook
+  # dependencies
+  more-itertools,
+  numba,
+  numpy,
+  triton,
+  tiktoken,
+  torch,
+  tqdm,
+
+  # tests
+  pytestCheckHook,
+  scipy,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
-  pname = "whisper";
-  version = "20230314";
-  format = "setuptools";
+buildPythonPackage (finalAttrs: {
+  pname = "openai-whisper";
+  version = "20250625";
+  pyproject = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "openai";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-qQCELjRFeRCT1k1CBc3netRtFvt+an/EbkrgnmiX/mc=";
+    repo = "whisper";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-Zn2HUCor1eCJBP7q0vpffqhw5SNguz8zCGoPgdt6P+c=";
   };
 
   patches = [
-    (substituteAll {
-      src = ./ffmpeg-path.patch;
-      inherit ffmpeg;
+    (replaceVars ./ffmpeg-path.patch {
+      ffmpeg = ffmpeg-headless;
     })
   ];
 
-  propagatedBuildInputs = [
-    numpy
-    tqdm
+  build-system = [ setuptools ];
+
+  dependencies = [
     more-itertools
-    transformers
-    ffmpeg-python
     numba
-    scipy
+    numpy
     tiktoken
-  ] ++ lib.optionals (!cudaSupport) [
     torch
-  ] ++ lib.optionals (cudaSupport) [
-    openai-triton
-    torchWithCuda
-  ];
-
-  postPatch = ''
-    substituteInPlace requirements.txt \
-      --replace "tiktoken==0.3.1" "tiktoken>=0.3.1"
-  ''
-  # openai-triton is only needed for CUDA support.
-  # triton needs CUDA to be build.
-  # -> by making it optional, we can build whisper without unfree packages enabled
-  + lib.optionalString (!cudaSupport) ''
-    sed -i '/if sys.platform.startswith("linux") and platform.machine() == "x86_64":/{N;d}' setup.py
-  '';
-
-  preCheck = ''
-    export HOME=$TMPDIR
-  '';
+    tqdm
+  ]
+  ++ lib.optionals (lib.meta.availableOn stdenv.hostPlatform triton) [ triton ];
 
   nativeCheckInputs = [
     pytestCheckHook
+    scipy
+    writableTmpDirAsHomeHook
   ];
 
   disabledTests = [
     # requires network access to download models
-    "test_tokenizer"
     "test_transcribe"
+
     # requires NVIDIA drivers
     "test_dtw_cuda_equivalence"
     "test_median_filter_equivalence"
+  ]
+  ++ lib.optionals (stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isAarch64) [
+    # Fatal Python error: Segmentation fault
+    "test_dtw"
   ];
 
-  meta = with lib; {
-    changelog = "https://github.com/openai/whisper/blob/v$[version}/CHANGELOG.md";
+  meta = {
+    changelog = "https://github.com/openai/whisper/blob/${finalAttrs.src.tag}/CHANGELOG.md";
     description = "General-purpose speech recognition model";
+    mainProgram = "whisper";
     homepage = "https://github.com/openai/whisper";
-    license = licenses.mit;
-    maintainers = with maintainers; [ hexa MayNiklas ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ MayNiklas ];
   };
-}
+})

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 with lib;
 let
   cfg = config.services.mainsail;
@@ -6,31 +11,25 @@ let
 in
 {
   options.services.mainsail = {
-    enable = mkEnableOption (lib.mdDoc "a modern and responsive user interface for Klipper");
+    enable = mkEnableOption "a modern and responsive user interface for Klipper";
 
-    package = mkOption {
-      type = types.package;
-      description = lib.mdDoc "Mainsail package to be used in the module";
-      default = pkgs.mainsail;
-      defaultText = literalExpression "pkgs.mainsail";
-    };
+    package = mkPackageOption pkgs "mainsail" { };
 
     hostName = mkOption {
       type = types.str;
       default = "localhost";
-      description = lib.mdDoc "Hostname to serve mainsail on";
+      description = "Hostname to serve mainsail on";
     };
 
     nginx = mkOption {
-      type = types.submodule
-        (import ../web-servers/nginx/vhost-options.nix { inherit config lib; });
+      type = types.submodule (import ../web-servers/nginx/vhost-options.nix { inherit config lib; });
       default = { };
       example = literalExpression ''
         {
           serverAliases = [ "mainsail.''${config.networking.domain}" ];
         }
       '';
-      description = lib.mdDoc "Extra configuration for the nginx virtual host of mainsail.";
+      description = "Extra configuration for the nginx virtual host of mainsail.";
     };
   };
 

@@ -1,48 +1,72 @@
-{ lib
-, fetchPypi
-, buildPythonPackage
-, chex
-, jaxlib
-, tensorflow-probability
-, optax
-, dm-haiku
-, bsuite
-, frozendict
-, pytestCheckHook
-, dm-env
-, distrax }:
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 
-buildPythonPackage rec {
+  # build-system
+  flit-core,
+
+  # dependencies
+  absl-py,
+  chex,
+  distrax,
+  dm-env,
+  jax,
+  jaxlib,
+  numpy,
+
+  # tests
+  dm-haiku,
+  optax,
+  pytest-xdist,
+  pytestCheckHook,
+}:
+
+buildPythonPackage (finalAttrs: {
   pname = "rlax";
-  version = "0.1.5";
+  version = "0.1.9";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-GRqiGacyHZpVKUqfAteMjRV4EtdHkSgfFRj/H76bBVo=";
+  src = fetchFromGitHub {
+    owner = "google-deepmind";
+    repo = "rlax";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-CDHoRY6QcgedudojID4Cxw7RWb/LCT5FvZ1dOVDWGMA=";
   };
 
-  buildInputs = [
+  build-system = [
+    flit-core
+  ];
+
+  dependencies = [
+    absl-py
     chex
-    jaxlib
     distrax
-    tensorflow-probability
+    dm-env
+    jax
+    jaxlib
+    numpy
   ];
 
   nativeCheckInputs = [
-    bsuite
-    dm-env
     dm-haiku
-    frozendict
     optax
+    pytest-xdist
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "rlax"
-  ];
+  pythonImportsCheck = [ "rlax" ];
 
   disabledTests = [
-    # RuntimeErrors
+    # AssertionError: Array(2, dtype=int32) != 0
+    "test_categorical_sample__with_device"
+    "test_categorical_sample__with_jit"
+    "test_categorical_sample__without_device"
+    "test_categorical_sample__without_jit"
+
+    # RuntimeError: Attempted to set 4 devices, but 1 CPUs already available:
+    # ensure that `set_n_cpu_devices` is executed before any JAX operation.
     "test_cross_replica_scatter_add0"
     "test_cross_replica_scatter_add1"
     "test_cross_replica_scatter_add2"
@@ -56,10 +80,11 @@ buildPythonPackage rec {
     "test_unnormalize_linear"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Library of reinforcement learning building blocks in JAX";
     homepage = "https://github.com/deepmind/rlax";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ onny ];
+    changelog = "https://github.com/google-deepmind/rlax/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ onny ];
   };
-}
+})

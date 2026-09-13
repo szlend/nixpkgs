@@ -1,42 +1,50 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, pretend
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pretend,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
-  pname = "calver";
-  version = "2022.06.26";
+let
+  self = buildPythonPackage rec {
+    pname = "calver";
+    version = "2025.10.20";
+    pyproject = true;
 
-  disabled = pythonOlder "3.5";
+    src = fetchFromGitHub {
+      owner = "di";
+      repo = "calver";
+      tag = version;
+      hash = "sha256-8CfPQ4uMgKDqMMgutLdsjn/MaAVBJQAp1KqUfxzNMQw=";
+    };
 
-  format = "setuptools";
+    postPatch = ''
+      substituteInPlace setup.py \
+        --replace "version=calver_version(True)" 'version="${version}"'
+    '';
 
-  src = fetchFromGitHub {
-    owner = "di";
-    repo = "calver";
-    rev = version;
-    hash = "sha256-YaXTkeUazwzghCX96Wfx39hGvukWKtHMLLeyF9OeiZI=";
+    build-system = [ setuptools ];
+
+    doCheck = false; # avoid infinite recursion with hatchling
+
+    nativeCheckInputs = [
+      pretend
+      pytestCheckHook
+    ];
+
+    pythonImportsCheck = [ "calver" ];
+
+    passthru.tests.calver = self.overridePythonAttrs { doCheck = true; };
+
+    meta = {
+      changelog = "https://github.com/di/calver/releases/tag/${src.tag}";
+      description = "Setuptools extension for CalVer package versions";
+      homepage = "https://github.com/di/calver";
+      license = lib.licenses.asl20;
+      maintainers = with lib.maintainers; [ dotlambda ];
+    };
   };
-
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "version=calver_version(True)" 'version="${version}"'
-  '';
-
-  nativeCheckInputs = [
-    pretend
-    pytestCheckHook
-  ];
-
-  pythonImportsCheck = [ "calver" ];
-
-  meta = {
-    description = "Setuptools extension for CalVer package versions";
-    homepage = "https://github.com/di/calver";
-    license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ dotlambda ];
-  };
-}
+in
+self

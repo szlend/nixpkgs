@@ -1,11 +1,13 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
 }:
 
 buildPythonPackage rec {
   pname = "simple-rlp";
   version = "0.1.3";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -14,10 +16,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "rlp" ];
 
-  meta = with lib; {
+  meta = {
     description = "Simple RLP (Recursive Length Prefix)";
     homepage = "https://github.com/SamuelHaidu/simple-rlp";
-    license = licenses.mit;
-    maintainers = with maintainers; [ prusnak ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ prusnak ];
   };
 }

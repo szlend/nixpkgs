@@ -1,7 +1,8 @@
-{ qtModule
-, lib
-, qtbase
-, qtdeclarative
+{
+  qtModule,
+  lib,
+  qtbase,
+  qtdeclarative,
 }:
 
 qtModule {
@@ -12,7 +13,7 @@ qtModule {
     "dev"
   ];
 
-  qtInputs = [
+  propagatedBuildInputs = [
     qtbase
     qtdeclarative
   ];

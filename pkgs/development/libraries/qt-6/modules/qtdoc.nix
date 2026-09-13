@@ -1,7 +1,8 @@
-{ qtModule
-, qtdeclarative
-, qtbase
-, qttools
+{
+  qtModule,
+  qtdeclarative,
+  qtbase,
+  qttools,
 }:
 
 qtModule {
@@ -14,13 +15,8 @@ qtModule {
     done
   '';
   nativeBuildInputs = [ (qttools.override { withClang = true; }) ];
-  qtInputs = [ qtdeclarative ];
-  cmakeFlags = [
-    "-DCMAKE_MESSAGE_LOG_LEVEL=STATUS"
-  ];
-  dontUseNinjaBuild = true;
-  buildFlags = [ "docs" ];
-  dontUseNinjaInstall = true;
-  installFlags = [ "install_docs" ];
-  outputs = [ "out" ];
+  propagatedBuildInputs = [ qtdeclarative ];
+
+  ninjaFlags = [ "docs" ];
+  installTargets = [ "install_docs" ];
 }

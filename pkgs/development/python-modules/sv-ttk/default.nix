@@ -1,34 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  tkinter,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "sv-ttk";
-  version = "2.4.5";
-  format = "setuptools";
+  version = "2.6.1";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
+  __structuredAttrs = true;
 
   src = fetchPypi {
-    inherit version;
+    inherit (finalAttrs) version;
     pname = "sv_ttk";
-    hash = "sha256-ysRhRxrml+wmluH8F5AE7vZYXrTNUg5ZzI+26jwpOpc=";
+    hash = "sha256-R1idXiA5jPQE6DYvJPPtSPODDNCs4FbYM1T6Jdjk/kg=";
   };
+
+  build-system = [ setuptools ];
 
   # No tests available
   doCheck = false;
 
-  pythonImportsCheck = [
-    "sv_ttk"
-  ];
+  dependencies = [ tkinter ];
 
-  meta = with lib; {
-    description = "A gorgeous theme for Tkinter/ttk, based on the Sun Valley visual style";
+  pythonImportsCheck = [ "sv_ttk" ];
+
+  meta = {
+    description = "Gorgeous theme for Tkinter/ttk, based on the Sun Valley visual style";
     homepage = "https://github.com/rdbende/Sun-Valley-ttk-theme";
-    changelog = "https://github.com/rdbende/Sun-Valley-ttk-theme/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ AngryAnt ];
+    changelog = "https://github.com/rdbende/Sun-Valley-ttk-theme/releases/tag/v${finalAttrs.version}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ AngryAnt ];
   };
-}
+})

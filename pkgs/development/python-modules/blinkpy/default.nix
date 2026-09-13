@@ -1,30 +1,46 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, python-dateutil
-, python-slugify
-, pythonAtLeast
-, pythonOlder
-, requests
-, sortedcontainers
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  aiofiles,
+  aiohttp,
+  pytest-asyncio,
+  pytestCheckHook,
+  python-dateutil,
+  python-slugify,
+  requests,
+  setuptools,
+  sortedcontainers,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "blinkpy";
-  version = "0.21.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.8";
+  version = "0.25.9";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "fronzbot";
     repo = "blinkpy";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-0sEZlnS6CJj8nMyjtSFZRALRKdmY0Uu5N6sozPiDG6w=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-D85AXTvpIZhWhY6wZefe7tcdk9RJrYdBM1hdyN0Vsas=";
   };
 
-  propagatedBuildInputs = [
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "wheel>=0.40,<0.48" wheel \
+      --replace-fail "setuptools>=68,<84" setuptools
+  '';
+
+  build-system = [ setuptools ];
+
+  pythonRelaxDeps = [
+    "aiohttp"
+    "requests"
+  ];
+
+  dependencies = [
+    aiofiles
+    aiohttp
     python-dateutil
     python-slugify
     requests
@@ -32,6 +48,7 @@ buildPythonPackage rec {
   ];
 
   nativeCheckInputs = [
+    pytest-asyncio
     pytestCheckHook
   ];
 
@@ -45,17 +62,11 @@ buildPythonPackage rec {
     "blinkpy.sync_module"
   ];
 
-  disabledTests = lib.optionals (pythonAtLeast "3.10") [
-    "test_download_video_exit"
-    "test_parse_camera_not_in_list"
-    "test_parse_downloaded_items"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python library for the Blink Camera system";
     homepage = "https://github.com/fronzbot/blinkpy";
-    changelog = "https://github.com/fronzbot/blinkpy/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ dotlambda ];
+    changelog = "https://github.com/fronzbot/blinkpy/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

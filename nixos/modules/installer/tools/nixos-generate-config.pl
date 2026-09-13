@@ -7,6 +7,7 @@ use File::Path;
 use File::Basename;
 use File::Slurp;
 use File::stat;
+use Config::IniFiles;
 
 umask(0022);
 
@@ -35,7 +36,21 @@ my $outDir = "/etc/nixos";
 my $rootDir = ""; # = /
 my $force = 0;
 my $noFilesystems = 0;
+my $flake = 0;
 my $showHardwareConfig = 0;
+my $kernel = "lts";
+
+if (-e "/etc/nixos-generate-config.conf") {
+    my $cfg = new Config::IniFiles -file => "/etc/nixos-generate-config.conf";
+    $outDir = $cfg->val("Defaults", "Directory") // $outDir;
+    if (defined $cfg->val("Defaults", "RootDirectory")) {
+        $rootDir = $cfg->val("Defaults", "RootDirectory");
+        $rootDir =~ s/\/*$//; # remove trailing slashes
+        $rootDir = File::Spec->rel2abs($rootDir); # resolve absolute path
+    }
+    $kernel = $cfg->val("Defaults", "Kernel") // $kernel;
+    $flake = $cfg->val("Defaults", "Flake") // $flake;
+}
 
 for (my $n = 0; $n < scalar @ARGV; $n++) {
     my $arg = $ARGV[$n];
@@ -64,11 +79,20 @@ for (my $n = 0; $n < scalar @ARGV; $n++) {
     elsif ($arg eq "--show-hardware-config") {
         $showHardwareConfig = 1;
     }
+    elsif ($arg eq "--flake") {
+        $flake = 1;
+    }
+    elsif ($arg eq "--kernel") {
+        $n++;
+        $kernel = $ARGV[$n];
+        die "$0: ‘--kernel’ requires an argument\n" unless defined $kernel;
+    }
     else {
         die "$0: unrecognized argument ‘$arg’\n";
     }
 }
 
+die "$0: invalid kernel: '$kernel'" unless $kernel eq "lts" || $kernel eq "latest";
 
 my @attrs = ();
 my @kernelModules = ();
@@ -102,22 +126,6 @@ sub cpuManufacturer {
     return $cpuinfo =~ /^vendor_id\s*:.* $id$/m;
 }
 
-
-# Determine CPU governor to use
-if (-e "/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors") {
-    my $governors = read_file("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors");
-    # ondemand governor is not available on sandy bridge or later Intel CPUs
-    my @desired_governors = ("ondemand", "powersave");
-    my $e;
-
-    foreach $e (@desired_governors) {
-        if (index($governors, $e) != -1) {
-            last if (push @attrs, "powerManagement.cpuFreqGovernor = lib.mkDefault \"$e\";");
-        }
-    }
-}
-
-
 # Virtualization support?
 push @kernelModules, "kvm-intel" if hasCPUFeature "vmx";
 push @kernelModules, "kvm-amd" if hasCPUFeature "svm";
@@ -146,7 +154,7 @@ sub pciCheck {
     debug "\n";
 
     if (defined $module) {
-        # See the bottom of http://pciids.sourceforge.net/pci.ids for
+        # See the bottom of https://pciids.sourceforge.net/pci.ids for
         # device classes.
         if (# Mass-storage controller.  Definitely important.
             $class =~ /^0x01/ ||
@@ -162,21 +170,6 @@ sub pciCheck {
             push @initrdAvailableKernelModules, $module;
         }
     }
-
-    # broadcom STA driver (wl.ko)
-    # list taken from http://www.broadcom.com/docs/linux_sta/README.txt
-    if ($vendor eq "0x14e4" &&
-        ($device eq "0x4311" || $device eq "0x4312" || $device eq "0x4313" ||
-         $device eq "0x4315" || $device eq "0x4327" || $device eq "0x4328" ||
-         $device eq "0x4329" || $device eq "0x432a" || $device eq "0x432b" ||
-         $device eq "0x432c" || $device eq "0x432d" || $device eq "0x4353" ||
-         $device eq "0x4357" || $device eq "0x4358" || $device eq "0x4359" ||
-         $device eq "0x4331" || $device eq "0x43a0" || $device eq "0x43b1"
-        ) )
-     {
-        push @modulePackages, "config.boot.kernelPackages.broadcom_sta";
-        push @kernelModules, "wl";
-     }
 
     # broadcom FullMac driver
     # list taken from
@@ -211,6 +204,15 @@ sub pciCheck {
         $vendor eq "0x8086" &&
         ($device eq "0x4229" || $device eq "0x4230" ||
          $device eq "0x4222" || $device eq "0x4227");
+
+    # Intel NPU driver
+    # list taken from linux(v7.1): drivers/accel/ivpu/ivpu_drv.h
+    if ($vendor eq "0x8086" &&
+        ($device eq "0x7d1d" || $device eq "0xad1d" || $device eq "0x643e" ||
+         $device eq "0xb03e" || $device eq "0xfd3e" || $device eq "0xd71d"))
+    {
+        push @attrs, "hardware.cpu.intel.npu.enable = true;";
+    }
 
     # Assume that all NVIDIA cards are supported by the NVIDIA driver.
     # There may be exceptions (e.g. old cards).
@@ -273,6 +275,7 @@ foreach my $path (glob "/sys/class/{block,mmc_host}/*") {
 
 # Add bcache module, if needed.
 my @bcacheDevices = glob("/dev/bcache*");
+@bcacheDevices = grep(!m#dev/bcachefs.*#, @bcacheDevices);
 if (scalar @bcacheDevices > 0) {
     push @initrdAvailableKernelModules, "bcache";
 }
@@ -296,7 +299,7 @@ if ($virt eq "oracle") {
 # It is blocked by https://github.com/systemd/systemd/pull/23859
 if ($virt eq "parallels") {
     push @attrs, "hardware.parallels.enable = true;";
-    push @attrs, "nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ \"prl-tools\" ];";
+    push @attrs, "nixpkgs.config.allowUnfreePackages = [ \"prl-tools\" ];";
 }
 
 # Likewise for QEMU.
@@ -312,7 +315,7 @@ if ($virt eq "microsoft") {
 
 # Pull in NixOS configuration for containers.
 if ($virt eq "systemd-nspawn") {
-    push @attrs, "boot.isContainer = true;";
+    push @attrs, "boot.isNspawnContainer = true;";
 }
 
 
@@ -335,7 +338,12 @@ sub findStableDevPath {
 
     my $st = stat($dev) or return $dev;
 
-    foreach my $dev2 (glob("/dev/stratis/*/*"), glob("/dev/disk/by-uuid/*"), glob("/dev/mapper/*"), glob("/dev/disk/by-label/*")) {
+    foreach my $dev2 (
+        glob("/dev/stratis/*/*"),
+        glob("/dev/mapper/*"),
+        glob("/dev/disk/by-uuid/*"),
+        glob("/dev/disk/by-label/*"),
+    ) {
         my $st2 = stat($dev2) or next;
         return $dev2 if $st->rdev == $st2->rdev;
     }
@@ -381,6 +389,7 @@ sub in {
 
 my $fileSystems;
 my %fsByDev;
+my $useSwraid = 0;
 foreach my $fs (read_file("/proc/self/mountinfo")) {
     chomp $fs;
     my @fields = split / /, $fs;
@@ -467,6 +476,17 @@ EOF
         }
     }
 
+    # Preserve umask (fmask, dmask) settings for vfat filesystems.
+    # (The default is to mount these world-readable, but that's a security risk
+    # for the EFI System Partition.)
+    if ($fsType eq "vfat") {
+        for (@superOptions) {
+            if ($_ =~ /fmask|dmask/) {
+                push @extraOptions, $_;
+            }
+        }
+    }
+
     # is this a stratis fs?
     my $stableDevPath = findStableDevPath $device;
     my $stratisPool;
@@ -481,6 +501,19 @@ EOF
     # Don't emit tmpfs entry for /tmp, because it most likely comes from the
     # boot.tmp.useTmpfs option in configuration.nix (managed declaratively).
     next if ($mountPoint eq "/tmp" && $fsType eq "tmpfs");
+
+    # This should work for single and multi-device systems.
+    # still needs subvolume support
+    if ($fsType eq "bcachefs") {
+        my ($status, @info) = runCommand("@bcachefs@ fs usage $rootDir$mountPoint");
+        my $UUID = $info[0];
+
+        if ($status == 0 && $UUID =~ /^Filesystem:[ \t\n]*([0-9a-z-]+)/) {
+            $stableDevPath = "UUID=$1";
+        } else {
+            print STDERR "warning: can't find bcachefs mount UUID falling back to device-path";
+        }
+    }
 
     # Emit the filesystem.
     $fileSystems .= <<EOF;
@@ -510,8 +543,8 @@ EOF
     # boot.initrd.luks.devices entry.
     if (-e $device) {
         my $deviceName = basename(abs_path($device));
-        if (-e "/sys/class/block/$deviceName"
-            && read_file("/sys/class/block/$deviceName/dm/uuid",  err_mode => 'quiet') =~ /^CRYPT-LUKS/)
+        my $dmUuid = read_file("/sys/class/block/$deviceName/dm/uuid",  err_mode => 'quiet');
+        if ($dmUuid =~ /^CRYPT-LUKS/)
         {
             my @slaves = glob("/sys/class/block/$deviceName/slaves/*");
             if (scalar @slaves == 1) {
@@ -527,7 +560,13 @@ EOF
                 }
             }
         }
+        if (-e "/sys/class/block/$deviceName/md/uuid") {
+            $useSwraid = 1;
+        }
     }
+}
+if ($useSwraid) {
+    push @attrs, "boot.swraid.enable = true;\n\n";
 }
 
 
@@ -573,8 +612,6 @@ if (!$noFilesystems) {
     $fsAndSwap .= "swapDevices =" . multiLineList("    ", @swapDevices) . ";\n";
 }
 
-my $networkingDhcpConfig = generateNetworkingDhcpConfig();
-
 my $hwConfig = <<EOF;
 # Do not modify this file!  It was generated by ‘nixos-generate-config’
 # and may be overwritten by future invocations.  Please make changes
@@ -589,29 +626,8 @@ my $hwConfig = <<EOF;
   boot.kernelModules = [$kernelModules ];
   boot.extraModulePackages = [$modulePackages ];
 $fsAndSwap
-$networkingDhcpConfig
 ${\join "", (map { "  $_\n" } (uniq @attrs))}}
 EOF
-
-sub generateNetworkingDhcpConfig {
-    # FIXME disable networking.useDHCP by default when switching to networkd.
-    my $config = <<EOF;
-  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
-  # (the default) this is the recommended approach. When using systemd-networkd it's
-  # still possible to use this option, but it's recommended to use it in conjunction
-  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
-  networking.useDHCP = lib.mkDefault true;
-EOF
-
-    foreach my $path (glob "/sys/class/net/*") {
-        my $dev = basename($path);
-        if ($dev ne "lo") {
-            $config .= "  # networking.interfaces.$dev.useDHCP = lib.mkDefault true;\n";
-        }
-    }
-
-    return $config;
-}
 
 sub generateXserverConfig {
     my $xserverEnabled = "@xserverEnabled@";
@@ -645,6 +661,19 @@ if ($showHardwareConfig) {
     mkpath($outDir, 0, 0755);
     write_file($fn, $hwConfig);
 
+    $fn = "$outDir/flake.nix";
+    if ($flake) {
+        if ($force || ! -e $fn) {
+            print STDERR "writing $fn...\n";
+            mkpath($outDir, 0, 0755);
+            write_file($fn, <<EOF);
+@flake@
+EOF
+        } else {
+            print STDERR "warning: not overwriting existing $fn\n";
+        }
+    }
+
     # Generate a basic configuration.nix, unless one already exists.
     $fn = "$outDir/configuration.nix";
     if ($force || ! -e $fn) {
@@ -676,7 +705,13 @@ EOF
 EOF
         }
 
-        my $networkingDhcpConfig = generateNetworkingDhcpConfig();
+        if ($kernel eq "latest") {
+            $bootLoaderConfig .= <<EOF;
+
+  # Use latest kernel.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+EOF
+        }
 
         my $xserverConfig = generateXserverConfig();
 

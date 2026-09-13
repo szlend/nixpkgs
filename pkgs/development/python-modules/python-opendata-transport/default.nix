@@ -1,40 +1,45 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, aiohttp
-, urllib3
-, pythonOlder
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  pytest-asyncio,
+  pytestCheckHook,
+  urllib3,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-opendata-transport";
-  version = "0.3.0";
-  format = "setuptools";
+  version = "0.6.2";
+  pyproject = true;
 
-  disabled = pythonOlder "3.8";
-
-  src = fetchPypi {
-    pname = "python_opendata_transport";
-    inherit version;
-    hash = "sha256-CpzMMp2C3UOiUna9EcUucD/PKv7AZlkaU8QJfWntoi8=";
+  src = fetchFromGitHub {
+    owner = "home-assistant-ecosystem";
+    repo = "python-opendata-transport";
+    tag = finalAttrs.version;
+    hash = "sha256-CN+zy2x+4IKdAcpa2vIrOGXW39d+anU4HGPU83dGif0=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ hatchling ];
+
+  dependencies = [
     aiohttp
     urllib3
   ];
 
-  # no tests are present
-  doCheck = false;
-
-  pythonImportsCheck = [
-    "opendata_transport"
+  nativeCheckInputs = [
+    pytest-asyncio
+    pytestCheckHook
   ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "opendata_transport" ];
+
+  meta = {
     description = "Python client for interacting with transport.opendata.ch";
     homepage = "https://github.com/home-assistant-ecosystem/python-opendata-transport";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/home-assistant-ecosystem/python-opendata-transport/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

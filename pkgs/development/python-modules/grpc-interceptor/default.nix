@@ -1,52 +1,43 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, poetry-core
-, grpcio
-, protobuf
-, pytest-asyncio
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  poetry-core,
+  grpcio,
+  protobuf,
+  pytest-asyncio,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "grpc-interceptor";
-  version = "0.15.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.15.4";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "d5h-foss";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "md7pwlahF5kiaydLATdW7Yde8iVVcBEjCIGP5qRLwXw=";
+    repo = "grpc-interceptor";
+    tag = "v${version}";
+    hash = "sha256-GJkVCslPXShJNDrqhFtCsAK5+VaG8qFJo0RQTsiMIFY=";
   };
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "poetry.masonry.api" "poetry.core.masonry.api"
-  '';
-
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  nativeBuildInputs = [ poetry-core ];
 
   propagatedBuildInputs = [
     grpcio
     protobuf
   ];
 
+  __darwinAllowLocalNetworking = true;
+
   nativeCheckInputs = [
     pytest-asyncio
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "grpc_interceptor"
-  ];
+  pythonImportsCheck = [ "grpc_interceptor" ];
 
-  meta = with lib; {
+  meta = {
     description = "Simplified gRPC interceptors";
     homepage = "https://github.com/d5h-foss/grpc-interceptor";
     changelog = "https://github.com/d5h-foss/grpc-interceptor/releases/tag/v${version}";
@@ -59,7 +50,7 @@ buildPythonPackage rec {
       context. Access to these are often desired, to be able to log data in the
       request or response, or set status codes on the context.
     '';
-    license = licenses.mit;
-    maintainers = with maintainers; [ tomaskala ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ tomaskala ];
   };
 }

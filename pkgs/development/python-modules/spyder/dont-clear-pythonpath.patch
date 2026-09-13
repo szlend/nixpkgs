@@ -1,24 +1,20 @@
-Don't remove sys.path entries that come from PYTHONPATH, or else the app cannot
-be used in Nixpkgs.
-
-Author: Bjørn Forsman <bjorn.forsman@gmail.com>
-diff -uNr spyder-5.4.0.orig/spyder/app/start.py spyder-5.4.0/spyder/app/start.py
---- spyder-5.4.0.orig/spyder/app/start.py	2022-08-30 02:02:28.000000000 +0200
-+++ spyder-5.4.0/spyder/app/start.py	2023-01-02 11:38:28.138744879 +0100
-@@ -6,16 +6,8 @@
- # (see spyder/__init__.py for details)
- # -----------------------------------------------------------------------------
+diff --git a/spyder/app/start.py b/spyder/app/start.py
+index 3f225a164..10e6017b1 100644
+--- a/spyder/app/start.py
++++ b/spyder/app/start.py
+@@ -9,15 +9,6 @@
+ import os
+ import sys
  
 -# Remove PYTHONPATH paths from sys.path before other imports to protect against
 -# shadowed standard libraries.
- import os
- import sys
 -if os.environ.get('PYTHONPATH'):
 -    for path in os.environ['PYTHONPATH'].split(os.pathsep):
 -        try:
 -            sys.path.remove(path.rstrip(os.sep))
 -        except ValueError:
 -            pass
+-
+ # Remove PYTHONEXECUTABLE. See spyder-ide/spyder#24743
+ os.environ.pop("PYTHONEXECUTABLE", None)
  
- # Standard library imports
- import ctypes

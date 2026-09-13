@@ -1,26 +1,47 @@
-{ lib
-, fetchPypi
-, buildPythonPackage
-, requests
-, twisted
-, incremental
-, httpbin
+{
+  lib,
+  fetchPypi,
+  buildPythonPackage,
+
+  # build-system
+  incremental,
+  hatchling,
+
+  # dependencies
+  attrs,
+  hyperlink,
+  multipart,
+  requests,
+  twisted,
+
+  # tests
+  httpbin,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "treq";
-  version = "22.2.0";
+  version = "25.5.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-33V+PxQfx4Lt4HamBFIRlP/LQPomRc9I5aNwYDB/Uuw=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-Jd3jpVroXsLyxWMyyZrvJVqxT5l9DQBVLr/xNTipgEo=";
   };
 
-  propagatedBuildInputs = [
-    requests
+  nativeBuildInputs = [
     incremental
+    hatchling
+  ];
+
+  propagatedBuildInputs = [
+    attrs
+    hyperlink
+    incremental
+    multipart
+    requests
     twisted
-  ] ++ twisted.optional-dependencies.tls;
+  ]
+  ++ twisted.optional-dependencies.tls;
 
   nativeCheckInputs = [
     httpbin
@@ -28,13 +49,17 @@ buildPythonPackage rec {
   ];
 
   checkPhase = ''
+    runHook preCheck
+
     trial treq
+
+    runHook postCheck
   '';
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/twisted/treq";
     description = "Requests-like API built on top of twisted.web's Agent";
-    license = licenses.mit;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
-}
+})

@@ -1,35 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, freezegun
-, isodate
-, lxml
-, pythonOlder
-, xmlsec
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  fetchpatch,
+  freezegun,
+  isodate,
+  lxml,
+  pytestCheckHook,
+  poetry-core,
+  xmlsec,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python3-saml";
-  version = "1.15.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.16.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "onelogin";
     repo = "python3-saml";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-xPPR2z3h8RpoAROpKpu9ZoDxGq5Stm9wQVt4Stj/6fg=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-KyDGmqhg/c29FaXPKK8rWKSBP6BOCpKKpOujCavXUcc=";
   };
 
   patches = [
+    # Fix build system, https://github.com/SAML-Toolkits/python3-saml/pull/341
     (fetchpatch {
-      name = "test-expired.patch";
-      url = "https://github.com/SAML-Toolkits/python3-saml/commit/bd65578e5a21494c89320094c61c1c77250bea33.diff";
-      hash = "sha256-9Trew6R5JDjtc0NRGoklqMVDEI4IEqFOdK3ezyBU6gI=";
+      name = "switch-to-poetry-core.patch";
+      url = "https://github.com/SAML-Toolkits/python3-saml/commit/231a7e19543138fdd7424c01435dfe3f82bbe9ce.patch";
+      hash = "sha256-MvX1LXhf3LJUy3O7L0/ySyVY4KDGc/GKJud4pOkwVIk=";
     })
   ];
+
+  nativeBuildInputs = [ poetry-core ];
 
   propagatedBuildInputs = [
     isodate
@@ -39,17 +42,28 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     freezegun
+    pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "onelogin.saml2"
+  pythonImportsCheck = [ "onelogin.saml2" ];
+
+  disabledTests = [
+    # Tests require network access or additions files
+    "OneLogin_Saml2_Metadata_Test"
+    "OneLogin_Saml2_Response_Test"
+    "OneLogin_Saml2_Utils_Test"
+    "OneLogin_Saml2_Settings_Test"
+    "OneLogin_Saml2_Auth_Test"
+    "OneLogin_Saml2_Authn_Request_Test"
+    "OneLogin_Saml2_IdPMetadataParser_Test"
+    "OneLogin_Saml2_Logout_Request_Test"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "OneLogin's SAML Python Toolkit";
     homepage = "https://github.com/onelogin/python3-saml";
-    changelog = "https://github.com/SAML-Toolkits/python3-saml/blob/v${version}/changelog.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ zhaofengli ];
+    changelog = "https://github.com/SAML-Toolkits/python3-saml/blob/v${finalAttrs.version}/changelog.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ zhaofengli ];
   };
-}
+})

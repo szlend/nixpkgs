@@ -1,57 +1,60 @@
-{ lib
-, buildPythonPackage
-, cryptography
-, fetchFromGitHub
-, pytest-asyncio
-, pytest-sugar
-, pytest-timeout
-, pytestCheckHook
-, pythonOlder
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  click,
+  cryptography,
+  fetchFromGitHub,
+  hatchling,
+  orjson,
+  pytest-asyncio,
+  pytest-timeout,
+  pytestCheckHook,
+  xdg,
+  zeroconf,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pylutron-caseta";
-  version = "0.18.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "0.29.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "gurumitts";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-O4PNlL3lPSIyFw9MtPP678ggLBQRPedbZn1gWys7DPQ=";
+    repo = "pylutron-caseta";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-YGdx/WQLM7Dglo4FSEr+QJDKTf7Dyn8V3qSFWNlEu00=";
   };
 
-  nativeBuildInputs = [
-    setuptools
+  build-system = [ hatchling ];
+
+  dependencies = [
+    cryptography
+    orjson
   ];
 
-  propagatedBuildInputs = [
-    cryptography
-  ];
+  optional-dependencies = {
+    cli = [
+      click
+      xdg
+      zeroconf
+    ];
+  };
 
   nativeCheckInputs = [
     pytest-asyncio
-    pytest-sugar
     pytest-timeout
     pytestCheckHook
   ];
 
-  pytestFlagsArray = [
-    "--asyncio-mode=auto"
-  ];
+  pytestFlags = [ "--asyncio-mode=auto" ];
 
-  pythonImportsCheck = [
-    "pylutron_caseta"
-  ];
+  pythonImportsCheck = [ "pylutron_caseta" ];
 
-  meta = with lib; {
-    description = "Python module o control Lutron Caseta devices";
+  meta = {
+    description = "Python module to control Lutron Caseta devices";
     homepage = "https://github.com/gurumitts/pylutron-caseta";
-    changelog = "https://github.com/gurumitts/pylutron-caseta/blob/v${version}/CHANGELOG.md";
-    license = with licenses; [ asl20 ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/gurumitts/pylutron-caseta/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

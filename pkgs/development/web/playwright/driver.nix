@@ -1,131 +1,205 @@
-{ lib
-, stdenv
-, chromium
-, ffmpeg
-, git
-, jq
-, nodejs
-, fetchFromGitHub
-, fetchurl
-, makeFontsConf
-, makeWrapper
-, runCommand
-, unzip
+{
+  lib,
+  buildNpmPackage,
+  stdenv,
+  chromium,
+  ffmpeg,
+  jq,
+  nodejs,
+  fetchFromGitHub,
+  linkFarm,
+  callPackage,
+  makeFontsConf,
+  makeWrapper,
+  cacert,
 }:
 let
   inherit (stdenv.hostPlatform) system;
 
   throwSystem = throw "Unsupported system: ${system}";
+  browsersJSON = (lib.importJSON ./browsers.json).browsers;
 
-  driver = stdenv.mkDerivation (finalAttrs:
-    let
-      suffix = {
-        x86_64-linux = "linux";
-        aarch64-linux = "linux-arm64";
-        x86_64-darwin = "mac";
-        aarch64-darwin = "mac-arm64";
-      }.${system} or throwSystem;
-      filename = "playwright-${finalAttrs.version}-${suffix}.zip";
-    in
-    {
-    pname = "playwright-driver";
-    # run ./pkgs/development/python-modules/playwright/update.sh to update
-    version = "1.34.3";
+  version = "1.61.1";
 
-    src = fetchurl {
-      url = "https://playwright.azureedge.net/builds/driver/${filename}";
-      sha256 = {
-        x86_64-linux = "1xh05v3yqa8gkwayhl4nffgjcnlakpyyi17hwzh0wqzrbwwn0cs8";
-        aarch64-linux = "18jxbmhiqda5pzrv6b3n7xi14xg4zvlh6sn7hc3b3hckl77vl933";
-        x86_64-darwin = "0fy5nxbvp1kxplavj832gxiznjqpvl0ww869hsfj0h1fibhly7cy";
-        aarch64-darwin = "11msl4pnmr8cmlw32xq2qvfz3g3fy0azvq134a47c0fnpj2gd5zl";
-      }.${system} or throwSystem;
-    };
+  src = fetchFromGitHub {
+    owner = "Microsoft";
+    repo = "playwright";
+    rev = "v${version}";
+    hash = "sha256-FC3Sjh4LCTqftudcwt7KO3g3c2uyWv7PixhWqSZZR4Y=";
+  };
 
-    sourceRoot = ".";
+  playwright = buildNpmPackage {
+    pname = "playwright";
+    inherit version src;
 
-    nativeBuildInputs = [ unzip ];
+    sourceRoot = "${src.name}"; # update.sh depends on sourceRoot presence
+    npmDepsHash = "sha256-DTRhYHRaPlthyRcD2azEIKMPaRwROLuLOdUC27Rk5zM=";
+
+    nativeBuildInputs = [
+      cacert
+      jq
+    ];
+
+    env.ELECTRON_SKIP_BINARY_DOWNLOAD = true;
 
     postPatch = ''
-      # Use Nix's NodeJS instead of the bundled one.
-      substituteInPlace playwright.sh --replace '"$SCRIPT_PATH/node"' '"${nodejs}/bin/node"'
-      rm node
-
-      # Hard-code the script path to $out directory to avoid a dependency on coreutils
-      substituteInPlace playwright.sh \
-        --replace 'SCRIPT_PATH="$(cd "$(dirname "$0")" ; pwd -P)"' "SCRIPT_PATH=$out"
-
-      patchShebangs playwright.sh package/bin/*.sh
+      sed -i '/\/\/ Update test runner./,/^\s*$/{d}' utils/build/build.js
+      # The dlopen library check uses ldconfig which doesn't work under Nix.
+      # These libraries are already provided via rpath by autoPatchelfHook and wrapProgram.
+      substituteInPlace packages/playwright-core/src/server/registry/index.ts \
+        --replace-fail "['libGLESv2.so.2', 'libx264.so']" "[]"
     '';
 
     installPhase = ''
       runHook preInstall
 
-      mkdir -p $out/bin
-      mv playwright.sh $out/bin/playwright
-      mv package $out/
+      shopt -s extglob
+
+      mkdir -p "$out/lib/node_modules/playwright"
+      cp -r packages/playwright/!(bundles|src|node_modules|.*) "$out/lib/node_modules/playwright"
+
+      # for not supported platforms (such as NixOS) playwright assumes that it runs on ubuntu-20.04
+      # that forces it to use overridden webkit revision
+      # let's remove that override to make it use latest revision provided in Nixpkgs
+      # https://github.com/microsoft/playwright/blob/baeb065e9ea84502f347129a0b896a85d2a8dada/packages/playwright-core/src/server/utils/hostPlatform.ts#L111
+      jq '(.browsers[] | select(.name == "webkit") | .revisionOverrides) |= del(."ubuntu20.04-x64", ."ubuntu20.04-arm64")' \
+        packages/playwright-core/browsers.json > browser.json.tmp && mv browser.json.tmp packages/playwright-core/browsers.json
+      mkdir -p "$out/lib/node_modules/playwright-core"
+      cp -r packages/playwright-core/!(bundles|src|bin|.*) "$out/lib/node_modules/playwright-core"
+
+      mkdir -p "$out/lib/node_modules/@playwright/test"
+      cp -r packages/playwright-test/* "$out/lib/node_modules/@playwright/test"
+
+      runHook postInstall
+    '';
+
+    meta = {
+      description = "Framework for Web Testing and Automation";
+      homepage = "https://playwright.dev";
+      license = lib.licenses.asl20;
+      maintainers = with lib.maintainers; [
+        kalekseev
+      ];
+      inherit (nodejs.meta) platforms;
+    };
+  };
+
+  playwright-core = stdenv.mkDerivation (finalAttrs: {
+    pname = "playwright-core";
+    inherit (playwright) version src meta;
+
+    installPhase = ''
+      runHook preInstall
+
+      cp -r ${playwright}/lib/node_modules/playwright-core "$out"
 
       runHook postInstall
     '';
 
     passthru = {
-      inherit filename;
-      browsers = {
-        x86_64-linux = browsers-linux { };
-        aarch64-linux = browsers-linux { };
-        x86_64-darwin = browsers-mac;
-        aarch64-darwin = browsers-mac;
-      }.${system} or throwSystem;
-      browsers-chromium = browsers-linux {};
+      inherit browsersJSON;
+      selectBrowsers = browsers;
+      browsers = browsers { };
+      browsers-chromium = browsers {
+        withFirefox = false;
+        withWebkit = false;
+        withChromiumHeadlessShell = false;
+      };
+      tests.browser-downloads = callPackage ./browser-downloads-test.nix {
+        playwright-core = finalAttrs.finalPackage;
+      };
+      inherit components;
+      updateScript = ./update.sh;
     };
   });
 
-  browsers-mac = stdenv.mkDerivation {
-    pname = "playwright-browsers";
-    inherit (driver) version;
+  playwright-test = stdenv.mkDerivation (finalAttrs: {
+    pname = "playwright-test";
+    inherit (playwright) version src;
 
-    dontUnpack = true;
-
+    nativeBuildInputs = [ makeWrapper ];
     installPhase = ''
       runHook preInstall
 
-      export PLAYWRIGHT_BROWSERS_PATH=$out
-      ${driver}/bin/playwright install
-      rm -r $out/.links
+      shopt -s extglob
+      mkdir -p $out/bin
+      cp -r ${playwright}/* $out
+
+      makeWrapper "${nodejs}/bin/node" "$out/bin/playwright" \
+        --add-flags "$out/lib/node_modules/@playwright/test/cli.js" \
+        --prefix NODE_PATH : ${placeholder "out"}/lib/node_modules \
+        --set-default PLAYWRIGHT_BROWSERS_PATH "${playwright-core.passthru.browsers}"
 
       runHook postInstall
     '';
 
-    meta.platforms = lib.platforms.darwin;
+    meta = playwright.meta // {
+      mainProgram = "playwright";
+    };
+  });
+
+  components = {
+    chromium = callPackage ./chromium.nix {
+      inherit system throwSystem;
+      inherit (browsersJSON.chromium) revision browserVersion;
+      fontconfig_file = makeFontsConf {
+        fontDirectories = [ ];
+      };
+    };
+    chromium-headless-shell = callPackage ./chromium-headless-shell.nix {
+      inherit system throwSystem;
+      inherit (browsersJSON."chromium-headless-shell") revision browserVersion;
+    };
+    firefox = callPackage ./firefox.nix {
+      inherit system throwSystem;
+      inherit (browsersJSON.firefox) revision;
+    };
+    webkit = callPackage ./webkit.nix {
+      inherit system throwSystem;
+      inherit (browsersJSON.webkit) revision;
+    };
+    ffmpeg = callPackage ./ffmpeg.nix {
+      inherit system throwSystem;
+      inherit (browsersJSON.ffmpeg) revision;
+    };
   };
 
-  browsers-linux = { withChromium ? true }: let
-    fontconfig = makeFontsConf {
-      fontDirectories = [];
-    };
-  in
-    runCommand ("playwright-browsers"
-    + lib.optionalString withChromium "-chromium")
-  {
-    nativeBuildInputs = [
-      makeWrapper
-      jq
-    ];
-  } (''
-    BROWSERS_JSON=${driver}/package/browsers.json
-  '' + lib.optionalString withChromium ''
-    CHROMIUM_REVISION=$(jq -r '.browsers[] | select(.name == "chromium").revision' $BROWSERS_JSON)
-    mkdir -p $out/chromium-$CHROMIUM_REVISION/chrome-linux
-
-    # See here for the Chrome options:
-    # https://github.com/NixOS/nixpkgs/issues/136207#issuecomment-908637738
-    makeWrapper ${chromium}/bin/chromium $out/chromium-$CHROMIUM_REVISION/chrome-linux/chrome \
-      --set SSL_CERT_FILE /etc/ssl/certs/ca-bundle.crt \
-      --set FONTCONFIG_FILE ${fontconfig}
-  '' + ''
-    FFMPEG_REVISION=$(jq -r '.browsers[] | select(.name == "ffmpeg").revision' $BROWSERS_JSON)
-    mkdir -p $out/ffmpeg-$FFMPEG_REVISION
-    ln -s ${ffmpeg}/bin/ffmpeg $out/ffmpeg-$FFMPEG_REVISION/ffmpeg-linux
-  '');
+  browsers = lib.makeOverridable (
+    {
+      withChromium ? true,
+      withFirefox ? true,
+      withWebkit ? true, # may require `export PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="ubuntu-24.04"`
+      withFfmpeg ? true,
+      withChromiumHeadlessShell ? true,
+      fontconfig_file ? makeFontsConf {
+        fontDirectories = [ ];
+      },
+    }:
+    let
+      browsers =
+        lib.optionals withChromium [ "chromium" ]
+        ++ lib.optionals withChromiumHeadlessShell [ "chromium-headless-shell" ]
+        ++ lib.optionals withFirefox [ "firefox" ]
+        ++ lib.optionals withWebkit [ "webkit" ]
+        ++ lib.optionals withFfmpeg [ "ffmpeg" ];
+    in
+    linkFarm "playwright-browsers" (
+      lib.listToAttrs (
+        map (
+          name:
+          let
+            value = browsersJSON.${name};
+          in
+          lib.nameValuePair
+            # TODO check platform for revisionOverrides
+            "${lib.replaceStrings [ "-" ] [ "_" ] name}-${value.revision}"
+            components.${name}
+        ) browsers
+      )
+    )
+  );
 in
-  driver
+{
+  playwright-core = playwright-core;
+  playwright-test = playwright-test;
+}

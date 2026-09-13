@@ -1,45 +1,66 @@
-{ lib, buildPythonPackage, fetchPypi
-, requests
-, py
-, pytestCheckHook
-, lazy
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  lazy,
+  requests,
+  tomli,
+
+  # tests
+  packaging-legacy,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "devpi-common";
-  version = "3.7.2";
+  version = "4.1.1";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-kHiYknmteenBgce63EpzhGBEUYcQHrDLreZ1k01eRkQ=";
+  src = fetchFromGitHub {
+    owner = "devpi";
+    repo = "devpi";
+    tag = "common-${finalAttrs.version}";
+    hash = "sha256-YFY2iLnORzFxnfGYU2kCpJL8CZi+lALIkL1bRpfd4NE=";
   };
 
   postPatch = ''
-    substituteInPlace tox.ini \
-      --replace "--flake8" ""
+    substituteInPlace pyproject.toml \
+      --replace-fail '"setuptools_changelog_shortener",' ""
   '';
 
-  propagatedBuildInputs = [
-    requests
-    py
+  sourceRoot = "${finalAttrs.src.name}/common";
+
+  build-system = [
+    setuptools
+  ];
+
+  dependencies = [
     lazy
+    requests
+    tomli
   ];
 
   nativeCheckInputs = [
-    py
     pytestCheckHook
+    packaging-legacy
   ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "devpi_common" ];
+
+  meta = {
     homepage = "https://github.com/devpi/devpi";
     description = "Utilities jointly used by devpi-server and devpi-client";
-    license = licenses.mit;
-    maintainers = with maintainers; [ lewo makefu ];
-    # It fails to build because it depends on packaging <22 while we
-    # use packaging >22.
-    # See the following issues for details:
-    # - https://github.com/NixOS/nixpkgs/issues/231346
-    # - https://github.com/devpi/devpi/issues/939
-    broken = true;
+    changelog = "https://github.com/devpi/devpi/blob/common-${finalAttrs.version}/common/CHANGELOG";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      confus
+      lewo
+      makefu
+    ];
   };
-}
+})

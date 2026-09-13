@@ -1,44 +1,78 @@
-{ lib
-, pythonAtLeast
-, pythonOlder
-, buildPythonPackage
-, fetchPypi
-, stdenv
-, numpydoc
-, pytestCheckHook
-, lz4
-, setuptools
-, sphinx
-, psutil
-}:
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pythonAtLeast,
+  stdenv,
 
+  # sets various thread limit env vars for packages
+  # invoking joblib during checkPhase/installCheckPhase to
+  # avoid overloading builders with excessive parallelism
+  # See also:
+  # https://github.com/joblib/joblib/blob/b030e4e1ed6a227c0e587c31b266c03b3b692372/joblib/_parallel_backends.py#L59-L67
+  # https://github.com/joblib/joblib/blob/b030e4e1ed6a227c0e587c31b266c03b3b692372/joblib/_parallel_backends.py#L221-L248
+  checkPhaseThreadLimitHook,
+
+  # build-system
+  setuptools,
+
+  # propagates (optional, but unspecified)
+  # https://github.com/joblib/joblib#dependencies
+  lz4,
+  psutil,
+
+  # tests
+  pytestCheckHook,
+  threadpoolctl,
+}:
 
 buildPythonPackage rec {
   pname = "joblib";
-  version = "1.2.0";
-  disabled = pythonOlder "3.7";
+  version = "1.5.3";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-4c7kp55K8iiBFk8hjUMR9gB0GX+3B+CC6AO2H20TcBg=";
+    hash = "sha256-hWGjJp5oARBoY/0NbYS7c3vp52MeM6rtP7nOWVNojaM=";
   };
 
-  nativeCheckInputs = [ sphinx numpydoc pytestCheckHook psutil ];
-  propagatedBuildInputs = [ lz4 setuptools ];
+  nativeBuildInputs = [ setuptools ];
 
-  pytestFlagsArray = [ "joblib/test" ];
+  propagatedBuildInputs = [
+    lz4
+    psutil
+  ];
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    threadpoolctl
+  ];
+
+  propagatedNativeBuildInputs = [
+    checkPhaseThreadLimitHook
+  ];
+
+  # joblib expects to set thread limits itself while checking for propagation of thread limit environment variables.
+  # Setting these via checkPhaseThreadLimitHook on joblib itself causes tests to fail, but we do want the hook to propagate.
+  dontLimitCheckPhaseThreads = true;
+
+  enabledTestPaths = [ "joblib/test" ];
+
   disabledTests = [
     "test_disk_used" # test_disk_used is broken: https://github.com/joblib/joblib/issues/57
     "test_parallel_call_cached_function_defined_in_jupyter" # jupyter not available during tests
     "test_nested_parallel_warnings" # tests is flaky under load
-  ] ++ lib.optionals stdenv.isDarwin [
+    "test_memory" # tests - and the module itself - assume strictatime mount for build directory
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "test_dispatch_multiprocessing" # test_dispatch_multiprocessing is broken only on Darwin.
   ];
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/joblib/joblib/releases/tag/${version}";
     description = "Lightweight pipelining: using Python functions as pipeline jobs";
     homepage = "https://joblib.readthedocs.io/";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ costrouc ];
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
   };
 }

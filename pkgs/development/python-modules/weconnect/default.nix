@@ -1,35 +1,53 @@
-{ lib
-, ascii-magic
-, buildPythonPackage
-, fetchFromGitHub
-, pillow
-, pytest-httpserver
-, pytestCheckHook
-, pythonOlder
-, requests
-, oauthlib
+{
+  lib,
+  ascii-magic,
+  buildPythonPackage,
+  fetchFromGitHub,
+  oauthlib,
+  pillow,
+  pyjwt,
+  pytest-cov-stub,
+  pytestCheckHook,
+  requests,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "weconnect";
-  version = "0.55.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.8";
+  version = "0.60.11";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "tillsteinbach";
     repo = "WeConnect-python";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-+ISWPrpY/urpZZZrn6+Ii8gbrwkQMLL6gXhydXd8HqI=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-llAWCjhP/fwI+H8BRpMYxba8jC+WDc66xkUDwT3NHcA=";
   };
 
-  propagatedBuildInputs = [
+  postPatch = ''
+    substituteInPlace weconnect/__version.py \
+      --replace-fail "0.0.0dev" "${finalAttrs.version}"
+    substituteInPlace setup.py \
+      --replace-fail "setup_requires=SETUP_REQUIRED" "setup_requires=[]" \
+      --replace-fail "tests_require=TEST_REQUIRED" "tests_require=[]"
+    substituteInPlace pytest.ini \
+      --replace-fail "required_plugins = pytest-cov" ""
+  '';
+
+  pythonRelaxDeps = [
+    "oauthlib"
+    "requests"
+  ];
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     oauthlib
+    pyjwt
     requests
   ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     Images = [
       ascii-magic
       pillow
@@ -37,35 +55,17 @@ buildPythonPackage rec {
   };
 
   nativeCheckInputs = [
-    pytest-httpserver
+    pytest-cov-stub
     pytestCheckHook
   ];
 
-  postPatch = ''
-    substituteInPlace weconnect/__version.py \
-      --replace "develop" "${version}"
-    substituteInPlace setup.py \
-      --replace "setup_requires=SETUP_REQUIRED," "setup_requires=[]," \
-      --replace "tests_require=TEST_REQUIRED," "tests_require=[],"
-    substituteInPlace requirements.txt \
-      --replace "requests~=2.29.0" "requests"
-    substituteInPlace image_extra_requirements.txt \
-      --replace "pillow~=" "pillow>=" \
-      --replace "ascii_magic~=" "ascii_magic>="
-    substituteInPlace pytest.ini \
-      --replace "--cov=weconnect --cov-config=.coveragerc --cov-report html" "" \
-      --replace "pytest-cov" ""
-  '';
+  pythonImportsCheck = [ "weconnect" ];
 
-  pythonImportsCheck = [
-    "weconnect"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python client for the Volkswagen WeConnect Services";
     homepage = "https://github.com/tillsteinbach/WeConnect-python";
-    changelog = "https://github.com/tillsteinbach/WeConnect-python/releases/tag/v${version}";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/tillsteinbach/WeConnect-python/releases/tag/v${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

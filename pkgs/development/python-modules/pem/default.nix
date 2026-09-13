@@ -1,27 +1,35 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, pytestCheckHook
-, certifi
-, cryptography
-, pretend
-, pyopenssl
-, twisted
+{
+  lib,
+  buildPythonPackage,
+  certifi,
+  cryptography,
+  fetchFromGitHub,
+  hatch-fancy-pypi-readme,
+  hatch-vcs,
+  hatchling,
+  pretend,
+  pyopenssl,
+  pytestCheckHook,
+  twisted,
 }:
 
 buildPythonPackage rec {
   pname = "pem";
-  version = "21.2.0";
-
-  disabled = pythonOlder "3.7";
+  version = "23.1.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "hynek";
-    repo = pname;
-    rev = version;
-    hash = "sha256-mftLdgtgb5J4zwsb1F/4v4K7XTy4VSZBMy3zPV2f1uA=";
+    repo = "pem";
+    tag = version;
+    hash = "sha256-rVYlnvISGugh9qvf3mdrIyELmeOUU4g6291HeoMkoQc=";
   };
+
+  nativeBuildInputs = [
+    hatchling
+    hatch-fancy-pypi-readme
+    hatch-vcs
+  ];
 
   nativeCheckInputs = [
     certifi
@@ -30,17 +38,16 @@ buildPythonPackage rec {
     pyopenssl
     pytestCheckHook
     twisted
-    twisted.optional-dependencies.tls
-  ];
+  ]
+  ++ twisted.optional-dependencies.tls;
 
-  pythonImportsCheck = [
-    "pem"
-  ];
+  pythonImportsCheck = [ "pem" ];
 
-  meta = with lib; {
+  meta = {
+    description = "Easy PEM file parsing in Python";
     homepage = "https://pem.readthedocs.io/";
-    description = "Easy PEM file parsing in Python.";
-    license = licenses.mit;
-    maintainers = with maintainers; [ nyanotech ];
+    changelog = "https://github.com/hynek/pem/blob/${version}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ nyanotech ];
   };
 }

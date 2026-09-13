@@ -1,10 +1,13 @@
-{ lib
-, stdenv
-, callPackage
-, swift
-, swiftpm
-, swiftpm2nix
-, Foundation
+{
+  lib,
+  stdenv,
+  callPackage,
+  swift,
+  swiftpm,
+  swiftpm2nix,
+  installShellFiles,
+  Dispatch,
+  Foundation,
 }:
 let
   sources = callPackage ../sources.nix { };
@@ -16,8 +19,16 @@ stdenv.mkDerivation {
   inherit (sources) version;
   src = sources.swift-format;
 
-  nativeBuildInputs = [ swift swiftpm ];
+  nativeBuildInputs = [
+    swift
+    swiftpm
+    installShellFiles
+  ];
   buildInputs = [ Foundation ];
+
+  env.LD_LIBRARY_PATH = lib.optionalString stdenv.hostPlatform.isLinux (
+    lib.makeLibraryPath [ Dispatch ]
+  );
 
   configurePhase = generated.configure;
 
@@ -28,13 +39,24 @@ stdenv.mkDerivation {
     binPath="$(swiftpmBinPath)"
     mkdir -p $out/bin
     cp $binPath/swift-format $out/bin/
+
+    # Generate shell completions
+    for shell in bash zsh fish; do
+      $out/bin/swift-format --generate-completion-script $shell > swift-format.$shell
+    done
+
+    installShellCompletion --cmd swift-format \
+      --bash swift-format.bash \
+      --zsh swift-format.zsh \
+      --fish swift-format.fish
   '';
 
   meta = {
     description = "Formatting technology for Swift source code";
-    homepage = "https://github.com/apple/swift-format";
+    homepage = "https://github.com/swiftlang/swift-format";
     platforms = with lib.platforms; linux ++ darwin;
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ dtzWill trepetti dduan trundle stephank ];
+    teams = [ lib.teams.swift ];
+    mainProgram = "swift-format";
   };
 }

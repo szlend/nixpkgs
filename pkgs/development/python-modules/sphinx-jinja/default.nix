@@ -1,10 +1,14 @@
-{ lib, buildPythonPackage, fetchPypi, pythonOlder, sphinx }:
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  sphinx,
+}:
 
 buildPythonPackage rec {
   pname = "sphinx-jinja";
   version = "2.0.2";
-
-  disabled = pythonOlder "3.6";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -18,10 +22,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "sphinx_jinja" ];
 
-  meta = with lib; {
+  meta = {
     description = "Sphinx extension to include jinja templates in documentation";
     homepage = "https://github.com/tardyp/sphinx-jinja";
-    maintainers = with maintainers; [ ];
-    license = licenses.mit;
+    maintainers = [ ];
+    license = lib.licenses.mit;
   };
 }

@@ -1,17 +1,19 @@
-{ lib
- , buildPythonPackage
-, fetchFromGitHub
-, django
-, django-allauth
-, djangorestframework
-, drf-jwt
-, responses
-, six
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  django,
+  django-allauth,
+  djangorestframework,
+  drf-jwt,
+  responses,
+  six,
 }:
 
 buildPythonPackage rec {
   pname = "django-rest-auth";
   version = "0.9.5";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "Tivix";
@@ -42,10 +44,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "rest_auth" ];
 
-  meta = with lib; {
+  meta = {
     description = "Django app that makes registration and authentication easy";
     homepage = "https://github.com/Tivix/django-rest-auth";
-    license = licenses.mit;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

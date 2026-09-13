@@ -1,52 +1,40 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, freezegun
-, hatchling
-, pytest
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  freezegun,
+  pytest,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "pytest-freezer";
-  version = "0.4.6";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.6";
+  version = "0.4.9";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pytest-dev";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-0JZv6MavRceAV+ZOetCVxJEyttd5W3PCts6Fz2KQsh0=";
+    repo = "pytest-freezer";
+    tag = version;
+    hash = "sha256-WJGwkON/RAiUiGzNkeqjzch4CEr6mPXij5dqz1ncRXs=";
   };
 
-  nativeBuildInputs = [
-    hatchling
-  ];
+  build-system = [ flit-core ];
 
-  buildInputs = [
-    pytest
-  ];
+  buildInputs = [ pytest ];
 
-  propagatedBuildInputs = [
-    freezegun
-  ];
+  dependencies = [ freezegun ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pythonImportsCheck = [
-    "pytest_freezer"
-  ];
+  pythonImportsCheck = [ "pytest_freezer" ];
 
-  meta = with lib; {
+  meta = {
     description = "Pytest plugin providing a fixture interface for spulec/freezegun";
     homepage = "https://github.com/pytest-dev/pytest-freezer";
     changelog = "https://github.com/pytest-dev/pytest-freezer/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

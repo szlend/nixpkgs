@@ -1,18 +1,26 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "steamodd";
-  version = "4.23";
+  version = "5.0";
 
-  format = "setuptools";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "b95b288a8249937b9183539eef76563a6b1df286a1db04f25141e46d8814eae9";
+  __structuredAttrs = true;
+
+  src = fetchFromGitHub {
+    owner = "Lagg";
+    repo = "steamodd";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-ySAyCOI1ISuBQ/5+UHSQVji76ZDRGjdVwlBAY9tnSmE=";
   };
+
+  build-system = [ setuptools ];
 
   # tests require API key
   doCheck = false;
@@ -34,4 +42,4 @@ buildPythonPackage rec {
     license = lib.licenses.isc;
     maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

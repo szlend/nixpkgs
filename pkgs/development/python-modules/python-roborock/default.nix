@@ -1,65 +1,93 @@
-{ lib
-, stdenv
-, aiohttp
-, async-timeout
-, buildPythonPackage
-, click
-, construct
-, dacite
-, fetchFromGitHub
-, paho-mqtt
-, poetry-core
-, pycryptodome
-, pycryptodomex
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  stdenv,
+  aiohttp,
+  aiomqtt,
+  aioresponses,
+  buildPythonPackage,
+  click,
+  construct,
+  fetchFromGitHub,
+  freezegun,
+  hatchling,
+  paho-mqtt,
+  protobuf,
+  pycryptodome,
+  pycryptodomex,
+  pyrate-limiter,
+  pyshark,
+  pytest-asyncio,
+  pytestCheckHook,
+  pyyaml,
+  vacuum-map-parser-roborock,
+  click-shell,
+  syrupy,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-roborock";
-  version = "0.23.6";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "7.4.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "humbertogontijo";
+    owner = "Python-roborock";
     repo = "python-roborock";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-5WgCVdmEhFrKYT7Uflnjv6OIISk//VH2aoxVwlWuPTk=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-dSkIO5XgnT+NsNeiq4wCTsGXrgN/uSnxYMrxcBdFMio=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
+  pythonRelaxDeps = [
+    "protobuf"
+    "pycryptodome"
   ];
 
-  propagatedBuildInputs = [
+  build-system = [ hatchling ];
+
+  dependencies = [
     aiohttp
-    async-timeout
-    click
+    aiomqtt
     construct
-    dacite
     paho-mqtt
+    protobuf
     pycryptodome
-  ] ++ lib.optionals stdenv.isDarwin [
-    pycryptodomex
+    pyrate-limiter
+    vacuum-map-parser-roborock
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [ pycryptodomex ];
+
+  optional-dependencies.cli = [
+    click
+    click-shell
+    pyyaml
+    pyshark
   ];
 
   nativeCheckInputs = [
+    aioresponses
+    freezegun
     pytest-asyncio
     pytestCheckHook
+    syrupy
+    writableTmpDirAsHomeHook
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
+
+  disabledTests = [
+    # url mocking mismatch, probably due to yarl update
+    "test_url_cycling"
   ];
 
-  pythonImportsCheck = [
-    "roborock"
-  ];
+  __darwinAllowLocalNetworking = true;
 
-  meta = with lib; {
+  pythonImportsCheck = [ "roborock" ];
+
+  meta = {
     description = "Python library & console tool for controlling Roborock vacuum";
-    homepage = "https://github.com/humbertogontijo/python-roborock";
-    changelog = "https://github.com/humbertogontijo/python-roborock/blob/v${version}/CHANGELOG.md";
-    license = licenses.gpl3Only;
-    maintainers = with maintainers; [ fab ];
+    homepage = "https://github.com/Python-roborock/python-roborock";
+    changelog = "https://github.com/Python-roborock/python-roborock/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.gpl3Only;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "roborock";
   };
-}
+})

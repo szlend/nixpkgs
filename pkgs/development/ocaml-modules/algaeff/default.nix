@@ -1,21 +1,29 @@
-{ lib
-, buildDunePackage
-, fetchFromGitHub
+{
+  lib,
+  buildDunePackage,
+  fetchFromGitHub,
+  alcotest,
+  qcheck-core,
 }:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "algaeff";
-  version = "0.2.1";
+  version = "2.0.0";
 
   minimalOCamlVersion = "5.0";
-  duneVersion = "3";
 
   src = fetchFromGitHub {
     owner = "RedPRL";
-    repo = pname;
-    rev = version;
-    hash = "sha256-jpnJhF+LN2ef6QPLcCHxcMg3Fr3GSLOnJkZ9ZUIOrlY=";
+    repo = "algaeff";
+    rev = finalAttrs.version;
+    hash = "sha256-VRZfULbXKRcExU1bnEu/X1KPX+L+dzcRYZVD985rQT4=";
   };
+
+  doCheck = true;
+  checkInputs = [
+    alcotest
+    qcheck-core
+  ];
 
   meta = {
     description = "Reusable Effects-Based Components";
@@ -23,4 +31,4 @@ buildDunePackage rec {
     license = lib.licenses.asl20;
     maintainers = [ lib.maintainers.vbgl ];
   };
-}
+})

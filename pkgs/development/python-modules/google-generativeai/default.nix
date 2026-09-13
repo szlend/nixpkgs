@@ -1,49 +1,55 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, google-ai-generativelanguage
-, pythonOlder
-, pythonRelaxDepsHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  google-ai-generativelanguage,
+  google-api-core,
+  google-api-python-client,
+  google-auth,
+  protobuf,
+  pydantic,
+  setuptools,
+  tqdm,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "google-generativeai";
-  version = "0.1.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.9";
+  version = "0.8.6";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "google";
     repo = "generative-ai-python";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-caFq7BZKRuNU7fKJWeWSbbDFNpav7OrIET4OQSHkPz4=";
+    tag = "v${version}";
+    hash = "sha256-zUNgQqpGgMyCBhW+Z9EiSJIyuIQh2XhwlCdgrTymCVk=";
   };
 
-  pythonRelaxDeps = [
-    "google-ai-generativelanguage"
-  ];
+  pythonRelaxDeps = [ "google-ai-generativelanguage" ];
 
-  nativeBuildInputs = [
-    pythonRelaxDepsHook
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     google-ai-generativelanguage
+    google-api-core
+    google-api-python-client
+    google-auth
+    protobuf
+    pydantic
+    tqdm
+    typing-extensions
   ];
 
   # Issue with the google.ai module. Check with the next release
   doCheck = false;
 
-  pythonImportsCheck = [
-    "google.generativeai"
-  ];
+  pythonImportsCheck = [ "google.generativeai" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python client library for Google's large language model PaLM API";
     homepage = "https://github.com/google/generative-ai-python";
-    changelog = "https://github.com/google/generative-ai-python/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/google/generative-ai-python/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

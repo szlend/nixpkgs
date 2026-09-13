@@ -1,48 +1,38 @@
-{ lib
-, aiohttp
-, aresponses
-, backoff
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, poetry-core
-, pytest-aiohttp
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiohttp,
+  aresponses,
+  backoff,
+  buildPythonPackage,
+  certifi,
+  fetchFromGitHub,
+  poetry-core,
+  pytest-aiohttp,
+  pytest-asyncio,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "pyopenuv";
-  version = "2023.02.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "2023.12.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "bachya";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-EiTTck6hmOGSQ7LyZsbhnH1zgkH8GccejLdJaH2m0F8=";
+    repo = "pyopenuv";
+    tag = version;
+    hash = "sha256-r+StbiU77/1dz41tCseleIWjiIvuvRveVgPNr3n4CEY=";
   };
 
-  patches = [
-    # Remove asynctest, https://github.com/bachya/pyopenuv/pull/108
-    (fetchpatch {
-      name = "remove-asynctest.patch";
-      url = "https://github.com/bachya/pyopenuv/commit/af15736b0d82ef811c3f380f5da32007752644fe.patch";
-      hash = "sha256-5uQS3DoM91mhfyxLTNii3JBxwXIDK4/GwtadkVagjuw=";
-    })
-  ];
-
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  nativeBuildInputs = [ poetry-core ];
 
   propagatedBuildInputs = [
     aiohttp
     backoff
+    certifi
   ];
+
+  __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
     aresponses
@@ -56,15 +46,13 @@ buildPythonPackage rec {
     "examples/"
   ];
 
-  pythonImportsCheck = [
-    "pyopenuv"
-  ];
+  pythonImportsCheck = [ "pyopenuv" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python API to retrieve data from openuv.io";
     homepage = "https://github.com/bachya/pyopenuv";
     changelog = "https://github.com/bachya/pyopenuv/releases/tag/${version}";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

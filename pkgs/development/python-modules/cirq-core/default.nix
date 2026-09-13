@@ -1,69 +1,54 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonAtLeast
-, pythonOlder
-, fetchFromGitHub
-, fetchpatch
-, duet
-, matplotlib
-, networkx
-, numpy
-, pandas
-, requests
-, scipy
-, sortedcontainers
-, sympy
-, tqdm
-, typing-extensions
-  # Contrib requirements
-, withContribRequires ? false
-, autoray ? null
-, opt-einsum
-, ply
-, pylatex ? null
-, pyquil ? null
-, quimb ? null
-  # test inputs
-, pytestCheckHook
-, freezegun
-, pytest-asyncio
+{
+  lib,
+  stdenv,
+  attrs,
+  autoray ? null,
+  buildPythonPackage,
+  duet,
+  fetchFromGitHub,
+  freezegun,
+  matplotlib,
+  networkx,
+  numpy,
+  opt-einsum,
+  pandas,
+  ply,
+  pylatex ? null,
+  pyquil ? null,
+  pytest-asyncio,
+  pytest-benchmark,
+  pytestCheckHook,
+  quimb ? null,
+  requests,
+  scipy,
+  setuptools,
+  sortedcontainers,
+  sympy,
+  tqdm,
+  typing-extensions,
+  withContribRequires ? false,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cirq-core";
-  version = "1.1.0";
-  format = "setuptools";
-
-  # Upstream package is broken on Python 3.11 https://github.com/quantumlib/Cirq/issues/6018
-  disabled = pythonOlder "3.7" || pythonAtLeast "3.11";
+  version = "1.7.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "quantumlib";
     repo = "cirq";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-5j4hbG95KRfRQTyyZgoNp/eHIcy0FphyEhbYnzyUMO4=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-OAyBYzMEFyVMlxN5UjrKk1x2rSayLyAIAC5h96JeqK0=";
   };
 
-  sourceRoot = "source/${pname}";
+  sourceRoot = "${finalAttrs.src.name}/${finalAttrs.pname}";
 
-  patches = [
-    # https://github.com/quantumlib/Cirq/pull/5991
-    (fetchpatch {
-      url = "https://build.opensuse.org/public/source/openSUSE:Factory/python-cirq/cirq-pr5991-np1.24.patch?rev=8";
-      stripLen = 1;
-      hash = "sha256-d2FpaxM1PsPWT9ZM9v2gVrnLCy9zmvkkyAVgo85eL3U=";
-    })
-  ];
+  pythonRelaxDeps = [ "matplotlib" ];
 
-  postPatch = ''
-    substituteInPlace requirements.txt \
-      --replace "matplotlib~=3.0" "matplotlib" \
-      --replace "networkx~=2.4" "networkx" \
-      --replace "numpy>=1.16,<1.24" "numpy"
-  '';
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    attrs
     duet
     matplotlib
     networkx
@@ -75,7 +60,8 @@ buildPythonPackage rec {
     sympy
     tqdm
     typing-extensions
-  ] ++ lib.optionals withContribRequires [
+  ]
+  ++ lib.optionals withContribRequires [
     autoray
     opt-einsum
     ply
@@ -85,9 +71,10 @@ buildPythonPackage rec {
   ];
 
   nativeCheckInputs = [
-    pytestCheckHook
-    pytest-asyncio
     freezegun
+    pytest-asyncio
+    pytest-benchmark
+    pytestCheckHook
   ];
 
   disabledTestPaths = lib.optionals (!withContribRequires) [
@@ -98,20 +85,23 @@ buildPythonPackage rec {
   ];
 
   disabledTests = [
-    # Tries to import flynt, which isn't in Nixpkgs
-    "test_metadata_search_path"
-    # Fails due pandas MultiIndex. Maybe issue with pandas version in nix?
-    "test_benchmark_2q_xeb_fidelities"
-    # https://github.com/quantumlib/Cirq/pull/5991
-    "test_json_and_repr_data"
+    # Assertion error
+    "test_parameterized_cphase"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isAarch64 [
+    # https://github.com/quantumlib/Cirq/issues/5924
+    "test_prepare_two_qubit_state_using_sqrt_iswap"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # test_scalar_division[scalar9-terms9-terms_expected9] result differs in the final digit
+    "test_scalar_division"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Framework for creating, editing, and invoking Noisy Intermediate Scale Quantum (NISQ) circuits";
     homepage = "https://github.com/quantumlib/cirq";
-    changelog = "https://github.com/quantumlib/Cirq/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ drewrisinger fab ];
-    broken = (stdenv.isLinux && stdenv.isAarch64);
+    changelog = "https://github.com/quantumlib/Cirq/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

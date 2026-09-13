@@ -1,15 +1,17 @@
-{ lib
-, stdenv
-, callPackage
-, fetchpatch
-, swift
-, swiftpm
-, swiftpm2nix
-, Foundation
-, XCTest
-, sqlite
-, ncurses
-, substituteAll
+{
+  lib,
+  stdenv,
+  callPackage,
+  fetchpatch,
+  swift,
+  swiftpm,
+  swiftpm2nix,
+  Foundation,
+  XCTest,
+  sqlite,
+  ncurses,
+  clang,
+  replaceVars,
 }:
 let
   sources = callPackage ../sources.nix { };
@@ -19,7 +21,7 @@ let
   # are part of libsystem. Adding its headers to the search path causes strange
   # mixing and errors.
   # TODO: Find a better way to prevent this conflict.
-  ncursesInput = if stdenv.isDarwin then ncurses.out else ncurses;
+  ncursesInput = if stdenv.hostPlatform.isDarwin then ncurses.out else ncurses;
 in
 stdenv.mkDerivation {
   pname = "swift-driver";
@@ -27,7 +29,10 @@ stdenv.mkDerivation {
   inherit (sources) version;
   src = sources.swift-driver;
 
-  nativeBuildInputs = [ swift swiftpm ];
+  nativeBuildInputs = [
+    swift
+    swiftpm
+  ];
   buildInputs = [
     Foundation
     XCTest
@@ -36,9 +41,10 @@ stdenv.mkDerivation {
   ];
 
   patches = [
-    ./patches/nix-resource-root.patch
     ./patches/disable-catalyst.patch
-    ./patches/linux-fix-linking.patch
+    (replaceVars ./patches/linux-fix-linking.patch {
+      inherit clang;
+    })
     # TODO: Replace with branch patch once merged:
     # https://github.com/apple/swift-driver/pull/1197
     (fetchpatch {
@@ -46,8 +52,7 @@ stdenv.mkDerivation {
       hash = "sha256-eVBaKN6uzj48ZnHtwGV0k5ChKjak1tDCyE+wTdyGq2c=";
     })
     # Prevent a warning about SDK directories we don't have.
-    (substituteAll {
-      src = ./patches/prevent-sdk-dirs-warnings.patch;
+    (replaceVars ./patches/prevent-sdk-dirs-warnings.patch {
       inherit (builtins) storeDir;
     })
   ];
@@ -72,6 +77,6 @@ stdenv.mkDerivation {
     homepage = "https://github.com/apple/swift-driver";
     platforms = with lib.platforms; linux ++ darwin;
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ dtzWill trepetti dduan trundle stephank ];
+    teams = [ lib.teams.swift ];
   };
 }

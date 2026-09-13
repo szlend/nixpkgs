@@ -1,35 +1,31 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, fetchPypi
-, fetchpatch
-, librosa
-, numpy
-, torch
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  librosa,
+  numpy,
+  torch,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "torchlibrosa";
-  version = "0.0.9";
-  format = "setuptools";
+  version = "0.1.0";
+  pyproject = true;
+
+  __structuredAttrs = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-+LzejKvLlJIIwWm9rYPCWQDSueIwnG5gbkwNE+wbv0A=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-Yqi+7fnJtBQaBiNN8/ECKfe6huZ2eMzuAkiexO8EQCg=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     librosa
     numpy
     torch
-  ];
-
-  patches = [
-    # Fix run against librosa 0.9.0, https://github.com/qiuqiangkong/torchlibrosa/pull/8
-    (fetchpatch {
-      url = "https://github.com/qiuqiangkong/torchlibrosa/commit/eec7e7559a47d0ef0017322aee29a31dad0572d5.patch";
-      hash = "sha256-c1x3MA14Plm7+lVuqiuLWgSY6FW615qnKbcWAfbrcas=";
-    })
   ];
 
   # Project has no tests.
@@ -41,10 +37,10 @@ buildPythonPackage rec {
   '';
   pythonImportsCheck = [ "torchlibrosa" ];
 
-  meta = with lib; {
-    description = "PyTorch implemention of part of librosa functions";
+  meta = {
+    description = "PyTorch implementation of part of librosa functions";
     homepage = "https://github.com/qiuqiangkong/torchlibrosa";
-    license = licenses.mit;
-    maintainers = with maintainers; [ azuwis ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ azuwis ];
   };
-}
+})

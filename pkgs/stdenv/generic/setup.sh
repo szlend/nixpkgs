@@ -4,51 +4,42 @@ __nixpkgs_setup_set_original=$-
 set -eu
 set -o pipefail
 
-if [[ -n "${BASH_VERSINFO-}" && "${BASH_VERSINFO-}" -lt 4 ]]; then
+if [[ -n "${BASH_VERSINFO-}" && "${BASH_VERSINFO-}" -lt 5 ]]; then
     echo "Detected Bash version that isn't supported by Nixpkgs (${BASH_VERSION})"
-    echo "Please install Bash 4 or greater to continue."
+    echo "Please install Bash 5 or greater to continue."
     exit 1
 fi
 
 shopt -s inherit_errexit
 
-if (( "${NIX_DEBUG:-0}" >= 6 )); then
+# $NIX_DEBUG must be a documented integer level, if set, so we can use it safely as an integer.
+# See the `Verbosity` enum in the Nix source for these levels.
+if ! [[ -z ${NIX_DEBUG-} || $NIX_DEBUG == [0-7] ]]; then
+    # shellcheck disable=SC2016
+    printf 'The `NIX_DEBUG` environment variable has an unexpected value: %s\n' "${NIX_DEBUG}"
+    echo "It can only be unset or an integer between 0 and 7."
+    exit 1
+fi
+
+if [[ ${NIX_DEBUG:-0} -ge 6 ]]; then
     set -x
 fi
 
-if [ -f .attrs.sh ]; then
+if [[ -n "${NIX_ATTRS_JSON_FILE:-}" ]]; then
     __structuredAttrs=1
     echo "structuredAttrs is enabled"
+
+    _exportOutputsByName() {
+        local outputName
+        for outputName in "${!outputs[@]}"; do
+            # ex: out=/nix/store/...
+            export "$outputName=${outputs[$outputName]}"
+        done
+    }
+
+    _exportOutputsByName
 else
     __structuredAttrs=
-fi
-
-if [ -n "$__structuredAttrs" ]; then
-    for outputName in "${!outputs[@]}"; do
-        # ex: out=/nix/store/...
-        export "$outputName=${outputs[$outputName]}"
-    done
-
-    # Before Nix 2.4, $NIX_ATTRS_*_FILE was named differently:
-    # https://github.com/NixOS/nix/commit/27ce722
-    if [[ -n "${ATTRS_JSON_FILE:-}" ]]; then
-        export NIX_ATTRS_JSON_FILE="$ATTRS_JSON_FILE"
-    fi
-
-    if [[ -n "${ATTRS_SH_FILE:-}" ]]; then
-        export NIX_ATTRS_SH_FILE="$ATTRS_SH_FILE"
-    fi
-
-    # $NIX_ATTRS_JSON_FILE pointed to the wrong location in sandbox
-    # https://github.com/NixOS/nix/issues/6736; please keep around until the
-    # fix reaches *every patch version* that's >= lib/minver.nix
-    if ! [[ -e "${NIX_ATTRS_JSON_FILE:-}" ]]; then
-        export NIX_ATTRS_JSON_FILE="$NIX_BUILD_TOP/.attrs.json"
-    fi
-    if ! [[ -e "${NIX_ATTRS_SH_FILE:-}" ]]; then
-        export NIX_ATTRS_SH_FILE="$NIX_BUILD_TOP/.attrs.sh"
-    fi
-else
     : "${outputs:=out}"
 fi
 
@@ -60,9 +51,150 @@ getAllOutputNames() {
     fi
 }
 
+# All provided arguments are joined with a space, then prefixed by the name of the function which invoked `nixLog` (or
+# the hook name if the caller was an implicit hook), then directed to $NIX_LOG_FD, if it's set.
+nixLog() {
+  # Return a value explicitly instead of the implicit return of the last command (result of the test).
+  # NOTE: By requiring NIX_LOG_FD be set, we avoid dumping logging inside of nix-shell.
+  [[ -z ${NIX_LOG_FD-} ]] && return 0
+
+  # Use the function name of the caller, unless it is _callImplicitHook, in which case use the name of the hook.
+  local callerName="${FUNCNAME[1]}"
+  if [[ $callerName == "_callImplicitHook" ]]; then
+    callerName="${hookName:?}"
+  fi
+  printf "%s: %s\n" "$callerName" "$*" >&"$NIX_LOG_FD"
+}
+
+# Identical to nixLog, but additionally prefixed by the logLevel.
+# NOTE: This function is only every meant to be called from the nix*Log family of functions.
+_nixLogWithLevel() {
+  # Return a value explicitly instead of the implicit return of the last command (result of the test).
+  # NOTE: By requiring NIX_LOG_FD be set, we avoid dumping logging inside of nix-shell.
+  [[ -z ${NIX_LOG_FD-} || ${NIX_DEBUG:-0} -lt ${1:?} ]] && return 0
+
+  local logLevel
+  case "${1:?}" in
+  0) logLevel=ERROR ;;
+  1) logLevel=WARN ;;
+  2) logLevel=NOTICE ;;
+  3) logLevel=INFO ;;
+  4) logLevel=TALKATIVE ;;
+  5) logLevel=CHATTY ;;
+  6) logLevel=DEBUG ;;
+  7) logLevel=VOMIT ;;
+  *)
+    echo "_nixLogWithLevel: called with invalid log level: ${1:?}" >&"$NIX_LOG_FD"
+    return 1
+    ;;
+  esac
+
+  # Use the function name of the caller, unless it is _callImplicitHook, in which case use the name of the hook.
+  # NOTE: Our index into FUNCNAME is 2, not 1, because we are only ever to be called from the nix*Log family of
+  # functions, never directly.
+  local callerName="${FUNCNAME[2]}"
+  if [[ $callerName == "_callImplicitHook" ]]; then
+    callerName="${hookName:?}"
+  fi
+
+  # Use the function name of the caller's caller, since we should only every be invoked by nix*Log functions.
+  printf "%s: %s: %s\n" "$logLevel" "$callerName" "${2:?}" >&"$NIX_LOG_FD"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlError` in the Nix source.
+nixErrorLog() {
+  _nixLogWithLevel 0 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlWarn` in the Nix source.
+nixWarnLog() {
+  _nixLogWithLevel 1 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlNotice` in the Nix source.
+nixNoticeLog() {
+  _nixLogWithLevel 2 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlInfo` in the Nix source.
+nixInfoLog() {
+  _nixLogWithLevel 3 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlTalkative` in the Nix source.
+nixTalkativeLog() {
+  _nixLogWithLevel 4 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlChatty` in the Nix source.
+nixChattyLog() {
+  _nixLogWithLevel 5 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlDebug` in the Nix source.
+nixDebugLog() {
+  _nixLogWithLevel 6 "$*"
+}
+
+# All provided arguments are joined with a space then directed to $NIX_LOG_FD, if it's set.
+# Corresponds to `Verbosity::lvlVomit` in the Nix source.
+nixVomitLog() {
+  _nixLogWithLevel 7 "$*"
+}
+
+# Log a hook, to be run before the hook is actually called.
+# logging for "implicit" hooks -- the ones specified directly
+# in derivation's arguments -- is done in _callImplicitHook instead.
+_logHook() {
+    # Fast path in case nixTalkativeLog is no-op.
+    if [[ -z ${NIX_LOG_FD-} ]]; then
+        return
+    fi
+
+    local hookKind="$1"
+    local hookExpr="$2"
+    shift 2
+
+    if declare -F "$hookExpr" > /dev/null 2>&1; then
+        nixTalkativeLog "calling '$hookKind' function hook '$hookExpr'" "$@"
+    elif type -p "$hookExpr" > /dev/null; then
+        nixTalkativeLog "sourcing '$hookKind' script hook '$hookExpr'"
+    elif [[ "$hookExpr" != "_callImplicitHook"* ]]; then
+        # Here we have a string hook to eval.
+        # Join lines onto one with literal \n characters unless NIX_DEBUG >= 5.
+        local exprToOutput
+        if [[ ${NIX_DEBUG:-0} -ge 5 ]]; then
+            exprToOutput="$hookExpr"
+        else
+            # We have `r'\n'.join([line.lstrip() for lines in text.split('\n')])` at home.
+            local hookExprLine
+            while IFS= read -r hookExprLine; do
+                # These lines often have indentation,
+                # so let's remove leading whitespace.
+                hookExprLine="${hookExprLine#"${hookExprLine%%[![:space:]]*}"}"
+                # If this line wasn't entirely whitespace,
+                # then add it to our output
+                if [[ -n "$hookExprLine" ]]; then
+                    exprToOutput+="$hookExprLine\\n "
+                fi
+            done <<< "$hookExpr"
+
+            # And then remove the final, unnecessary, \n
+            exprToOutput="${exprToOutput%%\\n }"
+        fi
+        nixTalkativeLog "evaling '$hookKind' string hook '$exprToOutput'"
+    fi
+}
+
 ######################################################################
 # Hook handling.
-
 
 # Run all hooks with the specified name in the order in which they
 # were added, stopping if any fails (returns a non-zero exit
@@ -77,6 +209,7 @@ runHook() {
     # Hack around old bash being bad and thinking empty arrays are
     # undefined.
     for hook in "_callImplicitHook 0 $hookName" ${!hooksSlice+"${!hooksSlice}"}; do
+        _logHook "$hookName" "$hook" "$@"
         _eval "$hook" "$@"
     done
 
@@ -94,6 +227,7 @@ runOneHook() {
     local hook ret=1
     # Hack around old bash like above
     for hook in "_callImplicitHook 1 $hookName" ${!hooksSlice+"${!hooksSlice}"}; do
+        _logHook "$hookName" "$hook" "$@"
         if _eval "$hook" "$@"; then
             ret=0
             break
@@ -113,10 +247,13 @@ _callImplicitHook() {
     local def="$1"
     local hookName="$2"
     if declare -F "$hookName" > /dev/null; then
+        nixTalkativeLog "calling implicit '$hookName' function hook"
         "$hookName"
     elif type -p "$hookName" > /dev/null; then
+        nixTalkativeLog "sourcing implicit '$hookName' script hook"
         source "$hookName"
     elif [ -n "${!hookName:-}" ]; then
+        nixTalkativeLog "evaling implicit '$hookName' string hook"
         eval "${!hookName}"
     else
         return "$def"
@@ -231,16 +368,16 @@ prependToVar() {
     fi
 
     # check if variable already exist and if it does then do extra checks
-    if declare -p "$1" 2> /dev/null | grep -q '^'; then
-        type="$(declare -p "$1")"
-        if [[ "$type" =~ "declare -A" ]]; then
-            echo "prependToVar(): ERROR: trying to use prependToVar on an associative array." >&2
-            return 1
-        elif [[ "$type" =~ "declare -a" ]]; then
-            useArray=true
-        else
-            useArray=false
-        fi
+    if type=$(declare -p "$1" 2> /dev/null); then
+        case "${type#* }" in
+            -A*)
+                echo "prependToVar(): ERROR: trying to use prependToVar on an associative array." >&2
+                return 1 ;;
+            -a*)
+                useArray=true ;;
+            *)
+                useArray=false ;;
+        esac
     fi
 
     shift
@@ -264,16 +401,16 @@ appendToVar() {
     fi
 
     # check if variable already exist and if it does then do extra checks
-    if declare -p "$1" 2> /dev/null | grep -q '^'; then
-        type="$(declare -p "$1")"
-        if [[ "$type" =~ "declare -A" ]]; then
-            echo "appendToVar(): ERROR: trying to use appendToVar on an associative array, use variable+=([\"X\"]=\"Y\") instead." >&2
-            return 1
-        elif [[ "$type" =~ "declare -a" ]]; then
-            useArray=true
-        else
-            useArray=false
-        fi
+    if type=$(declare -p "$1" 2> /dev/null); then
+        case "${type#* }" in
+            -A*)
+                echo "appendToVar(): ERROR: trying to use appendToVar on an associative array, use variable+=([\"X\"]=\"Y\") instead." >&2
+                return 1 ;;
+            -a*)
+                useArray=true ;;
+            *)
+                useArray=false ;;
+        esac
     fi
 
     shift
@@ -285,34 +422,81 @@ appendToVar() {
     fi
 }
 
-# Accumulate into `flagsArray` the flags from the named variables.
+# Accumulate flags from the named variables $2+ into the indexed array $1.
 #
-# If __structuredAttrs, the variables are all treated as arrays
-# and simply concatenated onto `flagsArray`.
-#
-# If not __structuredAttrs, then:
-#   * Each variable is treated as a string, and split on whitespace;
-#   * except variables whose names end in "Array", which are treated
-#     as arrays.
-_accumFlagsArray() {
-    local name
-    if [ -n "$__structuredAttrs" ]; then
-        for name in "$@"; do
-            local -n nameref="$name"
-            flagsArray+=( ${nameref+"${nameref[@]}"} )
-        done
-    else
-        for name in "$@"; do
-            local -n nameref="$name"
-            case "$name" in
-                *Array)
-                    flagsArray+=( ${nameref+"${nameref[@]}"} ) ;;
+# Arrays are simply concatenated, strings are split on whitespace.
+# Default values can be passed via name=default.
+concatTo() {
+    local -
+    set -o noglob
+    local -n targetref="$1"; shift
+    local arg default name type
+    for arg in "$@"; do
+        IFS="=" read -r name default <<< "$arg"
+        local -n nameref="$name"
+        if [[ -z "${nameref[*]}" && -n "$default" ]]; then
+            targetref+=( "$default" )
+        elif type=$(declare -p "$name" 2> /dev/null); then
+            case "${type#* }" in
+                -A*)
+                    echo "concatTo(): ERROR: trying to use concatTo on an associative array." >&2
+                    return 1 ;;
+                -a*)
+                    targetref+=( "${nameref[@]}" ) ;;
                 *)
-                    flagsArray+=( ${nameref-} ) ;;
+                    if [[ "$name" = *"Array" ]]; then
+                        nixErrorLog "concatTo(): $name is not declared as array, treating as a singleton. This will become an error in future"
+                        # Reproduces https://github.com/NixOS/nixpkgs/pull/318614/files#diff-7c7ca80928136cfc73a02d5b28350bd900e331d6d304857053ffc9f7beaad576L359
+                        targetref+=( ${nameref+"${nameref[@]}"} )
+                    else
+                        # shellcheck disable=SC2206
+                        targetref+=( ${nameref-} )
+                    fi
+                    ;;
             esac
-        done
-    fi
+        fi
+    done
+}
 
+# Concatenate a list of strings ($2) with a separator ($1) between each element.
+# The list can be an indexed array of strings or a single string. A single string
+# is split on spaces and then concatenated with the separator.
+#
+# $ flags="lorem ipsum dolor sit amet"
+# $ concatStringsSep ";" flags
+# lorem;ipsum;dolor;sit;amet
+#
+# $ flags=("lorem ipsum" "dolor" "sit amet")
+# $ concatStringsSep ";" flags
+# lorem ipsum;dolor;sit amet
+#
+# Also supports multi-character separators;
+# $ flags=("lorem ipsum" "dolor" "sit amet")
+# $ concatStringsSep " and " flags
+# lorem ipsum and dolor and sit amet
+concatStringsSep() {
+    local sep="$1"
+    local name="$2"
+    local type oldifs
+    if type=$(declare -p "$name" 2> /dev/null); then
+        local -n nameref="$name"
+        case "${type#* }" in
+            -A*)
+                echo "concatStringsSep(): ERROR: trying to use concatStringsSep on an associative array." >&2
+                return 1 ;;
+            -a*)
+                # \036 is the "record separator" character. We assume that this will never need to be part of
+                # an argument string we create here. If anyone ever hits this limitation: Feel free to refactor.
+                # To avoid leaking an unescaped rs character when dumping the environment with nix, we use printf
+                # in a subshell.
+                local IFS="$(printf '\036')" ;;
+            *)
+                local IFS=" " ;;
+
+        esac
+        local ifs_separated="${nameref[*]}"
+        echo -n "${ifs_separated//"$IFS"/"$sep"}"
+    fi
 }
 
 # Add $1/lib* into rpaths.
@@ -330,7 +514,7 @@ isELF() {
     local fd
     local magic
     exec {fd}< "$fn"
-    read -r -n 4 -u "$fd" magic
+    LANG=C read -r -n 4 -u "$fd" magic
     exec {fd}<&-
     if [ "$magic" = $'\177ELF' ]; then return 0; else return 1; fi
 }
@@ -341,7 +525,7 @@ isMachO() {
     local fd
     local magic
     exec {fd}< "$fn"
-    read -r -n 4 -u "$fd" magic
+    LANG=C read -r -n 4 -u "$fd" magic
     exec {fd}<&-
 
     # nix uses 'declare -F' in get-env.sh to retrieve the loaded functions.
@@ -370,7 +554,7 @@ isScript() {
     local fd
     local magic
     exec {fd}< "$fn"
-    read -r -n 2 -u "$fd" magic
+    LANG=C read -r -n 2 -u "$fd" magic
     exec {fd}<&-
     if [[ "$magic" =~ \#! ]]; then return 0; else return 1; fi
 }
@@ -430,10 +614,7 @@ done
 
 unset i
 
-if (( "${NIX_DEBUG:-0}" >= 1 )); then
-    echo "initial path: $PATH"
-fi
-
+nixWarnLog "initial path: $PATH"
 
 # Check that the pre-hook initialised SHELL.
 if [ -z "${SHELL:-}" ]; then echo "SHELL not set"; exit 1; fi
@@ -527,7 +708,9 @@ findInputs() {
     # Sanity check
     (( hostOffset <= targetOffset )) || exit 1
 
+    # shellcheck disable=SC1087
     local varVar="${pkgAccumVarVars[hostOffset + 1]}"
+    # shellcheck disable=SC1087
     local varRef="$varVar[$((targetOffset - hostOffset))]"
     local var="${!varRef}"
     unset -v varVar varRef
@@ -536,9 +719,10 @@ findInputs() {
     # nix-shell doesn't use impure bash. This should replace the O(n)
     # case with an O(1) hash map lookup, assuming bash is implemented
     # well :D.
+    # shellcheck disable=SC1087
     local varSlice="$var[*]"
     # ${..-} to hack around old bash empty array problem
-    case "${!varSlice-}" in
+    case " ${!varSlice-} " in
         *" $pkg "*) return 0 ;;
     esac
     unset -v varSlice
@@ -657,6 +841,7 @@ activatePackage() {
     (( hostOffset <= targetOffset )) || exit 1
 
     if [ -f "$pkg" ]; then
+        nixTalkativeLog "sourcing setup hook '$pkg'"
         source "$pkg"
     fi
 
@@ -680,6 +865,7 @@ activatePackage() {
     fi
 
     if [[ -f "$pkg/nix-support/setup-hook" ]]; then
+        nixTalkativeLog "sourcing setup hook '$pkg/nix-support/setup-hook'"
         source "$pkg/nix-support/setup-hook"
     fi
 }
@@ -791,11 +977,10 @@ fi
 PATH="${_PATH-}${_PATH:+${PATH:+:}}$PATH"
 HOST_PATH="${_HOST_PATH-}${_HOST_PATH:+${HOST_PATH:+:}}$HOST_PATH"
 export XDG_DATA_DIRS="${_XDG_DATA_DIRS-}${_XDG_DATA_DIRS:+${XDG_DATA_DIRS:+:}}${XDG_DATA_DIRS-}"
-if (( "${NIX_DEBUG:-0}" >= 1 )); then
-    echo "final path: $PATH"
-    echo "final host path: $HOST_PATH"
-    echo "final data dirs: $XDG_DATA_DIRS"
-fi
+
+nixWarnLog "final path: $PATH"
+nixWarnLog "final host path: $HOST_PATH"
+nixWarnLog "final data dirs: $XDG_DATA_DIRS"
 
 unset _PATH
 unset _HOST_PATH
@@ -828,6 +1013,8 @@ fi
 ######################################################################
 # Textual substitution functions.
 
+# only log once, due to max logging limit on hydra
+_substituteStream_has_warned_replace_deprecation=false
 
 substituteStream() {
     local var=$1
@@ -835,19 +1022,30 @@ substituteStream() {
     shift 2
 
     while (( "$#" )); do
+        local replace_mode="$1"
         case "$1" in
             --replace)
+                # deprecated 2023-11-22
+                # this will either get removed, or switch to the behaviour of --replace-fail in the future
+                if ! "$_substituteStream_has_warned_replace_deprecation"; then
+                    echo "substituteStream() in derivation $name: WARNING: '--replace' is deprecated, use --replace-{fail,warn,quiet}. ($description)" >&2
+                    _substituteStream_has_warned_replace_deprecation=true
+                fi
+                replace_mode='--replace-warn'
+                ;&
+            --replace-quiet|--replace-warn|--replace-fail)
                 pattern="$2"
                 replacement="$3"
                 shift 3
-                local savedvar
-                savedvar="${!var}"
-                eval "$var"'=${'"$var"'//"$pattern"/"$replacement"}'
-                if [ "$pattern" != "$replacement" ]; then
-                    if [ "${!var}" == "$savedvar" ]; then
-                        echo "substituteStream(): WARNING: pattern '$pattern' doesn't match anything in $description" >&2
+                if ! [[ "${!var}" == *"$pattern"* ]]; then
+                    if [ "$replace_mode" == --replace-warn ]; then
+                        printf "substituteStream() in derivation $name: WARNING: pattern %q doesn't match anything in %s\n" "$pattern" "$description" >&2
+                    elif [ "$replace_mode" == --replace-fail ]; then
+                        printf "substituteStream() in derivation $name: ERROR: pattern %q doesn't match anything in %s\n" "$pattern" "$description" >&2
+                        return 1
                     fi
                 fi
+                eval "$var"'=${'"$var"'//"$pattern"/"$replacement"}'
                 ;;
 
             --subst-var)
@@ -855,11 +1053,11 @@ substituteStream() {
                 shift 2
                 # check if the used nix attribute name is a valid bash name
                 if ! [[ "$varName" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
-                    echo "substituteStream(): ERROR: substitution variables must be valid Bash names, \"$varName\" isn't." >&2
+                    echo "substituteStream() in derivation $name: ERROR: substitution variables must be valid Bash names, \"$varName\" isn't." >&2
                     return 1
                 fi
                 if [ -z ${!varName+x} ]; then
-                    echo "substituteStream(): ERROR: variable \$$varName is unset" >&2
+                    echo "substituteStream() in derivation $name: ERROR: variable \$$varName is unset" >&2
                     return 1
                 fi
                 pattern="@$varName@"
@@ -875,7 +1073,7 @@ substituteStream() {
                 ;;
 
             *)
-                echo "substituteStream(): ERROR: Invalid command line argument: $1" >&2
+                echo "substituteStream() in derivation $name: ERROR: Invalid command line argument: $1" >&2
                 return 1
                 ;;
         esac
@@ -920,6 +1118,10 @@ substituteInPlace() {
         fileNames+=("$arg")
         shift
     done
+    if ! [[ "${#fileNames[@]}" -gt 0 ]]; then
+        echo >&2 "substituteInPlace called without any files to operate on (files must come before options!)"
+        return 1
+    fi
 
     for file in "${fileNames[@]}"; do
         substitute "$file" "$file" "$@"
@@ -927,16 +1129,13 @@ substituteInPlace() {
 }
 
 _allFlags() {
-    # export some local variables for the awk below
-    # so some substitutions such as name don't have to be in the env attrset
-    # when __structuredAttrs is enabled
+    # Export some local variables for the `awk` below so some substitutions (such as name)
+    # don't have to be in the env attrset when `__structuredAttrs` is enabled.
     export system pname name version
-    for varName in $(awk 'BEGIN { for (v in ENVIRON) if (v ~ /^[a-z][a-zA-Z0-9_]*$/) print v }'); do
-        if (( "${NIX_DEBUG:-0}" >= 1 )); then
-            printf "@%s@ -> %q\n" "${varName}" "${!varName}"
-        fi
+    while IFS='' read -r varName; do
+        nixTalkativeLog "@${varName}@ -> ${!varName}"
         args+=("--subst-var" "$varName")
-    done
+    done < <(awk 'BEGIN { for (v in ENVIRON) if (v ~ /^[a-z][a-zA-Z0-9_]*$/) print v }')
 }
 
 substituteAllStream() {
@@ -970,14 +1169,23 @@ substituteAllInPlace() {
 # What follows is the generic builder.
 
 
-# This function is useful for debugging broken Nix builds.  It dumps
-# all environment variables to a file `env-vars' in the build
-# directory.  If the build fails and the `-K' option is used, you can
-# then go to the build directory and source in `env-vars' to reproduce
-# the environment used for building.
+# This function is useful for debugging broken Nix builds. It dumps all environment variables to a
+# file `env-vars' in the Nix build directory. If the build fails and the `-K' option is used,
+# you can then go to the build directory and source the `env-vars' file to reproduce the environment
+# used for building. Set `noDumpEnvVars` in the derivation to avoid this, and if for whatever reason
+# `$NIX_BUILD_TOP` is not a directory, this function also does nothing.
 dumpVars() {
-    if [ "${noDumpEnvVars:-0}" != 1 ]; then
-        export 2>/dev/null >| "$NIX_BUILD_TOP/env-vars" || true
+    if [[ "${noDumpEnvVars:-0}" != 1 && -d "$NIX_BUILD_TOP" ]]; then
+        # Set umask to create env-vars file with 0600 permissions (owner read/write only)
+        local old_umask
+        old_umask=$(umask)
+        umask 0077
+
+        # Dump all environment variables to the env-vars file
+        export 2>/dev/null > "$NIX_BUILD_TOP/env-vars"
+
+        # Restore original umask
+        umask "$old_umask"
     fi
 }
 
@@ -1050,19 +1258,27 @@ _defaultUnpack() {
         # We can't preserve hardlinks because they may have been
         # introduced by store optimization, which might break things
         # in the build.
-        cp -pr --reflink=auto -- "$fn" "$destination"
+        cp -r --preserve=timestamps --reflink=auto -- "$fn" "$destination"
 
     else
 
         case "$fn" in
             *.tar.xz | *.tar.lzma | *.txz)
                 # Don't rely on tar knowing about .xz.
-                xz -d < "$fn" | tar xf - --warning=no-timestamp
+                # Additionally, we have multiple different xz binaries with different feature sets in different
+                # stages. The XZ_OPT env var is only used by the full "XZ utils" implementation, which supports
+                # the --threads (-T) flag. This allows us to enable multithreaded decompression exclusively on
+                # that implementation, without the use of complex bash conditionals and checks.
+                # Since tar does not control the decompression, we need to
+                # disregard the error code from the xz invocation. Otherwise,
+                # it can happen that tar exits earlier, causing xz to fail
+                # from a SIGPIPE.
+                (XZ_OPT="--threads=$NIX_BUILD_CORES" xz -d < "$fn"; true) | tar xf - --mode=+w --warning=no-timestamp
                 ;;
             *.tar | *.tar.* | *.tgz | *.tbz2 | *.tbz)
                 # GNU tar can automatically select the decompression method
                 # (info "(tar) gzip").
-                tar xf "$fn" --warning=no-timestamp
+                tar xf "$fn" --mode=+w --warning=no-timestamp
                 ;;
             *)
                 return 1
@@ -1096,11 +1312,7 @@ unpackPhase() {
     fi
 
     local -a srcsArray
-    if [ -n "$__structuredAttrs" ]; then
-        srcsArray=( "${srcs[@]}" )
-    else
-        srcsArray=( $srcs )
-    fi
+    concatTo srcsArray srcs
 
     # To determine the source directory created by unpacking the
     # source archives, we record the contents of the current
@@ -1165,11 +1377,10 @@ patchPhase() {
     runHook prePatch
 
     local -a patchesArray
-    if [ -n "$__structuredAttrs" ]; then
-        patchesArray=( ${patches:+"${patches[@]}"} )
-    else
-        patchesArray=( ${patches:-} )
-    fi
+    concatTo patchesArray patches
+
+    local -a flagsArray
+    concatTo flagsArray patchFlags=-p1
 
     for i in "${patchesArray[@]}"; do
         echo "applying patch $i"
@@ -1189,13 +1400,6 @@ patchPhase() {
                 ;;
         esac
 
-        local -a flagsArray
-        if [ -n "$__structuredAttrs" ]; then
-            flagsArray=( "${patchFlags[@]:--p1}" )
-        else
-            # shellcheck disable=SC2086
-            flagsArray=( ${patchFlags:--p1} )
-        fi
         # "2>&1" is a hack to make patch fail if the decompressor fails (nonexistent patch, etc.)
         # shellcheck disable=SC2086
         $uncompress < "$i" 2>&1 | patch "${flagsArray[@]}"
@@ -1216,7 +1420,7 @@ fixLibtool() {
     done
 
     sed -i "$1" \
-        -e "s^eval \(sys_lib_search_path=\).*^\1'$search_path'^" \
+        -e "s^eval \(sys_lib_search_path=\).*^\1'${search_path:-}'^" \
         -e 's^eval sys_lib_.+search_path=.*^^'
 }
 
@@ -1256,7 +1460,16 @@ configurePhase() {
     fi
 
     if [[ -z "${dontAddPrefix:-}" && -n "$prefix" ]]; then
-        prependToVar configureFlags "${prefixKey:---prefix=}$prefix"
+        # For __structuredAttrs: if prefixKey ends in a space,
+        # we need to add the prefixKey and the prefix as separate entries,
+        # and since we prepend, we do it in reverse order.
+        local -r prefixKeyOrDefault="${prefixKey:---prefix=}"
+        if [ "${prefixKeyOrDefault: -1}" = " " ]; then
+            prependToVar configureFlags "$prefix"
+            prependToVar configureFlags "${prefixKeyOrDefault::-1}"
+        else
+            prependToVar configureFlags "$prefixKeyOrDefault$prefix"
+        fi
     fi
 
     if [[ -f "$configureScript" ]]; then
@@ -1273,11 +1486,15 @@ configurePhase() {
                 prependToVar configureFlags --disable-static
             fi
         fi
+
+        if [ -z "${dontPatchShebangsInConfigure:-}" ]; then
+            patchShebangs --build "$configureScript"
+        fi
     fi
 
     if [ -n "$configureScript" ]; then
         local -a flagsArray
-        _accumFlagsArray configureFlags configureFlagsArray
+        concatTo flagsArray configureFlags configureFlagsArray
 
         echoCmd 'configure flags' "${flagsArray[@]}"
         # shellcheck disable=SC2086
@@ -1302,9 +1519,9 @@ buildPhase() {
         # shellcheck disable=SC2086
         local flagsArray=(
             ${enableParallelBuilding:+-j${NIX_BUILD_CORES}}
-            SHELL=$SHELL
+            SHELL="$SHELL"
         )
-        _accumFlagsArray makeFlags makeFlagsArray buildFlags buildFlagsArray
+        concatTo flagsArray makeFlags makeFlagsArray buildFlags buildFlagsArray
 
         echoCmd 'build flags' "${flagsArray[@]}"
         make ${makefile:+-f $makefile} "${flagsArray[@]}"
@@ -1327,9 +1544,9 @@ checkPhase() {
     if [[ -z "${checkTarget:-}" ]]; then
         #TODO(@oxij): should flagsArray influence make -n?
         if make -n ${makefile:+-f $makefile} check >/dev/null 2>&1; then
-            checkTarget=check
+            checkTarget="check"
         elif make -n ${makefile:+-f $makefile} test >/dev/null 2>&1; then
-            checkTarget=test
+            checkTarget="test"
         fi
     fi
 
@@ -1340,17 +1557,10 @@ checkPhase() {
         # shellcheck disable=SC2086
         local flagsArray=(
             ${enableParallelChecking:+-j${NIX_BUILD_CORES}}
-            SHELL=$SHELL
+            SHELL="$SHELL"
         )
 
-        _accumFlagsArray makeFlags makeFlagsArray
-        if [ -n "$__structuredAttrs" ]; then
-            flagsArray+=( "${checkFlags[@]:-VERBOSE=y}" )
-        else
-            flagsArray+=( ${checkFlags:-VERBOSE=y} )
-        fi
-        _accumFlagsArray checkFlagsArray
-        flagsArray+=( ${checkTarget} )
+        concatTo flagsArray makeFlags makeFlagsArray checkFlags=VERBOSE=y checkFlagsArray checkTarget
 
         echoCmd 'check flags' "${flagsArray[@]}"
         make ${makefile:+-f $makefile} "${flagsArray[@]}"
@@ -1381,14 +1591,10 @@ installPhase() {
     # shellcheck disable=SC2086
     local flagsArray=(
         ${enableParallelInstalling:+-j${NIX_BUILD_CORES}}
-        SHELL=$SHELL
+        SHELL="$SHELL"
     )
-    _accumFlagsArray makeFlags makeFlagsArray installFlags installFlagsArray
-    if [ -n "$__structuredAttrs" ]; then
-        flagsArray+=( "${installTargets[@]:-install}" )
-    else
-        flagsArray+=( ${installTargets:-install} )
-    fi
+
+    concatTo flagsArray makeFlags makeFlagsArray installFlags installFlagsArray installTargets=install
 
     echoCmd 'install flags' "${flagsArray[@]}"
     make ${makefile:+-f $makefile} "${flagsArray[@]}"
@@ -1405,7 +1611,8 @@ fixupPhase() {
     # Make sure everything is writable so "strip" et al. work.
     local output
     for output in $(getAllOutputNames); do
-        if [ -e "${!output}" ]; then chmod -R u+w "${!output}"; fi
+        # for set*id bits see #300635
+        if [ -e "${!output}" ]; then chmod -R u+w,u-s,g-s "${!output}"; fi
     done
 
     runHook preFixup
@@ -1443,10 +1650,9 @@ fixupPhase() {
 
     # Propagate user-env packages into the output with binaries, TODO?
 
-    if [ -n "${propagatedUserEnvPkgs:-}" ]; then
+    if [ -n "${propagatedUserEnvPkgs[*]:-}" ]; then
         mkdir -p "${!outputBin}/nix-support"
-        # shellcheck disable=SC2086
-        printWords $propagatedUserEnvPkgs > "${!outputBin}/nix-support/propagated-user-env-packages"
+        printWords "${propagatedUserEnvPkgs[@]}" > "${!outputBin}/nix-support/propagated-user-env-packages"
     fi
 
     runHook postFixup
@@ -1467,12 +1673,11 @@ installCheckPhase() {
         # shellcheck disable=SC2086
         local flagsArray=(
             ${enableParallelChecking:+-j${NIX_BUILD_CORES}}
-            SHELL=$SHELL
+            SHELL="$SHELL"
         )
 
-        _accumFlagsArray makeFlags makeFlagsArray \
-          installCheckFlags installCheckFlagsArray
-        flagsArray+=( ${installCheckTarget:-installcheck} )
+        concatTo flagsArray makeFlags makeFlagsArray \
+          installCheckFlags installCheckFlagsArray installCheckTarget=installcheck
 
         echoCmd 'installcheck flags' "${flagsArray[@]}"
         make ${makefile:+-f $makefile} "${flagsArray[@]}"
@@ -1487,8 +1692,7 @@ distPhase() {
     runHook preDist
 
     local flagsArray=()
-    _accumFlagsArray distFlags distFlagsArray
-    flagsArray+=( ${distTarget:-dist} )
+    concatTo flagsArray distFlags distFlagsArray distTarget=dist
 
     echo 'dist flags: %q' "${flagsArray[@]}"
     make ${makefile:+-f $makefile} "${flagsArray[@]}"
@@ -1508,17 +1712,14 @@ distPhase() {
 
 showPhaseHeader() {
     local phase="$1"
-    case "$phase" in
-        unpackPhase) echo "unpacking sources";;
-        patchPhase) echo "patching sources";;
-        configurePhase) echo "configuring";;
-        buildPhase) echo "building";;
-        checkPhase) echo "running tests";;
-        installPhase) echo "installing";;
-        fixupPhase) echo "post-installation fixup";;
-        installCheckPhase) echo "running install tests";;
-        *) echo "$phase";;
-    esac
+    echo "Running phase: $phase"
+
+    # The Nix structured logger allows derivations to update the phase as they're building,
+    # which shows up in the terminal UI. See `handleJSONLogMessage` in the Nix source.
+    if [[ -z ${NIX_LOG_FD-} ]]; then
+        return
+    fi
+    printf "@nix { \"action\": \"setPhase\", \"phase\": \"%s\" }\n" "$phase" >&"$NIX_LOG_FD"
 }
 
 
@@ -1539,6 +1740,60 @@ showPhaseFooter() {
 }
 
 
+runPhase() {
+    local curPhase="$*"
+    if [[ "$curPhase" = unpackPhase && -n "${dontUnpack:-}" ]]; then return; fi
+    if [[ "$curPhase" = patchPhase && -n "${dontPatch:-}" ]]; then return; fi
+    if [[ "$curPhase" = configurePhase && -n "${dontConfigure:-}" ]]; then return; fi
+    if [[ "$curPhase" = buildPhase && -n "${dontBuild:-}" ]]; then return; fi
+    if [[ "$curPhase" = checkPhase && -z "${doCheck:-}" ]]; then return; fi
+    if [[ "$curPhase" = installPhase && -n "${dontInstall:-}" ]]; then return; fi
+    if [[ "$curPhase" = fixupPhase && -n "${dontFixup:-}" ]]; then return; fi
+    if [[ "$curPhase" = installCheckPhase && -z "${doInstallCheck:-}" ]]; then return; fi
+    if [[ "$curPhase" = distPhase && -z "${doDist:-}" ]]; then return; fi
+
+    showPhaseHeader "$curPhase"
+    dumpVars
+
+    local startTime endTime
+    startTime=$(date +"%s")
+
+    # Evaluate the variable named $curPhase if it exists, otherwise the
+    # function named $curPhase.
+    eval "${!curPhase:-$curPhase}"
+
+    endTime=$(date +"%s")
+
+    showPhaseFooter "$curPhase" "$startTime" "$endTime"
+
+    if [ "$curPhase" = unpackPhase ]; then
+        # make sure we can cd into the directory
+        [ -n "${sourceRoot:-}" ] && chmod +x -- "${sourceRoot}"
+
+        cd -- "${sourceRoot:-.}"
+    fi
+}
+
+definePhases() {
+    # only defines phases if it is not already defined
+    if [ -z "${phases[*]:-}" ]; then
+        phases="${prePhases[*]:-} unpackPhase patchPhase ${preConfigurePhases[*]:-} \
+            configurePhase ${preBuildPhases[*]:-} buildPhase checkPhase \
+            ${preInstallPhases[*]:-} installPhase ${preFixupPhases[*]:-} fixupPhase installCheckPhase \
+            ${preDistPhases[*]:-} distPhase ${postPhases[*]:-}"
+    fi
+}
+
+printPhases() {
+    definePhases
+    # one phase per line, to make it easy to consume with tools like xargs
+    # explicitly uses the same splitting as genericBuild
+    local phase
+    for phase in ${phases[*]}; do
+        printf '%s\n' "$phase"
+    done
+}
+
 genericBuild() {
     # variable used by our gzip wrapper to add -n.
     # gzip is in common-path.nix and is added to nix-shell but we only want to change its behaviour in nix builds. do not move to a setupHook in gzip.
@@ -1553,51 +1808,14 @@ genericBuild() {
         return
     fi
 
-    if [ -z "${phases[*]:-}" ]; then
-        phases="${prePhases[*]:-} unpackPhase patchPhase ${preConfigurePhases[*]:-} \
-            configurePhase ${preBuildPhases[*]:-} buildPhase checkPhase \
-            ${preInstallPhases[*]:-} installPhase ${preFixupPhases[*]:-} fixupPhase installCheckPhase \
-            ${preDistPhases[*]:-} distPhase ${postPhases[*]:-}";
-    fi
+    definePhases
 
     # The use of ${phases[*]} gives the correct behavior both with and
     # without structured attrs.  This relies on the fact that each
     # phase name is space-free, which it must be because it's the name
     # of either a shell variable or a shell function.
     for curPhase in ${phases[*]}; do
-        if [[ "$curPhase" = unpackPhase && -n "${dontUnpack:-}" ]]; then continue; fi
-        if [[ "$curPhase" = patchPhase && -n "${dontPatch:-}" ]]; then continue; fi
-        if [[ "$curPhase" = configurePhase && -n "${dontConfigure:-}" ]]; then continue; fi
-        if [[ "$curPhase" = buildPhase && -n "${dontBuild:-}" ]]; then continue; fi
-        if [[ "$curPhase" = checkPhase && -z "${doCheck:-}" ]]; then continue; fi
-        if [[ "$curPhase" = installPhase && -n "${dontInstall:-}" ]]; then continue; fi
-        if [[ "$curPhase" = fixupPhase && -n "${dontFixup:-}" ]]; then continue; fi
-        if [[ "$curPhase" = installCheckPhase && -z "${doInstallCheck:-}" ]]; then continue; fi
-        if [[ "$curPhase" = distPhase && -z "${doDist:-}" ]]; then continue; fi
-
-        if [[ -n $NIX_LOG_FD ]]; then
-            echo "@nix { \"action\": \"setPhase\", \"phase\": \"$curPhase\" }" >&"$NIX_LOG_FD"
-        fi
-
-        showPhaseHeader "$curPhase"
-        dumpVars
-
-        local startTime=$(date +"%s")
-
-        # Evaluate the variable named $curPhase if it exists, otherwise the
-        # function named $curPhase.
-        eval "${!curPhase:-$curPhase}"
-
-        local endTime=$(date +"%s")
-
-        showPhaseFooter "$curPhase" "$startTime" "$endTime"
-
-        if [ "$curPhase" = unpackPhase ]; then
-            # make sure we can cd into the directory
-            [ -z "${sourceRoot}" ] || chmod +x "${sourceRoot}"
-
-            cd "${sourceRoot:-.}"
-        fi
+        runPhase "$curPhase"
     done
 }
 

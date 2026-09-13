@@ -1,37 +1,39 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
 
-, coqpit
-, fsspec
-, torch-bin
-, tensorboard
-, protobuf
-, psutil
+  coqpit,
+  fsspec,
+  torch,
+  tensorboard,
+  protobuf,
+  psutil,
 
-, pytestCheckHook
-, soundfile
-, torchvision-bin
+  pytestCheckHook,
+  soundfile,
+  torchvision,
 }:
 
 let
-  pname = "trainer";
-  version = "0.0.27";
+  pname = "coqui-tts-trainer";
+  version = "0.3.2";
 in
 buildPythonPackage {
   inherit pname version;
-  format = "pyproject";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "coqui-ai";
-    repo = "Trainer";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-2uITlcaGcRujhSZPK746d13X8ZrgaGbfMZruLmTpQIs=";
+    owner = "idiap";
+    repo = "coqui-ai-Trainer";
+    tag = "v${version}";
+    hash = "sha256-lZmRniy8M3vsh0gCip9Eg0CwgDwcZnY1quy1VwU0O5I=";
   };
 
-  postPatch = ''
-    sed -i 's/^protobuf.*/protobuf/' requirements.txt
-  '';
+  nativeBuildInputs = [
+    hatchling
+  ];
 
   propagatedBuildInputs = [
     coqpit
@@ -40,7 +42,7 @@ buildPythonPackage {
     psutil
     soundfile
     tensorboard
-    torch-bin
+    torch
   ];
 
   # only one test and that requires training data from the internet
@@ -48,18 +50,16 @@ buildPythonPackage {
 
   nativeCheckInputs = [
     pytestCheckHook
-    torchvision-bin
+    torchvision
   ];
 
-  pythonImportsCheck = [
-    "trainer"
-  ];
+  pythonImportsCheck = [ "trainer" ];
 
-  meta = with lib; {
-    description = "A general purpose model trainer, as flexible as it gets";
-    homepage = "https://github.com/coqui-ai/Trainer";
-    changelog = "https://github.com/coqui-ai/Trainer/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = teams.tts.members;
+  meta = {
+    description = "General purpose model trainer, as flexible as it gets";
+    homepage = "https://github.com/idiap/coqui-ai-Trainer";
+    changelog = "https://github.com/idiap/coqui-ai-Trainer/releases/tag/v${version}";
+    license = lib.licenses.asl20;
+    teams = [ lib.teams.tts ];
   };
 }

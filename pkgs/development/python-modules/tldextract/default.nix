@@ -1,34 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, filelock
-, idna
-, pytest-mock
-, pytestCheckHook
-, pythonOlder
-, requests
-, requests-file
-, responses
-, setuptools-scm
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  filelock,
+  idna,
+  pytest-mock,
+  pytestCheckHook,
+  requests,
+  requests-file,
+  responses,
+  setuptools,
+  setuptools-scm,
+  sybil,
+  syrupy,
 }:
 
-buildPythonPackage rec {
-  pname   = "tldextract";
-  version = "3.4.4";
-  format = "setuptools";
+buildPythonPackage (finalAttrs: {
+  pname = "tldextract";
+  version = "5.3.2";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-X+MhDFd0Y1RRkdRa1SLT1eeNVSGM6XIV6CAE3K4eEjQ=";
+  src = fetchFromGitHub {
+    owner = "john-kurkowski";
+    repo = "tldextract";
+    tag = finalAttrs.version;
+    hash = "sha256-n5lwh1A57gpdTRpXx3TJ9qZwEEHGSb3Nm7U3TOPDsk4=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
+    setuptools
     setuptools-scm
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     filelock
     idna
     requests
@@ -39,25 +43,22 @@ buildPythonPackage rec {
     pytest-mock
     pytestCheckHook
     responses
+    sybil
+    syrupy
   ];
 
-  postPatch = ''
-    substituteInPlace pytest.ini \
-      --replace " --pylint" ""
-  '';
+  pythonImportsCheck = [ "tldextract" ];
 
-  pythonImportsCheck = [
-    "tldextract"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python module to accurately separate the TLD from the domain of an URL";
     longDescription = ''
       tldextract accurately separates the gTLD or ccTLD (generic or country code top-level domain)
       from the registered domain and subdomains of a URL.
     '';
     homepage = "https://github.com/john-kurkowski/tldextract";
-    license = with licenses; [ bsd3 ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/john-kurkowski/tldextract/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "tldextract";
   };
-}
+})

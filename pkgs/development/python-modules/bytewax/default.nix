@@ -1,41 +1,54 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchFromGitHub
-, rustPlatform
-, setuptools-rust
-, openssl
-, pkg-config
-, cyrus_sasl
-, protobuf
-, cmake
-, gcc
-, confluent-kafka
-, pytestCheckHook
-, pythonAtLeast
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonAtLeast,
+
+  # build-system
+  cmake,
+  pkg-config,
+  rustPlatform,
+
+  # native dependencies
+  cyrus_sasl,
+  openssl,
+  protobuf,
+
+  # dependencies
+  jsonpickle,
+  prometheus-client,
+
+  # optional dependencies
+  confluent-kafka,
+
+  # test
+  myst-parser,
+  pytestCheckHook,
+  pytest-benchmark,
 }:
 
 buildPythonPackage rec {
   pname = "bytewax";
-  version = "0.16.0";
-  format = "pyproject";
+  version = "0.21.1";
+  pyproject = true;
 
-  disabled = pythonAtLeast "3.11";
+  # error: the configured Python interpreter version (3.13) is newer than PyO3's maximum supported version (3.12)
+  disabled = pythonAtLeast "3.13";
 
   src = fetchFromGitHub {
     owner = "bytewax";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-XdFkFhN8Z15Zw5HZ2wmnNFoTzyRtIbB7TAtOpKwuKyY=";
+    repo = "bytewax";
+    tag = "v${version}";
+    hash = "sha256-O5q1Jd3AMUaQwfQM249CUnkjqEkXybxtM9SOISoULZk=";
   };
 
-  # Remove docs tests, myst-docutils in nixpkgs is not compatible with package requirements.
-  # Package uses old version.
-  patches = [ ./remove-docs-test.patch ];
+  env = {
+    OPENSSL_NO_VENDOR = true;
+  };
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src;
-    hash = "sha256-XGE1qPHi13/+8jjNCIgfzPudw561T0vUfJv5xnKySAg=";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit pname version src;
+    hash = "sha256-TTB1//Xza47rnfvlIs9qMvwHPj/U3w2cGTmWrEokriQ=";
   };
 
   nativeBuildInputs = [
@@ -53,21 +66,49 @@ buildPythonPackage rec {
     protobuf
   ];
 
+  dependencies = [
+    jsonpickle
+    prometheus-client
+  ];
+
+  optional-dependencies = {
+    kafka = [ confluent-kafka ];
+  };
+
   preCheck = ''
     export PY_IGNORE_IMPORTMISMATCH=1
   '';
 
-  checkInputs = [
+  nativeCheckInputs = [
+    myst-parser
     pytestCheckHook
-    confluent-kafka
+    pytest-benchmark
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
+
+  pytestFlags = [
+    "--benchmark-disable"
   ];
 
-  meta = with lib; {
+  enabledTestPaths = [
+    "pytests"
+  ];
+
+  disabledTestPaths = [
+    # depends on an old myst-parser version
+    "docs"
+  ];
+
+  pythonImportsCheck = [ "bytewax" ];
+
+  meta = {
     description = "Python Stream Processing";
     homepage = "https://github.com/bytewax/bytewax";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ mslingsby kfollesdal ];
-    # mismatched type expected u8, found i8
-    broken = stdenv.isAarch64;
+    changelog = "https://github.com/bytewax/bytewax/releases/tag/v${version}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [
+      mslingsby
+      kfollesdal
+    ];
   };
 }

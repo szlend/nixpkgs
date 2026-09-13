@@ -1,35 +1,55 @@
-{ buildPythonPackage
-, certifi
-, fetchPypi
-, lib
-, python-dateutil
-, python-slugify
-, six
-, requests
-, tqdm
-, urllib3
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  hatchling,
+
+  # dependencies
+  bleach,
+  jupytext,
+  kagglesdk,
+  packaging,
+  protobuf,
+  python-dateutil,
+  python-dotenv,
+  python-slugify,
+  requests,
+  six,
+  tqdm,
+  urllib3,
+
+  # tests
+  pytestCheckHook,
+  versionCheckHook,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "kaggle";
-  version = "1.5.13";
+  version = "2.2.4";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "sha256-g2TFbDYSXLgZWHbZEdC8nvvBcxZ+ljuenveTeJupp/4=";
+  src = fetchFromGitHub {
+    owner = "Kaggle";
+    repo = "kaggle-cli";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-G/9Z6sLapCoM1LLavn/y3jAsJeOBLnf7xL1ffixazPM=";
   };
 
-  # The version bounds in the setup.py file are unnecessarily restrictive.
-  # They have both python-slugify and slugify, don't know why
-  patchPhase = ''
-    substituteInPlace setup.py \
-      --replace 'urllib3 >= 1.21.1, < 1.25' 'urllib3' \
-      --replace " 'slugify'," " "
-    '';
+  build-system = [ hatchling ];
 
-  propagatedBuildInputs = [
-    certifi
+  dependencies = [
+    bleach
+    jupytext
+    kagglesdk
+    packaging
+    protobuf
     python-dateutil
+    python-dotenv
     python-slugify
     requests
     six
@@ -37,19 +57,33 @@ buildPythonPackage rec {
     urllib3
   ];
 
-  # Tests try to access the network.
-  checkPhase = ''
-    export HOME="$TMP"
-    mkdir -p "$HOME/.kaggle/"
-    echo '{"username":"foobar","key":"00000000000000000000000000000000"}' > "$HOME/.kaggle/kaggle.json"
-    $out/bin/kaggle --help > /dev/null
-  '';
+  nativeCheckInputs = [
+    pytestCheckHook
+    versionCheckHook
+    # kaggle creates its config dir at import time; needs a writable HOME.
+    writableTmpDirAsHomeHook
+  ];
+  versionCheckKeepEnvironment = lib.optionals stdenv.hostPlatform.isDarwin [
+    # PermissionError: [Errno 1] Operation not permitted: '/var/empty/.kaggle'
+    "HOME"
+  ];
+
+  # kaggle authenticates at import time; fake creds for the offline checks.
+  env = {
+    KAGGLE_USERNAME = "nixos-test";
+    KAGGLE_KEY = "00000000000000000000000000000000";
+  };
+
   pythonImportsCheck = [ "kaggle" ];
 
-  meta = with lib; {
-    description = "Official API for https://www.kaggle.com, accessible using a command line tool implemented in Python 3";
-    homepage = "https://github.com/Kaggle/kaggle-api";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ ];
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
+    description = "Official Kaggle CLI";
+    mainProgram = "kaggle";
+    homepage = "https://github.com/Kaggle/kaggle-cli";
+    changelog = "https://github.com/Kaggle/kaggle-cli/blob/${finalAttrs.src.rev}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ daniel-fahey ];
   };
-}
+})

@@ -1,9 +1,18 @@
-{ lib, stdenvNoCC, fetchzip }:
+{
+  lib,
+  stdenvNoCC,
+  fetchzip,
+}:
 
 let
-  version = "1.3.3";
+  version = "1.3.9";
 
-  mkPretendard = { pname, typeface, hash }:
+  mkPretendard =
+    {
+      pname,
+      typeface,
+      hash,
+    }:
     stdenvNoCC.mkDerivation {
       inherit pname version;
 
@@ -21,12 +30,12 @@ let
         runHook postInstall
       '';
 
-      meta = with lib; {
+      meta = {
         homepage = "https://github.com/orioncactus/pretendard";
-        description = "An alternative font to system-ui for all platforms";
-        license = licenses.ofl;
-        platforms = platforms.all;
-        maintainers = with maintainers; [ sudosubin ];
+        description = "Alternative font to system-ui for all platforms";
+        license = lib.licenses.ofl;
+        platforms = lib.platforms.all;
+        maintainers = with lib.maintainers; [ sudosubin ];
       };
     };
 
@@ -35,18 +44,24 @@ in
   pretendard = mkPretendard {
     pname = "pretendard";
     typeface = "Pretendard";
-    hash = "sha256-xCEZlwTPhrNIO6WODl55wo2oin+iMYOL/rVaEybpzr0=";
+    hash = "sha256-n7RQApffpL/8ojHcZbdxyanl9Tlc8HP8kxLFBdArUfY=";
+  };
+
+  pretendard-gov = mkPretendard {
+    pname = "pretendard-gov";
+    typeface = "PretendardGOV";
+    hash = "sha256-qoDUBOmrk6WPKQgnapThfKC01xWup+HN82hcoIjEe0M=";
   };
 
   pretendard-jp = mkPretendard {
     pname = "pretendard-jp";
     typeface = "PretendardJP";
-    hash = "sha256-x0G7ULzkIJqZlK995+wWKHXZdWryUTRouGTa5LsJQzk=";
+    hash = "sha256-1nTk1LPoRSfSDgDuGWkcs6RRIY4ZOqDBPMsxezMos6Q=";
   };
 
   pretendard-std = mkPretendard {
     pname = "pretendard-std";
     typeface = "PretendardStd";
-    hash = "sha256-/I8LZhFB86/+o+IzUP+bSIq7scKPOL7k/6/Bom0ZSqg=";
+    hash = "sha256-gkYqqxSICmSIrBuPRzBaOlGGM/rJU1z7FiFvu9RhK5s=";
   };
 }

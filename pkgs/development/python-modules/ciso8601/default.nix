@@ -1,42 +1,40 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, setuptools
-, pytestCheckHook
-, pytz
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
+  pytz,
 }:
 
 buildPythonPackage rec {
   pname = "ciso8601";
-  version = "2.3.0";
-  format = "pyproject";
+  version = "2.3.3";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "closeio";
     repo = "ciso8601";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-qTpt91Wf3L6Jl7FU8sn9PvGMRd/cjhQ1mQvUaQeLFQU=";
+    tag = "v${version}";
+    hash = "sha256-14HiCn8BPALPaW53k118lHb5F4oG9mMNN6sdLdKB6v0=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
   nativeCheckInputs = [
     pytestCheckHook
     pytz
   ];
 
-  pytestFlagsArray = [
-    "tests/tests.py"
-  ];
+  enabledTestPaths = [ "tests/tests.py" ];
 
   pythonImportsCheck = [ "ciso8601" ];
 
-  meta = with lib; {
+  meta = {
     description = "Fast ISO8601 date time parser for Python written in C";
     homepage = "https://github.com/closeio/ciso8601";
-    license = licenses.mit;
-    maintainers = with maintainers; [ mic92 ];
+    changelog = "https://github.com/closeio/ciso8601/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ mic92 ];
   };
 }

@@ -1,29 +1,34 @@
-{ beautifulsoup4
-, buildPythonPackage
-, fetchFromGitHub
-, html5lib
-, lib
-, lxml
-, python
+{
+  beautifulsoup4,
+  buildPythonPackage,
+  fetchFromGitHub,
+  html5lib,
+  lib,
+  lxml,
+  python,
 }:
 
 buildPythonPackage rec {
   pname = "draftjs-exporter";
-  version = "2.1.7";
+  version = "5.1.0";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     repo = "draftjs_exporter";
     owner = "springload";
-    rev = "v${version}";
-    sha256 = "sha256-tw0r9RnQdIwcY+pqnW8fcV0o2LzmxW0MZPn5drNgK80=";
+    tag = "v${version}";
+    sha256 = "sha256-AR8CK75UdtEThE68WSE6DFSqryI509GTW1fBl1SL29w=";
   };
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     lxml = [ lxml ];
-    html5lib = [ beautifulsoup4 html5lib ];
+    html5lib = [
+      beautifulsoup4
+      html5lib
+    ];
   };
 
-  checkInputs = passthru.optional-dependencies.lxml ++ passthru.optional-dependencies.html5lib;
+  checkInputs = optional-dependencies.lxml ++ optional-dependencies.html5lib;
 
   checkPhase = ''
     # 2 tests in this file randomly fail because they depend on the order of
@@ -35,11 +40,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "draftjs_exporter" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library to convert Draft.js ContentState to HTML";
     homepage = "https://github.com/springload/draftjs_exporter";
-    changelog = "https://github.com/springload/draftjs_exporter/blob/v${version}/CHANGELOG.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ sephi ];
+    changelog = "https://github.com/springload/draftjs_exporter/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ sephi ];
   };
 }

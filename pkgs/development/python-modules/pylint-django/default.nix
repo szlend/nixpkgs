@@ -1,53 +1,50 @@
-{ lib
-, buildPythonPackage
-, django
-, factory_boy
-, fetchFromGitHub
-, pylint-plugin-utils
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  django,
+  django-tables2,
+  django-tastypie,
+  factory-boy,
+  fetchFromGitHub,
+  poetry-core,
+  pylint-plugin-utils,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pylint-django";
-  version = "2.5.3";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "2.8.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "PyCQA";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-5xEXjNMkOetRM9NDz0S4DsC6v39YQi34s2s+Fs56hYU=";
+    repo = "pylint-django";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-W3BPCK6fj4poZ1EaBUGyVyfRo/0sZa+2ktk96Ic6+q0=";
   };
 
-  propagatedBuildInputs = [
-    django
-    pylint-plugin-utils
-  ];
+  build-system = [ poetry-core ];
+
+  dependencies = [ pylint-plugin-utils ];
+
+  optional-dependencies = {
+    with_django = [ django ];
+  };
 
   nativeCheckInputs = [
-    factory_boy
+    django-tables2
+    django-tastypie
+    factory-boy
     pytestCheckHook
   ];
 
-  disabledTests = [
-    # AttributeError, AssertionError
-    "external_django_tables2_noerror_meta_class"
-    "external_tastypie_noerror_foreign_key"
-    "func_noerror_model_unicode_lambda"
-    "0001_noerror_initial"
-  ];
+  pythonImportsCheck = [ "pylint_django" ];
 
-  pythonImportsCheck = [
-    "pylint_django"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Pylint plugin to analyze Django applications";
     homepage = "https://github.com/PyCQA/pylint-django";
-    license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ kamadorueda ];
+    changelog = "https://github.com/pylint-dev/pylint-django/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.gpl2Plus;
+    maintainers = with lib.maintainers; [ kamadorueda ];
   };
-}
+})

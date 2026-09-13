@@ -1,13 +1,15 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pytools
-, numpy
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pytools,
+  numpy,
 }:
 
 buildPythonPackage rec {
   pname = "genpy";
   version = "2022.1";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -19,10 +21,10 @@ buildPythonPackage rec {
     numpy
   ];
 
-  meta = with lib; {
+  meta = {
     description = "C/C++ source generation from an AST";
     homepage = "https://github.com/inducer/genpy";
-    license = licenses.mit;
-    maintainers = [ maintainers.costrouc ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

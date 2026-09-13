@@ -1,33 +1,38 @@
-{ lib, buildKodiAddon, fetchzip, addonUpdateScript, six, requests, infotagger, inputstreamhelper }:
+{
+  lib,
+  buildKodiAddon,
+  fetchFromGitHub,
+  requests,
+  inputstream-adaptive,
+  inputstreamhelper,
+}:
 
 buildKodiAddon rec {
   pname = "youtube";
   namespace = "plugin.video.youtube";
-  version = "7.0.1";
+  version = "7.4.4";
 
-  src = fetchzip {
-    url = "https://mirrors.kodi.tv/addons/nexus/${namespace}/${namespace}-${version}.zip";
-    sha256 = "sha256-Wdju7d2kFX0V1J1TB75qEVq0UWN2xYYFNlD8UTt1New=";
+  src = fetchFromGitHub {
+    owner = "anxdpanic";
+    repo = "plugin.video.youtube";
+    rev = "v${version}";
+    hash = "sha256-epDKZhITQAv3bpS7CGN2Rj35/AamyZo5yzhkfu72ipw=";
   };
 
   propagatedBuildInputs = [
-    six
     requests
-    infotagger
+    inputstream-adaptive
     inputstreamhelper
   ];
 
   passthru = {
     pythonPath = "resources/lib";
-    updateScript = addonUpdateScript {
-      attrPath = "kodi.packages.youtube";
-    };
   };
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/anxdpanic/plugin.video.youtube";
     description = "YouTube is one of the biggest video-sharing websites of the world";
-    license = licenses.gpl2Only;
-    maintainers = teams.kodi.members;
+    license = lib.licenses.gpl2Only;
+    teams = [ lib.teams.kodi ];
   };
 }

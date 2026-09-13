@@ -1,26 +1,30 @@
-{ buildPythonPackage
-, cirq-core
-, requests
-, pytestCheckHook
+{
+  buildPythonPackage,
+  cirq-core,
+  requests,
+  pytest-benchmark,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cirq-aqt";
+  pyproject = true;
   inherit (cirq-core) version src meta;
 
-  sourceRoot = "source/${pname}";
+  sourceRoot = "${finalAttrs.src.name}/${finalAttrs.pname}";
 
-  postPatch = ''
-    substituteInPlace requirements.txt \
-      --replace "requests~=2.18" "requests"
-  '';
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  pythonRelaxDeps = [ "requests" ];
+
+  dependencies = [
     cirq-core
     requests
   ];
 
   nativeCheckInputs = [
+    pytest-benchmark
     pytestCheckHook
   ];
 
@@ -31,4 +35,4 @@ buildPythonPackage rec {
     # No need to test the version number
     "cirq_aqt/_version_test.py"
   ];
-}
+})

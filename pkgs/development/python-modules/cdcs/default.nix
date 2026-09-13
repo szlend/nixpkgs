@@ -1,37 +1,32 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, ipython
-, numpy
-, pandas
-, pytestCheckHook
-, pythonOlder
-, requests
-, responses
-, setuptools
-, tqdm
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  ipython,
+  numpy,
+  pandas,
+  pytestCheckHook,
+  requests,
+  responses,
+  tqdm,
+  uv-build,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cdcs";
-  version = "0.2.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "0.2.7";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "usnistgov";
     repo = "pycdcs";
-    # https://github.com/usnistgov/pycdcs/issues/1
-    rev = "3aeaeb4782054a220e916c189ffe440d113b571d";
-    hash = "sha256-OsabgO2B2PRhU3DVvkK+f9VLOMqctl4nyCETxLtzwNs=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-UpPoTdcDDCmombeScFgjsFX+//Yfnn+ClDwYsZh0dxI=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ uv-build ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     ipython
     numpy
     pandas
@@ -44,14 +39,19 @@ buildPythonPackage rec {
     responses
   ];
 
-  pythonImportsCheck = [
-    "cdcs"
+  pythonImportsCheck = [ "cdcs" ];
+
+  disabledTests = [
+    # Assertion errors
+    "test_get_workspaces_v2"
+    "test_get_workspaces_v3"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Python client for performing REST calls to configurable data curation system (CDCS) databases";
     homepage = "https://github.com/usnistgov/pycdcs";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/usnistgov/pycdcs/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

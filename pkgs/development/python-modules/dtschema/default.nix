@@ -1,59 +1,58 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, jsonschema
-, pythonOlder
-, rfc3987
-, ruamel-yaml
-, setuptools-scm
-, libfdt
+{
+  stdenv,
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  jsonschema,
+  rfc3987,
+  ruamel-yaml,
+  setuptools-scm,
+  libfdt,
+  pytestCheckHook,
+  dtc,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dtschema";
-  version = "2023.04";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "2026.06";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "devicetree-org";
     repo = "dt-schema";
-    rev = "refs/tags/v${version}";
-    sha256 = "sha256-w9TsRdiDTdExft7rdb2hYcvxP6hxOFZKI3hITiNSwgw=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-F0SRUW2Dj3hZymhYYVbHmQ1P7hPApH78eOdfftuic0Y=";
   };
 
-  patches = [
-    # Change name of pylibfdt to libfdt
-    ./fix_libfdt_name.patch
-  ];
+  build-system = [ setuptools-scm ];
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
-
-  nativeBuildInputs = [
-    setuptools-scm
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
     jsonschema
     rfc3987
     ruamel-yaml
     libfdt
   ];
 
-  # Module has no tests
-  doCheck = false;
+  pythonImportsCheck = [ "dtschema" ];
 
-  pythonImportsCheck = [
-    "dtschema"
+  nativeCheckInputs = [
+    pytestCheckHook
+    dtc
   ];
 
-  meta = with lib; {
+  enabledTestPaths = [ "test/test-dt-validate.py" ];
+
+  meta = {
     description = "Tooling for devicetree validation using YAML and jsonschema";
     homepage = "https://github.com/devicetree-org/dt-schema/";
-    changelog = "https://github.com/devicetree-org/dt-schema/releases/tag/v${version}";
-    license = with licenses; [ bsd2 /* or */ gpl2Only ];
-    maintainers = with maintainers; [ sorki ];
-  };
-}
+    changelog = "https://github.com/devicetree-org/dt-schema/releases/tag/v${finalAttrs.version}";
+    license = with lib.licenses; [
+      bsd2 # or
+      gpl2Only
+    ];
+    maintainers = with lib.maintainers; [ sorki ];
 
+    # Library not loaded: @rpath/libfdt.1.dylib
+    broken = stdenv.hostPlatform.isDarwin;
+  };
+})

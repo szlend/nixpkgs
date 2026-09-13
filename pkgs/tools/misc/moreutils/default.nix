@@ -1,49 +1,74 @@
-{ lib
-, stdenv
-, fetchgit
-, libxml2
-, libxslt
-, docbook-xsl
-, docbook_xml_dtd_44
-, perlPackages
-, makeWrapper
-, perl # for pod2man
-, darwin
+{
+  lib,
+  stdenv,
+  fetchgit,
+  libxml2,
+  libxslt,
+  docbook-xsl,
+  docbook_xml_dtd_44,
+  makeWrapper,
+  parallel, # for its priority
+  perl, # for pod2man
+  cctools,
+  gitUpdater,
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "moreutils";
-  version = "0.67";
+  version = "0.70";
 
   src = fetchgit {
     url = "git://git.joeyh.name/moreutils";
-    rev = "refs/tags/${version}";
-    sha256 = "sha256-8Mu7L3KqOsW9OmidMkWB+q9TofHd1P1sbsNrtE4MUoA=";
+    tag = finalAttrs.version;
+    hash = "sha256-71ACHzzk258U4q2L7GJ59mrMZG99M7nQkcH4gHafGP0=";
   };
-
-  preBuild = ''
-    substituteInPlace Makefile --replace /usr/share/xml/docbook/stylesheet/docbook-xsl ${docbook-xsl}/xml/xsl/docbook
-  '';
 
   strictDeps = true;
-  nativeBuildInputs = [ makeWrapper perl libxml2 libxslt docbook-xsl docbook_xml_dtd_44 ];
-  buildInputs = lib.optional stdenv.isDarwin darwin.cctools;
+  nativeBuildInputs = [
+    makeWrapper
+    perl
+    libxml2
+    libxslt
+    docbook-xsl
+    docbook_xml_dtd_44
+  ];
+  buildInputs = [
+    (perl.withPackages (p: [
+      p.IPCRun
+      p.TimeDate
+      p.TimeDuration
+    ]))
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    cctools
+  ];
 
-  propagatedBuildInputs = with perlPackages; [ perl IPCRun TimeDate TimeDuration ];
+  makeFlags = [
+    "CC=${lib.getExe stdenv.cc}"
+    "DOCBOOKXSL=${docbook-xsl}/xml/xsl/docbook"
+    "INSTALL_BIN=install"
+    "PREFIX=${placeholder "out"}"
+  ];
 
-  buildFlags = [ "CC=${stdenv.cc.targetPrefix}cc" ];
-  installFlags = [ "PREFIX=$(out)" ];
+  passthru.updateScript = gitUpdater {
+    # No nicer place to find latest release.
+    url = "git://git.joeyh.name/moreutils";
+  };
 
-  postInstall = ''
-    wrapProgram $out/bin/chronic --prefix PERL5LIB : $PERL5LIB
-    wrapProgram $out/bin/ts --prefix PERL5LIB : $PERL5LIB
-  '';
+  __structuredAttrs = true;
 
-  meta = with lib; {
+  meta = {
     description = "Growing collection of the unix tools that nobody thought to write long ago when unix was young";
     homepage = "https://joeyh.name/code/moreutils/";
-    maintainers = with maintainers; [ koral pSub ];
-    platforms = platforms.all;
-    license = licenses.gpl2Plus;
+    maintainers = with lib.maintainers; [
+      koral
+      pSub
+    ];
+    platforms = lib.platforms.all;
+    license = lib.licenses.gpl2Plus;
+
+    # If somebody explicitly installs GNU parallel, they probably want
+    # its parallel executable instead of moreutils'.
+    priority = (parallel.meta.priority or lib.meta.defaultPriority) + 1;
   };
-}
+})

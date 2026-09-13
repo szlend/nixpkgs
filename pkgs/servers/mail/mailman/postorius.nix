@@ -1,28 +1,63 @@
-{ lib, python3, fetchPypi }:
+{
+  lib,
+  python3,
+  fetchPypi,
+  fetchpatch,
+  nixosTests,
+}:
 
 with python3.pkgs;
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "postorius";
-  # Note: Mailman core must be on the latest version before upgrading Postorious.
-  # See: https://gitlab.com/mailman/postorius/-/issues/516#note_544571309
-  version = "1.3.6";
+  version = "1.3.13";
+  format = "pyproject";
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "sha256-KwzEU9IfcQ6YPZu3jPuFrd6ux/3e2pzoLfTrak/aGmg=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-YC3vXEhSkA1J6K2VGWojNOE8MeSdnAhZMkh558UTGiI=";
   };
 
-  propagatedBuildInputs = [ django-mailman3 readme_renderer ];
-  nativeCheckInputs = [ beautifulsoup4 vcrpy mock ];
+  patches = [
+    (fetchpatch {
+      name = "security-fix.patch";
+      url = "https://gitlab.com/mailman/postorius/-/commit/c4706abd05ba6bcf472fc674b160d3a9d6a4868b.patch";
+      excludes = [ "src/postorius/doc/news.rst" ];
+      hash = "sha256-M8C7mO/KoVhl1YtZ5x3wqL+aBkepJ/7NoIRUmd0JpiM=";
+    })
+
+    (fetchpatch {
+      name = "django-5.2.patch";
+      url = "https://gitlab.com/mailman/postorius/-/commit/0468ab0329df85b89e6b5d9f7b4d1805f47450c9.patch";
+      excludes = [
+        ".gitlab-ci.yml"
+        "src/postorius/doc/news.rst"
+      ];
+      hash = "sha256-4yk7hLF6cRfS7Kelr49LPeVfrqvNoX1jxTy8sdGrMAk=";
+    })
+  ];
+
+  build-system = [ pdm-backend ];
+  dependencies = [
+    django-mailman3
+    readme-renderer
+  ]
+  ++ readme-renderer.optional-dependencies.md;
+  nativeCheckInputs = [
+    beautifulsoup4
+    vcrpy
+    mock
+  ];
 
   # Tries to connect to database.
   doCheck = false;
 
-  meta = with lib; {
+  passthru.tests = { inherit (nixosTests) mailman; };
+
+  meta = {
     homepage = "https://docs.mailman3.org/projects/postorius";
     description = "Web-based user interface for managing GNU Mailman";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ globin qyliss ];
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ qyliss ];
   };
-}
+})

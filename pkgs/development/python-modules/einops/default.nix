@@ -1,77 +1,65 @@
-{ lib
-, buildPythonPackage
-, chainer
-, fetchFromGitHub
-, hatchling
-, jupyter
-, keras
-  #, mxnet
-, nbconvert
-, nbformat
-, nose
-, numpy
-, parameterized
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  hatchling,
+
+  # tests
+  jupyter,
+  nbconvert,
+  numpy,
+  parameterized,
+  pillow,
+  pytestCheckHook,
+  torch,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "einops";
-  version = "0.6.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.8.2";
+  pyproject = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "arogozhnikov";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-/bnp8IhDxp8EB/PoW5Dz+7rOru0/odOrts84aq4qyJw=";
+    repo = "einops";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-d5Vbtkw/MChS2j2IC6j97wfVoKWZT9mU4OeXyEjm6ys=";
   };
 
-  nativeBuildInputs = [ hatchling ];
+  build-system = [ hatchling ];
 
   nativeCheckInputs = [
-    chainer
     jupyter
-    keras
-    # mxnet (has issues with some CPUs, segfault)
     nbconvert
-    nbformat
-    nose
     numpy
     parameterized
+    pillow
     pytestCheckHook
+    torch
+    writableTmpDirAsHomeHook
   ];
 
-  # No CUDA in sandbox
-  EINOPS_SKIP_CUPY = 1;
+  env.EINOPS_TEST_BACKENDS = "numpy";
 
-  preCheck = ''
-    export HOME=$(mktemp -d);
-  '';
-
-  pythonImportsCheck = [
-    "einops"
-  ];
-
-  disabledTests = [
-    # Tests are failing as mxnet is not pulled-in
-    # https://github.com/NixOS/nixpkgs/issues/174872
-    "test_all_notebooks"
-    "test_dl_notebook_with_all_backends"
-    "test_backends_installed"
-  ];
+  pythonImportsCheck = [ "einops" ];
 
   disabledTestPaths = [
-    "tests/test_layers.py"
+    # skip folder with notebook samples that depend on large packages
+    # or accelerator access and have been unreliable
+    "scripts/"
   ];
 
-  meta = with lib; {
+  __darwinAllowLocalNetworking = true;
+
+  meta = {
     description = "Flexible and powerful tensor operations for readable and reliable code";
     homepage = "https://github.com/arogozhnikov/einops";
-    license = licenses.mit;
-    maintainers = with maintainers; [ yl3dy ];
+    changelog = "https://github.com/arogozhnikov/einops/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ yl3dy ];
   };
-}
-
+})

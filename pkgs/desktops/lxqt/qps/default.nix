@@ -1,31 +1,36 @@
-{ lib
-, mkDerivation
-, fetchFromGitHub
-, cmake
-, kwindowsystem
-, liblxqt
-, libqtxdg
-, lxqt-build-tools
-, gitUpdater
-, qtbase
-, qttools
-, qtx11extras
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  kwindowsystem,
+  liblxqt,
+  libqtxdg,
+  lxqt-build-tools,
+  qtbase,
+  qtsvg,
+  qttools,
+  qtwayland,
+  wrapQtAppsHook,
+  gitUpdater,
 }:
 
-mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "qps";
-  version = "2.7.0";
+  version = "2.13.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
-    repo = pname;
+    repo = "qps";
     rev = version;
-    sha256 = "70mANEnui/orN+8eIBzCCSsh5wvPXuPUAAwRcXtHsaY=";
+    hash = "sha256-KH92JZkVLxz2iECF5z39yzAwt7TU2/WnJomPoAn8iDI=";
   };
 
   nativeBuildInputs = [
     cmake
     lxqt-build-tools
+    qttools
+    wrapQtAppsHook
   ];
 
   buildInputs = [
@@ -33,17 +38,18 @@ mkDerivation rec {
     liblxqt
     libqtxdg
     qtbase
-    qttools
-    qtx11extras
+    qtsvg
+    qtwayland
   ];
 
   passthru.updateScript = gitUpdater { };
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/lxqt/qps";
     description = "Qt based process manager";
-    license = licenses.gpl2Plus;
-    platforms = with platforms; linux; # does not build on darwin
-    maintainers = teams.lxqt.members;
+    mainProgram = "qps";
+    license = lib.licenses.gpl2Plus;
+    platforms = with lib.platforms; linux; # does not build on darwin
+    teams = [ lib.teams.lxqt ];
   };
 }

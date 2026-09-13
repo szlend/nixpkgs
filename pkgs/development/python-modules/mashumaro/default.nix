@@ -1,46 +1,40 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, setuptools
-, typing-extensions
-, orjson
-, msgpack
-, pyyaml
-, tomli-w
-, tomli
-, pytestCheckHook
-, ciso8601
-, pendulum
-, pytest-mock
+{
+  lib,
+  buildPythonPackage,
+  ciso8601,
+  fetchFromGitHub,
+  msgpack,
+  orjson,
+  pendulum,
+  pytest-mock,
+  pytestCheckHook,
+  pyyaml,
+  setuptools,
+  tomli-w,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "mashumaro";
-  version = "3.8.1";
-  format = "pyproject";
-  disabled = pythonOlder "3.7";
+  version = "3.22";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Fatal1ty";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-WDKohmcdVlQR/6AMSISN0y6UQx4tmOf1fANCPLRYiqI=";
+    repo = "mashumaro";
+    tag = "v${version}";
+    hash = "sha256-/aAyylHOEjSmcjb+OKDNY0OOlR2JXepvVpVsfGbKSyw=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
-    typing-extensions
-  ];
+  dependencies = [ typing-extensions ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     orjson = [ orjson ];
     msgpack = [ msgpack ];
     yaml = [ pyyaml ];
-    toml = [ tomli-w ] ++ lib.optionals (pythonOlder "3.11") [ tomli ];
+    toml = [ tomli-w ];
   };
 
   nativeCheckInputs = [
@@ -48,17 +42,15 @@ buildPythonPackage rec {
     pendulum
     pytest-mock
     pytestCheckHook
-  ] ++ lib.flatten (lib.attrValues passthru.optional-dependencies);
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
-  pythonImportsCheck = [
-    "mashumaro"
-  ];
+  pythonImportsCheck = [ "mashumaro" ];
 
-  meta = with lib; {
-    description = "Fast and well tested serialization library on top of dataclasses";
+  meta = {
+    description = "Serialization library on top of dataclasses";
     homepage = "https://github.com/Fatal1ty/mashumaro";
-    changelog = "https://github.com/Fatal1ty/mashumaro/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ tjni ];
+    changelog = "https://github.com/Fatal1ty/mashumaro/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
   };
 }

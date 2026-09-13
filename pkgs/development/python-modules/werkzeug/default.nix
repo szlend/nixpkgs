@@ -1,74 +1,96 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, watchdog
-, ephemeral-port-reserve
-, pytest-timeout
-, pytest-xprocess
-, pytestCheckHook
-, markupsafe
-# for passthru.tests
-, moto, sentry-sdk
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+
+  # build-system
+  flit-core,
+
+  # dependencies
+  markupsafe,
+
+  # optional-dependencies
+  watchdog,
+
+  # tests
+  cffi,
+  cryptography,
+  ephemeral-port-reserve,
+  pytest-timeout,
+  pytestCheckHook,
+
+  # reverse dependencies
+  moto,
+  sentry-sdk,
 }:
 
 buildPythonPackage rec {
   pname = "werkzeug";
-  version = "2.2.3";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "3.1.8";
+  pyproject = true;
 
   src = fetchPypi {
-    pname = "Werkzeug";
-    inherit version;
-    hash = "sha256-LhzMlBfU2jWLnebxdOOsCUOR6h1PvvLWZ4ZdgZ39Cv4=";
+    inherit pname version;
+    hash = "sha256-m61hpCaNrBEvHFzUYwpW7eYBtu1CAwBneoaQg9cKTEQ=";
   };
 
-  propagatedBuildInputs = [
-    markupsafe
-  ] ++ lib.optionals (!stdenv.isDarwin) [
-    # watchdog requires macos-sdk 10.13+
-    watchdog
-  ];
+  build-system = [ flit-core ];
+
+  dependencies = [ markupsafe ];
+
+  optional-dependencies = {
+    watchdog = [ watchdog ];
+  };
 
   nativeCheckInputs = [
+    cffi
+    cryptography
     ephemeral-port-reserve
     pytest-timeout
-    pytest-xprocess
     pytestCheckHook
-  ];
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
-  disabledTests = lib.optionals stdenv.isDarwin [
-    "test_get_machine_id"
-  ];
+  pythonImportsCheck = [ "werkzeug" ];
+
+  disabledTests = [
+    # ConnectionRefusedError: [Errno 111] Connection refused
+    "test_http_proxy"
+    # ResourceWarning: subprocess 309 is still running
+    "test_basic"
+    "test_long_build"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [ "test_get_machine_id" ];
 
   disabledTestPaths = [
     # ConnectionRefusedError: [Errno 111] Connection refused
     "tests/test_serving.py"
   ];
 
-  pytestFlagsArray = [
+  disabledTestMarks = [
     # don't run tests that are marked with filterwarnings, they fail with
     # warnings._OptionError: unknown warning category: 'pytest.PytestUnraisableExceptionWarning'
-    "-m 'not filterwarnings'"
+    "filterwarnings"
   ];
 
   passthru.tests = {
     inherit moto sentry-sdk;
   };
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://werkzeug.palletsprojects.com/en/stable/changes/#version-${
+      lib.replaceStrings [ "." ] [ "-" ] version
+    }";
     homepage = "https://palletsprojects.com/p/werkzeug/";
-    description = "The comprehensive WSGI web application library";
+    description = "Comprehensive WSGI web application library";
     longDescription = ''
       Werkzeug is a comprehensive WSGI web application library. It
       began as a simple collection of various utilities for WSGI
       applications and has become one of the most advanced WSGI
       utility libraries.
     '';
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
   };
 }

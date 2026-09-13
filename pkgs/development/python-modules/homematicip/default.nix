@@ -1,53 +1,49 @@
-{ lib
-, aenum
-, aiohttp
-, aiohttp-wsgi
-, async-timeout
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, pythonAtLeast
-, pythonOlder
-, pytest-aiohttp
-, pytest-asyncio
-, requests
-, websocket-client
-, websockets
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  fetchFromGitHub,
+  httpx,
+  pytest-aiohttp,
+  pytest-mock,
+  pytestCheckHook,
+  requests,
+  setuptools-scm,
+  setuptools,
+  websockets,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "homematicip";
-  version = "1.0.14";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.8";
+  version = "2.16.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "hahn-th";
     repo = "homematicip-rest-api";
-    rev = "refs/tags/${version}";
-    hash = "sha256-2tJoIknqcwEvX2mQsrSEEh45pEMpNfeefuXVKSJTwig=";
+    tag = finalAttrs.version;
+    hash = "sha256-DdVrs+lP9NECcz0QICmzgTK/3M18bV/vf9Ei5eEx2T8=";
   };
 
-  propagatedBuildInputs = [
-    aenum
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
+
+  dependencies = [
     aiohttp
-    async-timeout
+    httpx
     requests
-    websocket-client
     websockets
   ];
 
   nativeCheckInputs = [
-    aiohttp-wsgi
     pytest-aiohttp
-    pytest-asyncio
+    pytest-mock
     pytestCheckHook
   ];
 
-  pytestFlagsArray = [
-    "--asyncio-mode=auto"
-  ];
+  pytestFlags = [ "--asyncio-mode=auto" ];
 
   disabledTests = [
     # Assert issues with datetime
@@ -73,22 +69,15 @@ buildPythonPackage rec {
     "test_home_unknown_types"
     # Requires network access
     "test_websocket"
-  ] ++ lib.optionals (pythonAtLeast "3.10") [
-    "test_connection_lost"
-    "test_user_disconnect_and_reconnect"
-    "test_ws_message"
-    "test_ws_no_pong"
   ];
 
-  pythonImportsCheck = [
-    "homematicip"
-  ];
+  pythonImportsCheck = [ "homematicip" ];
 
-  meta = with lib; {
+  meta = {
     description = "Module for the homematicIP REST API";
     homepage = "https://github.com/hahn-th/homematicip-rest-api";
-    changelog = "https://github.com/hahn-th/homematicip-rest-api/releases/tag/${version}";
-    license = with licenses; [ gpl3Only ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/hahn-th/homematicip-rest-api/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

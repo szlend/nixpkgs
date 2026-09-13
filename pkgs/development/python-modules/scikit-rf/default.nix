@@ -1,71 +1,57 @@
-{ stdenv
-, lib
-, pythonOlder
-, buildPythonPackage
-, fetchFromGitHub
-, numpy
-, scipy
-, pandas
-, matplotlib
-, tox
-, coverage
-, flake8
-, nbval
-, pyvisa
-, networkx
-, ipython
-, ipykernel
-, ipywidgets
-, jupyter-client
-, sphinx-rtd-theme
-, sphinx
-, nbsphinx
-, openpyxl
-, qtpy
-, pyqtgraph
-, pyqt5
-, setuptools
-, pytestCheckHook
-, pytest-cov
+{
+  stdenv,
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  numpy,
+  scipy,
+  pandas,
+  matplotlib,
+  nbval,
+  pyvisa,
+  networkx,
+  ipython,
+  ipykernel,
+  ipywidgets,
+  jupyter-client,
+  sphinx-rtd-theme,
+  sphinx,
+  nbsphinx,
+  openpyxl,
+  setuptools,
+  pytestCheckHook,
+  pytest-cov-stub,
+  pytest-mock,
+  writableTmpDirAsHomeHook,
 }:
 
 buildPythonPackage rec {
   pname = "scikit-rf";
-  version = "0.25.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.9.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "scikit-rf";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-drH1N1rKFu/zdLmLsD1jH5xUkzK37V/+nJqGQ38vsTI=";
+    repo = "scikit-rf";
+    tag = "v${version}";
+    hash = "sha256-iOKTQOOJTsj6YIQaJVWFcp9HdUEj43aytpo7VzItxr8=";
   };
 
-  buildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     numpy
     scipy
     pandas
   ];
 
-  passthru.optional-dependencies = {
-    plot = [
-      matplotlib
-    ];
-    xlsx = [
-      openpyxl
-    ];
-    netw = [
-      networkx
-    ];
-    visa = [
-      pyvisa
-    ];
+  pythonRemoveDeps = [ "pre-commit" ];
+
+  optional-dependencies = {
+    plot = [ matplotlib ];
+    xlsx = [ openpyxl ];
+    netw = [ networkx ];
+    visa = [ pyvisa ];
     docs = [
       ipython
       ipykernel
@@ -75,39 +61,40 @@ buildPythonPackage rec {
       sphinx
       nbsphinx
       openpyxl
-    ];
-    qtapps = [
-      qtpy
-      pyqtgraph
-      pyqt5
+      nbval
     ];
   };
 
+  env = lib.optionalAttrs stdenv.hostPlatform.isDarwin { MPLBACKEND = "Agg"; };
+
   nativeCheckInputs = [
-    tox
-    coverage
-    flake8
-    pytest-cov
-    nbval
+    pytest-mock
     matplotlib
     pyvisa
     openpyxl
     networkx
-  ];
-
-  checkInputs = [
     pytestCheckHook
+    pytest-cov-stub
+    writableTmpDirAsHomeHook
   ];
 
-  pythonImportsCheck = [
-    "skrf"
+  pytestFlags = [ "-Wignore::pytest.PytestUnraisableExceptionWarning" ];
+
+  disabledTests = [
+    # numpy.exceptions.VisibleDeprecationWarning: dtype(): align should be
+    #  passed as Python or NumPy boolean but got `align=0`
+    "test_constructor_from_pathlib"
+    "test_constructor_from_pickle"
+    "test_constructor_from_touchstone_special_encoding"
   ];
 
-  meta = with lib; {
-    description = "A Python library for RF/Microwave engineering";
+  pythonImportsCheck = [ "skrf" ];
+
+  meta = {
+    description = "Python library for RF/Microwave engineering";
     homepage = "https://scikit-rf.org/";
-    changelog = "https://github.com/scikit-rf/scikit-rf/releases/tag/v${version}";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ lugarun ];
+    changelog = "https://github.com/scikit-rf/scikit-rf/releases/tag/${src.tag}";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ lugarun ];
   };
 }

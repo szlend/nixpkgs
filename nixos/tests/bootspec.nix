@@ -1,6 +1,7 @@
-{ system ? builtins.currentSystem,
-  config ? {},
-  pkgs ? import ../.. { inherit system config; }
+{
+  system ? builtins.currentSystem,
+  config ? { },
+  pkgs ? import ../.. { inherit system config; },
 }:
 
 with import ../lib/testing-python.nix { inherit system pkgs; };
@@ -23,8 +24,6 @@ let
     environment.systemPackages = [ pkgs.efibootmgr ];
   };
   standard = {
-    boot.bootspec.enable = true;
-
     imports = [
       baseline
       systemd-boot
@@ -52,8 +51,6 @@ in
     meta.maintainers = with pkgs.lib.maintainers; [ raitobezarius ];
 
     nodes.machine = {
-      boot.bootspec.enable = true;
-
       imports = [
         baseline
         grub
@@ -74,8 +71,6 @@ in
     meta.maintainers = with pkgs.lib.maintainers; [ raitobezarius ];
 
     nodes.machine = {
-      boot.bootspec.enable = true;
-
       imports = [
         baseline
         grub
@@ -112,7 +107,35 @@ in
 
       bootspec = json.loads(machine.succeed("jq -r '.\"org.nixos.bootspec.v1\"' /run/current-system/boot.json"))
 
-      assert all(key in bootspec for key in ('initrd', 'initrdSecrets')), "Bootspec should contain initrd or initrdSecrets field when initrd is enabled"
+      assert 'initrd' in bootspec, "Bootspec should contain initrd field when initrd is enabled"
+      assert 'initrdSecrets' not in bootspec, "Bootspec should not contain initrdSecrets when there's no initrdSecrets"
+    '';
+  };
+
+  # Check that initrd secrets create corresponding entries in bootspec.
+  initrd-secrets = makeTest {
+    name = "bootspec-with-initrd-secrets";
+    meta.maintainers = with pkgs.lib.maintainers; [ raitobezarius ];
+
+    nodes.machine = {
+      imports = [ standard ];
+      environment.systemPackages = [ pkgs.jq ];
+      # It's probably the case, but we want to make it explicit here.
+      boot.initrd.enable = true;
+      boot.initrd.secrets."/some/example" = pkgs.writeText "example-secret" "test";
+    };
+
+    testScript = ''
+      import json
+
+      machine.start()
+      machine.wait_for_unit("multi-user.target")
+
+      machine.succeed("test -e /run/current-system/boot.json")
+
+      bootspec = json.loads(machine.succeed("jq -r '.\"org.nixos.bootspec.v1\"' /run/current-system/boot.json"))
+
+      assert 'initrdSecrets' in bootspec, "Bootspec should contain an 'initrdSecrets' field given there's an initrd secret"
     '';
   };
 
@@ -124,7 +147,7 @@ in
     nodes.machine = {
       imports = [ standard ];
       environment.systemPackages = [ pkgs.jq ];
-      specialisation.something.configuration = {};
+      specialisation.something.configuration = { };
     };
 
     testScript = ''
@@ -148,15 +171,17 @@ in
     name = "bootspec-with-extensions";
     meta.maintainers = with pkgs.lib.maintainers; [ raitobezarius ];
 
-    nodes.machine = { config, ... }: {
-      imports = [ standard ];
-      environment.systemPackages = [ pkgs.jq ];
-      boot.bootspec.extensions = {
-        "org.nix-tests.product" = {
-          osRelease = config.environment.etc."os-release".source;
+    nodes.machine =
+      { config, ... }:
+      {
+        imports = [ standard ];
+        environment.systemPackages = [ pkgs.jq ];
+        boot.bootspec.extensions = {
+          "org.nix-tests.product" = {
+            osRelease = config.environment.etc."os-release".source;
+          };
         };
       };
-    };
 
     testScript = ''
       machine.start()

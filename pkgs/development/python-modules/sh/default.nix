@@ -1,38 +1,29 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchFromGitHub
-, poetry-core
-, python
-, lsof
-, glibcLocales
-, coreutils
-, pytestCheckHook
- }:
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  pytestCheckHook,
+}:
 
 buildPythonPackage rec {
   pname = "sh";
-  version = "2.0.2";
-  format = "pyproject";
+  version = "2.3.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "amoffat";
     repo = "sh";
-    rev = "refs/tags/${version}";
-    hash = "sha256-qMYaGNEvv2z47IHFGqb64TRpN3JHycpEmhYhDjrUi6s=";
+    tag = version;
+    hash = "sha256-xtrT8fac7eJeGZ15yQqdYUqILcY1jUCVajX/j0ljl7Q=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  build-system = [ hatchling ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pytestFlagsArray = [
-    "tests/test.py"
-  ];
+  enabledTestPaths = [ "tests" ];
 
   # A test needs the HOME directory to be different from $TMPDIR.
   preCheck = ''
@@ -47,17 +38,21 @@ buildPythonPackage rec {
     "test_unicode_path"
     # fails to import itself after modifying the environment
     "test_environment"
-  ] ++ lib.optionals stdenv.isDarwin [
+    # timing sensitive due to strict timeouts
+    "test_done_callback_no_deadlock"
+    "test_timeout_overstep"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     # Disable tests that fail on Darwin sandbox
     "test_background_exception"
     "test_cwd"
     "test_ok_code"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Python subprocess interface";
-    homepage = "https://pypi.python.org/pypi/sh/";
-    license = licenses.mit;
-    maintainers = with maintainers; [ siriobalmelli ];
+    homepage = "https://pypi.org/project/sh/";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ siriobalmelli ];
   };
 }

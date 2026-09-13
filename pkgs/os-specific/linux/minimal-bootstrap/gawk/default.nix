@@ -1,77 +1,75 @@
-{ lib
-, buildPlatform
-, hostPlatform
-, fetchurl
-, bash
-, tinycc
-, gnumake
-, gnupatch
-, gnused
-, gnugrep
+{
+  lib,
+  buildPlatform,
+  hostPlatform,
+  fetchurl,
+  bash,
+  tinycc,
+  gnumake,
+  gnugrep,
+  gnupatch,
+  gnused,
+  gnutar,
+  gzip,
+  bootGawk,
 }:
 let
+  inherit (import ./common.nix { inherit lib; }) meta;
   pname = "gawk";
-  # >=3.1.x is incompatible with mes-libc
-  version = "3.0.6";
+
+  version = "5.4.1";
 
   src = fetchurl {
     url = "mirror://gnu/gawk/gawk-${version}.tar.gz";
-    sha256 = "1z4bibjm7ldvjwq3hmyifyb429rs2d9bdwkvs0r171vv1khpdwmb";
+    hash = "sha256-izsOqDkwMRo/MJBdPOiY0yxhA8L+INapC0A0EXGxdN4=";
   };
-
   patches = [
-    # for reproducibility don't generate date stamp
-    ./no-stamp.patch
+    ./node-struct-without-gmp-mpfr.patch
   ];
 in
-bash.runCommand "${pname}-${version}" {
-  inherit pname version;
+bash.runCommand "${pname}-${version}"
+  {
+    inherit pname version meta;
 
-  nativeBuildInputs = [
-    tinycc.compiler
-    gnumake
-    gnupatch
-    gnused
-    gnugrep
-  ];
+    nativeBuildInputs = [
+      tinycc.compiler
+      gnupatch
+      gnumake
+      gnused
+      gnugrep
+      gnutar
+      gzip
+      bootGawk
+    ];
 
-  passthru.tests.get-version = result:
-    bash.runCommand "${pname}-get-version-${version}" {} ''
-      ${result}/bin/awk --version
-      mkdir $out
-    '';
+    passthru.tests.get-version =
+      result:
+      bash.runCommand "${pname}-get-version-${version}" { } ''
+        ${result}/bin/awk --version
+        mkdir $out
+      '';
+  }
+  ''
+    # Unpack
+    tar xzf ${src}
+    cd gawk-${version}
 
-  meta = with lib; {
-    description = "GNU implementation of the Awk programming language";
-    homepage = "https://www.gnu.org/software/gawk";
-    license = licenses.gpl3Plus;
-    maintainers = teams.minimal-bootstrap.members;
-    platforms = platforms.unix;
-  };
-} ''
-  # Unpack
-  ungz --file ${src} --output gawk.tar
-  untar --file gawk.tar
-  rm gawk.tar
-  cd gawk-${version}
+    # Patch
+    ${lib.concatMapStringsSep "\n" (f: "patch -Np1 -i ${f}") patches}
 
-  # Patch
-  ${lib.concatMapStringsSep "\n" (f: "patch -Np0 -i ${f}") patches}
+    # Configure
+    export CC="tcc -B ${tinycc.libs}/lib"
+    export AR="tcc -ar"
+    export LD=tcc
+    bash ./configure \
+      --prefix=$out \
+      --build=${buildPlatform.config} \
+      --host=${hostPlatform.config} \
+      --disable-dependency-tracking
 
-  # Configure
-  export CC="tcc -B ${tinycc.libs}/lib"
-  export ac_cv_func_getpgrp_void=yes
-  export ac_cv_func_tzset=yes
-  bash ./configure \
-    --build=${buildPlatform.config} \
-    --host=${hostPlatform.config} \
-    --disable-nls \
-    --prefix=$out
+    # Build
+    make -j $NIX_BUILD_CORES
 
-  # Build
-  make gawk
-
-  # Install
-  install -D gawk $out/bin/gawk
-  ln -s gawk $out/bin/awk
-''
+    # Install
+    make -j $NIX_BUILD_CORES install
+  ''

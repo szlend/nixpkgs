@@ -1,21 +1,23 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, doit
-, configclass
-, mergedict
-, pytestCheckHook
-, hunspell
-, hunspellDicts
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+  doit,
+  configclass,
+  mergedict,
+  pytestCheckHook,
+  hunspell,
+  hunspellDicts,
 }:
 
 buildPythonPackage rec {
   pname = "doit-py";
   version = "0.5.0";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "pydoit";
-    repo = pname;
+    repo = "doit-py";
     rev = version;
     hash = "sha256-DBl6/no04ZGRHHmN9gkEtBmAMgmyZWcfPCcFz0uxAv4=";
   };
@@ -39,10 +41,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "doitpy" ];
 
-  meta = with lib; {
+  meta = {
     description = "doit tasks for python stuff";
     homepage = "http://pythonhosted.org/doit-py";
-    license = licenses.mit;
-    maintainers = with maintainers; [ onny ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ onny ];
   };
 }

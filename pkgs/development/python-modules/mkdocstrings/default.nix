@@ -1,42 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, jinja2
-, markdown
-, markupsafe
-, mkdocs
-, mkdocs-autorefs
-, pymdown-extensions
-, pytestCheckHook
-, pdm-pep517
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  jinja2,
+  markdown,
+  markupsafe,
+  mkdocs,
+  mkdocs-autorefs,
+  pdm-backend,
+  pymdown-extensions,
+  pytestCheckHook,
+  dirty-equals,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mkdocstrings";
-  version = "0.21.2";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.0.4";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mkdocstrings";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-pi0BEe/zhG/V9wh2CO91Cc7Mze93+2tbVo6/2LGQ6Nw=";
+    repo = "mkdocstrings";
+    tag = finalAttrs.version;
+    hash = "sha256-FBDzTArJGKoJOmOLiYNTA9kshHWqD7zV1nR3sG4sOMk=";
   };
 
   postPatch = ''
     substituteInPlace pyproject.toml \
-      --replace 'dynamic = ["version"]' 'version = "${version}"' \
-      --replace 'license = "ISC"' 'license = {text = "ISC"}'
+      --replace-fail 'dynamic = ["version"]' 'version = "${finalAttrs.version}"'
   '';
 
-  nativeBuildInputs = [
-    pdm-pep517
-  ];
+  build-system = [ pdm-backend ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     jinja2
     markdown
     markupsafe
@@ -47,27 +43,30 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     pytestCheckHook
+    dirty-equals
   ];
 
-  pythonImportsCheck = [
-    "mkdocstrings"
-  ];
+  pythonImportsCheck = [ "mkdocstrings" ];
 
   disabledTestPaths = [
     # Circular dependencies
+    "tests/test_api.py"
     "tests/test_extension.py"
   ];
 
   disabledTests = [
     # Not all requirements are available
     "test_disabling_plugin"
+    # Circular dependency on mkdocstrings-python
+    "test_extended_templates"
+    "test_nested_autodoc[ext_markdown0]"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Automatic documentation from sources for MkDocs";
     homepage = "https://github.com/mkdocstrings/mkdocstrings";
-    changelog = "https://github.com/mkdocstrings/mkdocstrings/blob/${version}/CHANGELOG.md";
-    license = licenses.isc;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/mkdocstrings/mkdocstrings/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.isc;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

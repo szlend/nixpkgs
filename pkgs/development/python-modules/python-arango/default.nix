@@ -1,14 +1,23 @@
-{ lib
-, arangodb
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, pytestCheckHook
-, pyjwt
-, pytest
-, mock
-, requests
-, requests-toolbelt
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+
+  # build-system
+  setuptools,
+  setuptools-scm,
+
+  # dependencies
+  urllib3,
+  requests,
+  requests-toolbelt,
+  pyjwt,
+  importlib-metadata,
+  packaging,
+
+  # tests
+  mock,
 }:
 
 let
@@ -20,32 +29,44 @@ let
   };
 in
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-arango";
-  version = "7.5.7";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "8.3.5";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "ArangoDB-Community";
+    owner = "arangodb";
     repo = "python-arango";
-    rev = "refs/tags/${version}";
-    hash = "sha256-cd2xE5rYLl3NOv/DZjmHRPCe224k4XyPjo9aXV1ZhvU=";
+    tag = finalAttrs.version;
+    hash = "sha256-GHpmWQKvF0gKoemytiAkMQfd3vBWlrRzSSveSE/5PAo=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
+
+  dependencies = [
+    importlib-metadata
     requests
     requests-toolbelt
+    packaging
     pyjwt
+    setuptools
+    urllib3
   ];
 
   nativeCheckInputs = [
-    arangodb
+    #arangodb
     mock
     pytestCheckHook
   ];
 
+  # ArangoDB has been removed from Nixpkgs due to lack of maintenance,
+  # so we cannot run the tests at present.
+  #
+  # Before that, the issue was:
+  #
   # arangodb is compiled only for particular target architectures
   # (i.e. "haswell"). Thus, these tests may not pass reproducibly,
   # failing with: `166: Illegal instruction` if not run on arangodb's
@@ -56,37 +77,33 @@ buildPythonPackage rec {
   # architecture issues will be irrelevant.
   doCheck = false;
 
-  preCheck = lib.optionalString doCheck ''
-    # Start test DB
-    mkdir -p .nix-test/{data,work}
+  #preCheck = lib.optionalString doCheck ''
+  #  # Start test DB
+  #  mkdir -p .nix-test/{data,work}
+  #
+  #  ICU_DATA=${arangodb}/share/arangodb3 \
+  #  GLIBCXX_FORCE_NEW=1 \
+  #  TZ=UTC \
+  #  TZ_DATA=${arangodb}/share/arangodb3/tzdata \
+  #  ARANGO_ROOT_PASSWORD=${testDBOpts.password} \
+  #  ${arangodb}/bin/arangod \
+  #    --server.uid=$(id -u) \
+  #    --server.gid=$(id -g) \
+  #    --server.authentication=true \
+  #    --server.endpoint=http+tcp://${testDBOpts.host}:${testDBOpts.port} \
+  #    --server.descriptors-minimum=4096 \
+  #    --server.jwt-secret=${testDBOpts.secret} \
+  #    --javascript.app-path=.nix-test/app \
+  #    --log.file=.nix-test/log \
+  #    --database.directory=.nix-test/data \
+  #    --foxx.api=false &
+  #'';
 
-    ICU_DATA=${arangodb}/share/arangodb3 \
-    GLIBCXX_FORCE_NEW=1 \
-    TZ=UTC \
-    TZ_DATA=${arangodb}/share/arangodb3/tzdata \
-    ARANGO_ROOT_PASSWORD=${testDBOpts.password} \
-    ${arangodb}/bin/arangod \
-      --server.uid=$(id -u) \
-      --server.gid=$(id -g) \
-      --server.authentication=true \
-      --server.endpoint=http+tcp://${testDBOpts.host}:${testDBOpts.port} \
-      --server.descriptors-minimum=4096 \
-      --server.jwt-secret=${testDBOpts.secret} \
-      --javascript.app-path=.nix-test/app \
-      --log.file=.nix-test/log \
-      --database.directory=.nix-test/data \
-      --foxx.api=false &
-  '';
-
-  pytestFlagsArray = [
-    "--host"
-    testDBOpts.host
-    "--port"
-    testDBOpts.port
-    "--passwd"
-    testDBOpts.password
-    "--secret"
-    testDBOpts.secret
+  pytestFlags = [
+    "--host=${testDBOpts.host}"
+    "--port=${testDBOpts.port}"
+    "--passwd=${testDBOpts.password}"
+    "--secret=${testDBOpts.secret}"
   ];
 
   disabledTests = [
@@ -128,15 +145,13 @@ buildPythonPackage rec {
     "test_replication_applier"
   ];
 
-  pythonImportsCheck = [
-    "arango"
-  ];
+  pythonImportsCheck = [ "arango" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python Driver for ArangoDB";
     homepage = "https://github.com/ArangoDB-Community/python-arango";
-    changelog = "https://github.com/ArangoDB-Community/python-arango/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ jsoo1 ];
+    changelog = "https://github.com/ArangoDB-Community/python-arango/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ jsoo1 ];
   };
-}
+})

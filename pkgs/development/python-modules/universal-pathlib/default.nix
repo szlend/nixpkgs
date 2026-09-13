@@ -1,37 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, flit-core
-, fsspec
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  setuptools-scm,
+  fsspec,
+  pathlib-abc,
 }:
 
 buildPythonPackage rec {
   pname = "universal-pathlib";
-  version = "0.0.23";
-  format = "pyproject";
+  version = "0.3.8";
+  pyproject = true;
 
-  src = fetchFromGitHub {
-    owner = "fsspec";
-    repo = "universal_pathlib";
-    rev = "v${version}";
-    hash = "sha256-UT4S7sqRn0/YFzFL1KzByK44u8G7pwWHERzJEm7xmiw=";
+  src = fetchPypi {
+    pname = "universal_pathlib";
+    inherit version;
+    hash = "sha256-6tK2W8o99uEcO3yzb8mEY0C8PC2071cTFVAmBCKwo+g=";
   };
 
-  nativeBuildInputs = [
-    flit-core
+  build-system = [
+    setuptools
+    setuptools-scm
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     fsspec
+    pathlib-abc
   ];
 
   pythonImportsCheck = [ "upath" ];
 
-  meta = with lib; {
+  meta = {
     description = "Pathlib api extended to use fsspec backends";
     homepage = "https://github.com/fsspec/universal_pathlib";
-    changelog = "https://github.com/fsspec/universal_pathlib/releases/tag/${src.rev}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ figsoda ];
+    changelog = "https://github.com/fsspec/universal_pathlib/releases/tag/v${version}";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

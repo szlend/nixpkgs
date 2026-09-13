@@ -1,51 +1,62 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, flit-core
-, flit-scm
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  fetchpatch,
+  buildPythonPackage,
+  click,
+  fetchFromGitHub,
+  flit-core,
+  flit-scm,
+  pygments,
+  pytest-cov-stub,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "ssdp";
-  version = "1.2.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "1.3.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "codingjoe";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-QG6W8huEUjq8cgMgienCxDv3nJRTopDuJiPg5FDjNW4=";
+    repo = "ssdp";
+    tag = finalAttrs.version;
+    hash = "sha256-1LO5+lfykaepp+MfS/2mlngobhcV1nZvU19Jb0sbVzk=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  patches = [
+    # Fix CLI test skipping under pytest >= 9.1
+    (fetchpatch {
+      url = "https://github.com/lukegb/ssdp/commit/e5570a13342a2b7271acae1408b37a49e0729e3c.patch";
+      hash = "sha256-RwpsrGRn6rEowwHc39bLO8dVTKJP3d3v7Rr1d8sKYvM=";
+    })
+  ];
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "--cov" ""
-  '';
-
-  nativeBuildInputs = [
+  build-system = [
     flit-core
     flit-scm
   ];
 
+  optional-dependencies = {
+    cli = [
+      click
+      pygments
+    ];
+    pygments = [ pygments ];
+  };
+
   nativeCheckInputs = [
+    pytest-cov-stub
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "ssdp"
-  ];
+  pythonImportsCheck = [ "ssdp" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python asyncio library for Simple Service Discovery Protocol (SSDP)";
     homepage = "https://github.com/codingjoe/ssdp";
-    changelog = "https://github.com/codingjoe/ssdp/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/codingjoe/ssdp/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "ssdp";
   };
-}
+})

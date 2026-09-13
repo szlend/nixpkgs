@@ -1,30 +1,29 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, azure-core
-, msrest
-, msrestazure
-, isodate
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  azure-core,
+  msrest,
+  isodate,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "azure-containerregistry";
-  version = "1.1.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.2.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-6IU+fzMIL8HJv4rCrWlcJSuYre6cdBa7BjS9KrIbIRU=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-Ss0ygh0IZVPqvV3f7Lsh+5FbXRPvg3XRWvyyyAvclqM=";
     extension = "zip";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     azure-core
     msrest
-    msrestazure
     isodate
   ];
 
@@ -37,10 +36,9 @@ buildPythonPackage rec {
     "azure.containerregistry"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Microsoft Azure Container Registry client library for Python";
     homepage = "https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/containerregistry/azure-containerregistry";
-    license = licenses.mit;
-    maintainers = with maintainers; [ peterromfeldhk ];
+    license = lib.licenses.mit;
   };
-}
+})

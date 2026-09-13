@@ -1,38 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, mock
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
+  pytest-asyncio,
+  pytest-mock,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "circuitbreaker";
-  version = "1.4.0";
-  format = "setuptools";
+  version = "2.1.3";
+  pyproject = true;
 
-  disabled = pythonOlder "3.8";
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "fabfuel";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-l0ASt9CQmgJmWpRrghElbff/gaNOmxNh+Wj0C0p4jE0=";
+    repo = "circuitbreaker";
+    tag = finalAttrs.version;
+    hash = "sha256-7BpYGhha0PTYzsE9CsN4KxfJW/wm2i6V+uAeamBREBQ=";
   };
+
+  build-system = [ setuptools ];
 
   nativeCheckInputs = [
-    mock
     pytestCheckHook
+    pytest-asyncio
+    pytest-mock
   ];
 
-  pythonImportsCheck = [
-    "circuitbreaker"
-  ];
+  pythonImportsCheck = [ "circuitbreaker" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python Circuit Breaker implementation";
     homepage = "https://github.com/fabfuel/circuitbreaker";
-    license = with licenses; [ bsd3 ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

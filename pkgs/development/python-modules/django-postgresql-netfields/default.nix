@@ -1,27 +1,30 @@
-{ lib
-, buildPythonPackage
-, django
-, netaddr
-, six
-, fetchFromGitHub
-, pythonOlder
-# required for tests
-#, djangorestframework
-#, psycopg2
+{
+  stdenv,
+  lib,
+  buildPythonPackage,
+  django,
+  netaddr,
+  six,
+  fetchFromGitHub,
+  djangorestframework,
+  # required for tests
+  postgresql,
+  postgresqlTestHook,
+  psycopg2,
+  pytestCheckHook,
+  pytest-django,
 }:
 
 buildPythonPackage rec {
   pname = "django-postgresql-netfields";
-  version = "1.3.0";
+  version = "1.4.1";
   format = "setuptools";
-
-  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "jimfunk";
-    repo = pname;
+    repo = "django-postgresql-netfields";
     rev = "v${version}";
-    hash = "sha256-I+X4yfadtiiZlW7QhfwVbK1qyWn/khH9fWXszCo9uro=";
+    hash = "sha256-oUmgV3MaEOYULvadHZgGYtshlIqYrvQpejYfeMzx1vg=";
   };
 
   propagatedBuildInputs = [
@@ -30,29 +33,25 @@ buildPythonPackage rec {
     six
   ];
 
-  # tests need a postgres database
-  doCheck = false;
+  doCheck = !stdenv.hostPlatform.isDarwin; # could not create shared memory segment: Operation not permitted
 
-  # keeping the dependencies below as comment for reference
-  # checkPhase = ''
-    # python manage.py test
-  # '';
+  nativeCheckInputs = [
+    djangorestframework
+    postgresql
+    postgresqlTestHook
+    psycopg2
+    pytestCheckHook
+    pytest-django
+  ];
 
-  # buildInputs = [
-    # djangorestframework
-    # psycopg2
-  # ];
+  postgresqlTestUserOptions = "LOGIN SUPERUSER";
+  env.DJANGO_SETTINGS_MODULE = "testsettings";
 
-  # Requires psycopg2
-  # pythonImportsCheck = [
-  #   "netfields"
-  # ];
-
-  meta = with lib; {
+  meta = {
     description = "Django PostgreSQL netfields implementation";
     homepage = "https://github.com/jimfunk/django-postgresql-netfields";
     changelog = "https://github.com/jimfunk/django-postgresql-netfields/blob/v${version}/CHANGELOG";
-    license = licenses.bsd2;
-    maintainers = with maintainers; [ ];
+    license = lib.licenses.bsd2;
+    maintainers = [ ];
   };
 }

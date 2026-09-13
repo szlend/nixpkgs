@@ -1,55 +1,112 @@
-{ lib, stdenv, fetchFromGitHub, cmake, postgresql, openssl, libkrb5, enableUnfree ? true }:
+{
+  cmake,
+  fetchFromGitHub,
+  lib,
+  libkrb5,
+  openssl,
+  postgresql,
+  postgresqlBuildExtension,
+  postgresqlTestExtension,
 
-# # To enable on NixOS:
-# config.services.postgresql = let
-#   # The postgresql pkgs has to be taken from the
-#   # postgresql package used, so the extensions
-#   # are built for the correct postgresql version.
-#   postgresqlPackages = config.services.postgresql.package.pkgs;
-# in {
-#   extraPlugins = with postgresqlPackages; [ timescaledb ];
-#   settings.shared_preload_libraries = "timescaledb";
-# }
+  enableUnfree ? true,
+}:
 
-stdenv.mkDerivation rec {
+postgresqlBuildExtension (finalAttrs: {
   pname = "timescaledb${lib.optionalString (!enableUnfree) "-apache"}";
-  version = "2.11.1";
-
-  nativeBuildInputs = [ cmake ];
-  buildInputs = [ postgresql openssl libkrb5 ];
+  version = "2.29.2";
 
   src = fetchFromGitHub {
     owner = "timescale";
     repo = "timescaledb";
-    rev = version;
-    sha256 = "sha256-nThflLfHvcEqJo1dz8PVca0ux7KJOW66nZ3dV1yTOCM=";
+    tag = finalAttrs.version;
+    hash = "sha256-pR68kA795hFX4aEC7UXyruigDNnudQVekDg+eIpdzJU=";
   };
 
-  cmakeFlags = [ "-DSEND_TELEMETRY_DEFAULT=OFF" "-DREGRESS_CHECKS=OFF" "-DTAP_CHECKS=OFF" ]
-    ++ lib.optionals (!enableUnfree) [ "-DAPACHE_ONLY=ON" ]
-    ++ lib.optionals stdenv.isDarwin [ "-DLINTER=OFF" ];
+  nativeBuildInputs = [ cmake ];
+  buildInputs = [
+    openssl
+    libkrb5
+  ];
+
+  cmakeFlags = [
+    (lib.cmakeBool "SEND_TELEMETRY_DEFAULT" false)
+    (lib.cmakeBool "REGRESS_CHECKS" false)
+    (lib.cmakeBool "TAP_CHECKS" false)
+    (lib.cmakeBool "APACHE_ONLY" (!enableUnfree))
+  ];
 
   # Fix the install phase which tries to install into the pgsql extension dir,
   # and cannot be manually overridden. This is rather fragile but works OK.
   postPatch = ''
     for x in CMakeLists.txt sql/CMakeLists.txt; do
       substituteInPlace "$x" \
-        --replace 'DESTINATION "''${PG_SHAREDIR}/extension"' "DESTINATION \"$out/share/postgresql/extension\""
+        --replace-fail 'DESTINATION "''${PG_SHAREDIR}/extension"' "DESTINATION \"$out/share/postgresql/extension\""
     done
 
     for x in src/CMakeLists.txt src/loader/CMakeLists.txt tsl/src/CMakeLists.txt; do
       substituteInPlace "$x" \
-        --replace 'DESTINATION ''${PG_PKGLIBDIR}' "DESTINATION \"$out/lib\""
+        --replace-fail 'DESTINATION ''${PG_PKGLIBDIR}' "DESTINATION \"$out/lib\""
     done
   '';
 
-  meta = with lib; {
+  passthru.tests.extension = postgresqlTestExtension {
+    inherit (finalAttrs) finalPackage;
+    withPackages = [ "timescaledb_toolkit" ];
+    postgresqlExtraSettings = ''
+      shared_preload_libraries='timescaledb'
+    '';
+    sql = ''
+      CREATE EXTENSION timescaledb;
+      CREATE EXTENSION timescaledb_toolkit;
+
+      CREATE TABLE sth (
+        time TIMESTAMPTZ NOT NULL,
+        value DOUBLE PRECISION
+      );
+
+      SELECT create_hypertable('sth', 'time');
+
+      INSERT INTO sth (time, value) VALUES
+      ('2003-04-12 04:05:06 America/New_York', 1.0),
+      ('2003-04-12 04:05:07 America/New_York', 2.0),
+      ('2003-04-12 04:05:08 America/New_York', 3.0),
+      ('2003-04-12 04:05:09 America/New_York', 4.0),
+      ('2003-04-12 04:05:10 America/New_York', 5.0)
+      ;
+
+      WITH t AS (
+        SELECT
+          time_bucket('1 day'::interval, time) AS dt,
+          stats_agg(value) AS stats
+        FROM sth
+        GROUP BY time_bucket('1 day'::interval, time)
+      )
+      SELECT
+        average(stats)
+      FROM t;
+    '';
+    asserts = [
+      {
+        query = "SELECT count(*) FROM sth";
+        expected = "5";
+        description = "hypertable can be queried successfully.";
+      }
+    ];
+  };
+
+  meta = {
     description = "Scales PostgreSQL for time-series data via automatic partitioning across time and space";
     homepage = "https://www.timescale.com/";
-    changelog = "https://github.com/timescale/timescaledb/raw/${version}/CHANGELOG.md";
-    maintainers = with maintainers; [ marsam ];
+    changelog = "https://github.com/timescale/timescaledb/blob/${finalAttrs.version}/CHANGELOG.md";
+    maintainers = with lib.maintainers; [ kirillrdy ];
     platforms = postgresql.meta.platforms;
-    license = with licenses; if enableUnfree then tsl else asl20;
-    broken = versionOlder postgresql.version "12";
+    license = with lib.licenses; if enableUnfree then tsl else asl20;
+    broken =
+      lib.versionOlder postgresql.version "16"
+      ||
+        # Check after next package update.
+        lib.warnIf (finalAttrs.version != "2.29.2") "Is postgresql19Packages.timescaledb still broken?" (
+          lib.versionAtLeast postgresql.version "19"
+        );
   };
-}
+})

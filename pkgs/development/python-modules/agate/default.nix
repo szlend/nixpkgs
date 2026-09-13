@@ -1,36 +1,37 @@
-{ lib
-, babel
-, buildPythonPackage
-, cssselect
-, fetchFromGitHub
-, glibcLocales
-, isodate
-, leather
-, lxml
-, nose
-, parsedatetime
-, pyicu
-, python-slugify
-, pytimeparse
-, pythonOlder
-, pytz
+{
+  lib,
+  stdenv,
+  babel,
+  buildPythonPackage,
+  cssselect,
+  fetchFromGitHub,
+  glibcLocales,
+  isodate,
+  leather,
+  lxml,
+  parsedatetime,
+  pyicu,
+  pytestCheckHook,
+  python-slugify,
+  pytimeparse,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "agate";
-  version = "1.7.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.14.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "wireservice";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-7Ew9bgeheymCL8xXSW5li0LdFvGYb/7gPxmC4w6tHvM=";
+    repo = "agate";
+    tag = finalAttrs.version;
+    hash = "sha256-REo26vSWFzWsvJzmqlc5A5xEYA2TebQFW6jFRIbH53I=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     babel
     isodate
     leather
@@ -43,24 +44,22 @@ buildPythonPackage rec {
     cssselect
     glibcLocales
     lxml
-    nose
     pyicu
-    pytz
+    pytestCheckHook
   ];
 
-  checkPhase = ''
-    LC_ALL="en_US.UTF-8" nosetests tests
-  '';
-
-  pythonImportsCheck = [
-    "agate"
+  disabledTests = lib.optionals stdenv.hostPlatform.isDarwin [
+    # Output is slightly different on macOS
+    "test_cast_format_locale"
   ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "agate" ];
+
+  meta = {
     description = "Python data analysis library that is optimized for humans instead of machines";
     homepage = "https://github.com/wireservice/agate";
-    changelog = "https://github.com/wireservice/agate/blob/${version}/CHANGELOG.rst";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ vrthra ];
+    changelog = "https://github.com/wireservice/agate/blob/${finalAttrs.src.tag}/CHANGELOG.rst";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
-}
+})

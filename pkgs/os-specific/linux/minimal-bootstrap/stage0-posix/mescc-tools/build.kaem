@@ -1,5 +1,5 @@
 # This is a modified version of stage0-posix/x86/mescc-tools-full-kaem.kaem
-# https://github.com/oriansj/stage0-posix-x86/blob/56e6b8df3e95f4bc04f8b420a4cd8c82c70b9efa/mescc-tools-full-kaem.kaem
+# https://github.com/oriansj/stage0-posix-x86/blob/3b9c2bb6d4155e4f2e5f642b5e0f59255dfc5934/mescc-tools-full-kaem.kaem
 # - Paths to build inputs have been changed for nix
 
 # Mes --- Maxwell Equations of Software
@@ -46,14 +46,17 @@ ${replace} \
 # Phase-12 Build M2-Mesoplanet from M2-Planet #
 ###############################################
 
-${M2} --architecture ${ARCH} \
+${M2} --architecture ${m2libcArch} \
   -f ${m2libc}/sys/types.h \
   -f ${m2libc}/stddef.h \
-  -f ${m2libc}/${ARCH}/linux/fcntl.c \
+  -f ${m2libc}/${m2libcArch}/linux/fcntl.c \
   -f ${m2libc}/fcntl.c \
-  -f ${m2libc}/${ARCH}/linux/unistd.c \
-  -f ${m2libc}/${ARCH}/linux/sys/stat.c \
+  -f ${m2libc}/sys/utsname.h \
+  -f ${m2libc}/${m2libcArch}/linux/unistd.c \
+  -f ${m2libc}/${m2libcArch}/linux/sys/stat.c \
+  -f ${m2libc}/ctype.c \
   -f ${m2libc}/stdlib.c \
+  -f ${m2libc}/stdarg.h \
   -f ${m2libc}/stdio.h \
   -f ${m2libc}/stdio.c \
   -f ${m2libc}/string.c \
@@ -69,20 +72,20 @@ ${M2} --architecture ${ARCH} \
   --debug \
   -o ./M2-Mesoplanet-1.M1
 
-${blood-elf-0} ${ENDIAN_FLAG} ${BLOOD_FLAG} -f ./M2-Mesoplanet-1.M1 -o ./M2-Mesoplanet-1-footer.M1
+${blood-elf-0} ${endianFlag} ${bloodFlag} -f ./M2-Mesoplanet-1.M1 -o ./M2-Mesoplanet-1-footer.M1
 
-${M1} --architecture ${ARCH} \
-  ${ENDIAN_FLAG} \
-  -f ${m2libc}/${ARCH}/${ARCH}_defs.M1 \
-  -f ${m2libc}/${ARCH}/libc-full.M1 \
+${M1} --architecture ${m2libcArch} \
+  ${endianFlag} \
+  -f ${m2libc}/${m2libcArch}/${m2libcArch}_defs.M1 \
+  -f ${m2libc}/${m2libcArch}/libc-full.M1 \
   -f ./M2-Mesoplanet-1.M1 \
   -f ./M2-Mesoplanet-1-footer.M1 \
   -o ./M2-Mesoplanet-1.hex2
 
-${hex2} --architecture ${ARCH} \
-  ${ENDIAN_FLAG} \
-  --base-address ${BASE_ADDRESS} \
-  -f ${m2libc}/${ARCH}/ELF-${ARCH}-debug.hex2 \
+${hex2} --architecture ${m2libcArch} \
+  ${endianFlag} \
+  --base-address ${baseAddress} \
+  -f ${m2libc}/${m2libcArch}/ELF-${m2libcArch}-debug.hex2 \
   -f ./M2-Mesoplanet-1.hex2 \
   -o ${out}/bin/M2-Mesoplanet
 
@@ -90,13 +93,16 @@ ${hex2} --architecture ${ARCH} \
 # Phase-13 Build final blood-elf from C sources #
 #################################################
 
-${M2} --architecture ${ARCH} \
+${M2} --architecture ${m2libcArch} \
 	-f ${m2libc}/sys/types.h \
 	-f ${m2libc}/stddef.h \
-	-f ${m2libc}/${ARCH}/linux/fcntl.c \
+	-f ${m2libc}/${m2libcArch}/linux/fcntl.c \
 	-f ${m2libc}/fcntl.c \
-	-f ${m2libc}/${ARCH}/linux/unistd.c \
+	-f ${m2libc}/sys/utsname.h \
+	-f ${m2libc}/${m2libcArch}/linux/unistd.c \
+	-f ${m2libc}/ctype.c \
 	-f ${m2libc}/stdlib.c \
+	-f ${m2libc}/stdarg.h \
 	-f ${m2libc}/stdio.h \
 	-f ${m2libc}/stdio.c \
 	-f ${m2libc}/bootstrappable.c \
@@ -105,19 +111,20 @@ ${M2} --architecture ${ARCH} \
 	--debug \
 	-o ./blood-elf-1.M1
 
-${blood-elf-0} ${BLOOD_FLAG} ${ENDIAN_FLAG} -f ./blood-elf-1.M1 -o ./blood-elf-1-footer.M1
-${M1} --architecture ${ARCH} \
-	${ENDIAN_FLAG} \
-	-f ${m2libc}/${ARCH}/${ARCH}_defs.M1 \
-	-f ${m2libc}/${ARCH}/libc-full.M1 \
+${blood-elf-0} ${endianFlag} ${bloodFlag} -f ./blood-elf-1.M1 -o ./blood-elf-1-footer.M1
+
+${M1} --architecture ${m2libcArch} \
+	${endianFlag} \
+	-f ${m2libc}/${m2libcArch}/${m2libcArch}_defs.M1 \
+	-f ${m2libc}/${m2libcArch}/libc-full.M1 \
 	-f ./blood-elf-1.M1 \
 	-f ./blood-elf-1-footer.M1 \
 	-o ./blood-elf-1.hex2
 
-${hex2} --architecture ${ARCH} \
-	${ENDIAN_FLAG} \
-	--base-address ${BASE_ADDRESS} \
-	-f ${m2libc}/${ARCH}/ELF-${ARCH}-debug.hex2 \
+${hex2} --architecture ${m2libcArch} \
+	${endianFlag} \
+	--base-address ${baseAddress} \
+	-f ${m2libc}/${m2libcArch}/ELF-${m2libcArch}-debug.hex2 \
 	-f ./blood-elf-1.hex2 \
 	-o ${out}/bin/blood-elf
 
@@ -129,13 +136,16 @@ ${hex2} --architecture ${ARCH} \
 # Phase-14 Build get_machine from C sources #
 #############################################
 
-${M2} --architecture ${ARCH} \
+${M2} --architecture ${m2libcArch} \
 	-f ${m2libc}/sys/types.h \
 	-f ${m2libc}/stddef.h \
-	-f ${m2libc}/${ARCH}/linux/unistd.c \
-	-f ${m2libc}/${ARCH}/linux/fcntl.c \
+	-f ${m2libc}/sys/utsname.h \
+	-f ${m2libc}/${m2libcArch}/linux/unistd.c \
+	-f ${m2libc}/${m2libcArch}/linux/fcntl.c \
 	-f ${m2libc}/fcntl.c \
+	-f ${m2libc}/ctype.c \
 	-f ${m2libc}/stdlib.c \
+	-f ${m2libc}/stdarg.h \
 	-f ${m2libc}/stdio.h \
 	-f ${m2libc}/stdio.c \
 	-f ${m2libc}/bootstrappable.c \
@@ -143,20 +153,20 @@ ${M2} --architecture ${ARCH} \
 	--debug \
 	-o get_machine.M1
 
-${out}/bin/blood-elf ${BLOOD_FLAG} ${ENDIAN_FLAG} -f ./get_machine.M1 -o ./get_machine-footer.M1
+${out}/bin/blood-elf ${endianFlag} ${bloodFlag} -f ./get_machine.M1 -o ./get_machine-footer.M1
 
-${M1} --architecture ${ARCH} \
-	${ENDIAN_FLAG} \
-	-f ${m2libc}/${ARCH}/${ARCH}_defs.M1 \
-	-f ${m2libc}/${ARCH}/libc-full.M1 \
+${M1} --architecture ${m2libcArch} \
+	${endianFlag} \
+	-f ${m2libc}/${m2libcArch}/${m2libcArch}_defs.M1 \
+	-f ${m2libc}/${m2libcArch}/libc-full.M1 \
 	-f ./get_machine.M1 \
 	-f ./get_machine-footer.M1 \
 	-o ./get_machine.hex2
 
-${hex2} --architecture ${ARCH} \
-	${ENDIAN_FLAG} \
-	--base-address ${BASE_ADDRESS} \
-	-f ${m2libc}/${ARCH}/ELF-${ARCH}-debug.hex2 \
+${hex2} --architecture ${m2libcArch} \
+	${endianFlag} \
+	--base-address ${baseAddress} \
+	-f ${m2libc}/${m2libcArch}/ELF-${m2libcArch}-debug.hex2 \
 	-f ./get_machine.hex2 \
 	-o ${out}/bin/get_machine
 
@@ -164,13 +174,16 @@ ${hex2} --architecture ${ARCH} \
 # Phase-15 Build M2-Planet from M2-Planet  #
 ############################################
 
-${M2} --architecture ${ARCH} \
+${M2} --architecture ${m2libcArch} \
 	-f ${m2libc}/sys/types.h \
 	-f ${m2libc}/stddef.h \
-	-f ${m2libc}/${ARCH}/linux/unistd.c \
-	-f ${m2libc}/${ARCH}/linux/fcntl.c \
+	-f ${m2libc}/sys/utsname.h \
+	-f ${m2libc}/${m2libcArch}/linux/unistd.c \
+	-f ${m2libc}/${m2libcArch}/linux/fcntl.c \
 	-f ${m2libc}/fcntl.c \
+	-f ${m2libc}/ctype.c \
 	-f ${m2libc}/stdlib.c \
+	-f ${m2libc}/stdarg.h \
 	-f ${m2libc}/stdio.h \
 	-f ${m2libc}/stdio.c \
 	-f ${m2libc}/bootstrappable.c \
@@ -179,26 +192,26 @@ ${M2} --architecture ${ARCH} \
 	-f ${src}/M2-Planet/cc_reader.c \
 	-f ${src}/M2-Planet/cc_strings.c \
 	-f ${src}/M2-Planet/cc_types.c \
+	-f ${src}/M2-Planet/cc_emit.c \
 	-f ${src}/M2-Planet/cc_core.c \
 	-f ${src}/M2-Planet/cc_macro.c \
 	-f ${src}/M2-Planet/cc.c \
 	--debug \
 	-o ./M2-1.M1
 
-${out}/bin/blood-elf ${ENDIAN_FLAG} ${BLOOD_FLAG} -f ./M2-1.M1 -o ./M2-1-footer.M1
+${out}/bin/blood-elf ${endianFlag} ${bloodFlag} -f ./M2-1.M1 -o ./M2-1-footer.M1
 
-${M1} --architecture ${ARCH} \
-	${ENDIAN_FLAG} \
-	-f ${m2libc}/${ARCH}/${ARCH}_defs.M1 \
-	-f ${m2libc}/${ARCH}/libc-full.M1 \
+${M1} --architecture ${m2libcArch} \
+	${endianFlag} \
+	-f ${m2libc}/${m2libcArch}/${m2libcArch}_defs.M1 \
+	-f ${m2libc}/${m2libcArch}/libc-full.M1 \
 	-f ./M2-1.M1 \
 	-f ./M2-1-footer.M1 \
 	-o ./M2-1.hex2
 
-${hex2} --architecture ${ARCH} \
-	${ENDIAN_FLAG} \
-	--base-address ${BASE_ADDRESS} \
-	-f ${m2libc}/${ARCH}/ELF-${ARCH}-debug.hex2 \
+${hex2} --architecture ${m2libcArch} \
+	${endianFlag} \
+	--base-address ${baseAddress} \
+	-f ${m2libc}/${m2libcArch}/ELF-${m2libcArch}-debug.hex2 \
 	-f ./M2-1.hex2 \
 	-o ${out}/bin/M2-Planet
-

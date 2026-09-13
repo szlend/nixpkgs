@@ -1,29 +1,44 @@
-{ lib
-, bcrypt
-, buildPythonPackage
-, dvc-objects
-, fetchPypi
-, pythonRelaxDepsHook
-, setuptools-scm
-, sshfs
+{
+  lib,
+  bcrypt,
+  buildPythonPackage,
+  dvc-objects,
+  fetchPypi,
+  setuptools,
+  setuptools-scm,
+  sshfs,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dvc-ssh";
-  version = "2.22.1";
-  format = "setuptools";
+  version = "4.3.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-WHFfq0Cw17AWgmUlkZUOO6t6XcPYjLHUz4s0wcVYklc=";
+    pname = "dvc_ssh";
+    inherit (finalAttrs) version;
+    hash = "sha256-NgfzEZW5WmDaP85apROMvITy545CHse9z94xC/Jw9OA=";
   };
 
-  # Prevent circular dependency
-  pythonRemoveDeps = [ "dvc" ];
+  pythonRemoveDeps = [
+    # Prevent circular dependency
+    "dvc"
+  ];
 
-  nativeBuildInputs = [ setuptools-scm pythonRelaxDepsHook ];
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
-  propagatedBuildInputs = [ bcrypt dvc-objects sshfs ];
+  dependencies = [
+    bcrypt
+    dvc-objects
+    sshfs
+  ];
+
+  optional-dependencies = {
+    gssapi = [ sshfs ];
+  };
 
   # bcrypt is enabled for sshfs in nixpkgs
   postPatch = ''
@@ -33,13 +48,16 @@ buildPythonPackage rec {
   # Network access is needed for tests
   doCheck = false;
 
-  pythonImportsCheck = [ "dvc_ssh" ];
+  # Circular dependency
+  # pythonImportsCheck = [
+  #  "dvc_ssh"
+  # ];
 
-  meta = with lib; {
-    description = "ssh plugin for dvc";
-    homepage = "https://pypi.org/project/dvc-ssh/${version}";
-    changelog = "https://github.com/iterative/dvc-ssh/releases/tag/${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ melling ];
+  meta = {
+    description = "SSH plugin for dvc";
+    homepage = "https://pypi.org/project/dvc-ssh/";
+    changelog = "https://github.com/iterative/dvc-ssh/releases/tag/${finalAttrs.version}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

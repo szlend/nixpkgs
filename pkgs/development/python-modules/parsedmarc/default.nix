@@ -1,36 +1,40 @@
-{ buildPythonPackage
-, fetchPypi
-, fetchurl
-, lib
-, nixosTests
-, python
-, pythonOlder
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  fetchurl,
 
-# pythonPackages
-, hatchling
-, dnspython
-, expiringdict
-, publicsuffix2
-, xmltodict
-, geoip2
-, urllib3
-, requests
-, imapclient
-, dateparser
-, mailsuite
-, elasticsearch
-, elasticsearch-dsl
-, kafka-python
-, tqdm
-, lxml
-, boto3
-, msgraph-core
-, azure-identity
-, google-api-core
-, google-api-python-client
-, google-auth
-, google-auth-httplib2
-, google-auth-oauthlib
+  # build-system
+  hatchling,
+
+  # dependencies
+  azure-identity,
+  azure-monitor-ingestion,
+  boto3,
+  dateparser,
+  dnspython,
+  elasticsearch-dsl,
+  elasticsearch,
+  expiringdict,
+  kafka-python,
+  lxml,
+  mailsuite,
+  maxminddb,
+  nixosTests,
+  opensearch-py,
+  publicsuffixlist,
+  pygelf,
+  pyyaml,
+  requests,
+  tqdm,
+  urllib3,
+  xmltodict,
+
+  # test
+  iana-etc,
+  libredirect,
+  pytestCheckHook,
 }:
 
 let
@@ -39,56 +43,73 @@ let
     sha256 = "0wbihyqbb4ndjg79qs8088zgrcg88km8khjhv2474y7nzjzkf43i";
   };
 in
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "parsedmarc";
-  version = "8.4.2";
+  version = "11.0.1";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  format = "pyproject";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-6dP9zQI0jYiE+lUhmFBNp8Sv9povm9Pa4R4TuzAmEQk=";
+  src = fetchFromGitHub {
+    owner = "domainaware";
+    repo = "parsedmarc";
+    tag = finalAttrs.version;
+    hash = "sha256-tPGpYIKIi5TK5t4vwo/bUpVfgq4UhYW0IAn5sFYexrs=";
   };
 
   postPatch = ''
     substituteInPlace pyproject.toml \
-      --replace "elasticsearch<7.14.0" "elasticsearch"
+      --replace-fail 'requires_python = ">=3.10,<3.15"' ""
   '';
 
-  nativeBuildInputs = [
+  build-system = [
     hatchling
   ];
 
-  propagatedBuildInputs = [
-    dnspython
-    expiringdict
-    publicsuffix2
-    xmltodict
-    geoip2
-    urllib3
-    requests
-    imapclient
-    dateparser
-    mailsuite
-    elasticsearch
-    elasticsearch-dsl
-    kafka-python
-    tqdm
-    lxml
-    boto3
-    msgraph-core
-    azure-identity
-    google-api-core
-    google-api-python-client
-    google-auth
-    google-auth-httplib2
-    google-auth-oauthlib
+  pythonRelaxDeps = [
+    "elasticsearch"
+    "elasticsearch-dsl"
   ];
 
-  # no tests on PyPI, no tags on GitHub
-  doCheck = false;
+  dependencies = [
+    azure-identity
+    azure-monitor-ingestion
+    boto3
+    dateparser
+    dnspython
+    elasticsearch
+    elasticsearch-dsl
+    expiringdict
+    kafka-python
+    lxml
+    mailsuite
+    maxminddb
+    opensearch-py
+    publicsuffixlist
+    pygelf
+    pyyaml
+    requests
+    tqdm
+    urllib3
+    xmltodict
+  ]
+  ++ mailsuite.optional-dependencies.gmail
+  ++ mailsuite.optional-dependencies.msgraph;
+
+  nativeCheckInputs = [
+    pytestCheckHook
+  ];
+
+  preCheck = lib.optionalString stdenv.hostPlatform.isLinux ''
+    echo "nameserver 127.0.0.1" > resolv.conf
+    export NIX_REDIRECTS=/etc/protocols=${iana-etc}/etc/protocols:/etc/resolv.conf=$(realpath resolv.conf) \
+      LD_PRELOAD=${libredirect}/lib/libredirect.so
+  '';
+
+  disabledTests = [
+    # contacts DNS servers at 1.1.1.1 and 8.8.8.8
+    "test_general_dns_settings_with_defaults"
+    # AssertionError
+    "testWithoutAssumeUtcNaiveIsLocal"
+  ];
 
   pythonImportsCheck = [ "parsedmarc" ];
 
@@ -98,10 +119,11 @@ buildPythonPackage rec {
   };
 
   meta = {
-    changelog = "https://github.com/domainaware/parsedmarc/blob/master/CHANGELOG.md#${lib.replaceStrings [ "." ] [ "" ] version}";
     description = "Python module and CLI utility for parsing DMARC reports";
     homepage = "https://domainaware.github.io/parsedmarc/";
-    maintainers = with lib.maintainers; [ talyz ];
+    changelog = "https://github.com/domainaware/parsedmarc/blob/${finalAttrs.src.tag}/CHANGELOG.md";
     license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ talyz ];
+    mainProgram = "parsedmarc";
   };
-}
+})

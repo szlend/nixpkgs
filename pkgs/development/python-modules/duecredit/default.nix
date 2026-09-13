@@ -1,28 +1,44 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, isPy27
-, pytest
-, pytestCheckHook
-, vcrpy
-, citeproc-py
-, requests
-, six
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  setuptools-scm,
+  pytestCheckHook,
+  pytest-cov-stub,
+  vcrpy,
+  citeproc-py,
+  looseversion,
+  requests,
 }:
 
 buildPythonPackage rec {
   pname = "duecredit";
-  version = "0.9.2";
-  disabled = isPy27;
+  version = "0.11.2";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-Dg/Yfp5GzmyUMI6feAwgP+g22JYoQE+L9a+Wp0V77Rw=";
+    hash = "sha256-e1wa4Qkn+eAs9NVOLHSoqgDNKcONY33v48lI09jp8zo=";
   };
 
-  propagatedBuildInputs = [ citeproc-py requests six ];
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
-  nativeCheckInputs = [ pytest pytestCheckHook vcrpy ];
+  dependencies = [
+    citeproc-py
+    looseversion
+    requests
+  ];
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    pytest-cov-stub
+    vcrpy
+  ];
+  disabledTests = [ "test_import_doi" ]; # tries to access network
 
   preCheck = ''
     export HOME=$(mktemp -d)
@@ -30,10 +46,12 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "duecredit" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/duecredit/duecredit";
     description = "Simple framework to embed references in code";
-    license = licenses.bsd2;
-    maintainers = with maintainers; [ bcdarwin ];
+    mainProgram = "duecredit";
+    changelog = "https://github.com/duecredit/duecredit/releases/tag/${version}";
+    license = lib.licenses.bsd2;
+    maintainers = [ lib.maintainers.bcdarwin ];
   };
 }

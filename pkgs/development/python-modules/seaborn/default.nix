@@ -1,69 +1,102 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, flit-core
-, matplotlib
-, pytest-xdist
-, pytestCheckHook
-, numpy
-, pandas
-, pythonOlder
-, scipy
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  fetchpatch2,
+  flit-core,
+  matplotlib,
+  pytest-xdist,
+  pytest8_3CheckHook,
+  numpy,
+  pandas,
+  scipy,
+  statsmodels,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "seaborn";
-  version = "0.12.2";
-  format = "pyproject";
+  version = "0.13.2";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-N0ZF82UJ0NyriVy6W0fa8Fhvd7/js2yXxgfbfaW+ATk=";
+  src = fetchFromGitHub {
+    owner = "mwaskom";
+    repo = "seaborn";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-aGIVcdG/XN999nYBHh3lJqGa3QVt0j8kmzaxdkULznY=";
   };
 
-  nativeBuildInputs = [
-    flit-core
+  patches = [
+    # https://github.com/mwaskom/seaborn/pull/3685
+    (fetchpatch2 {
+      name = "numpy_2-compatibility.patch";
+      url = "https://github.com/mwaskom/seaborn/commit/58f170fe799ef496adae19925d7d4f0f14f8da95.patch";
+      hash = "sha256-/a3G+kNIRv8Oa4a0jPGnL2Wvx/9umMoiq1BXcXpehAg=";
+    })
+    # https://github.com/mwaskom/seaborn/pull/3802
+    (fetchpatch2 {
+      name = "matplotlib_3_10-compatibility.patch";
+      url = "https://github.com/mwaskom/seaborn/commit/385e54676ca16d0132434bc9df6bc41ea8b2a0d4.patch";
+      hash = "sha256-nwGwTkP7W9QzgbbAVdb2rASgsMxqFnylMk8GnTE445w=";
+    })
+    (fetchpatch2 {
+      name = "numpy-2.4-compat.patch";
+      url = "https://github.com/mwaskom/seaborn/commit/5023f2ee885a45200f5b63156a158ddf7272c29e.patch";
+      hash = "sha256-T3OfjEEsPRRv1J6gdq9XmwcWEpPMDzul+LmK8UtV7nk=";
+    })
   ];
 
-  propagatedBuildInputs = [
+  build-system = [ flit-core ];
+
+  dependencies = [
     matplotlib
     numpy
     pandas
-    scipy
   ];
+
+  optional-dependencies = {
+    stats = [
+      scipy
+      statsmodels
+    ];
+  };
 
   nativeCheckInputs = [
     pytest-xdist
-    pytestCheckHook
+    pytest8_3CheckHook
+    writableTmpDirAsHomeHook
   ];
 
   disabledTests = [
-    # incompatible with matplotlib 3.7
-    # https://github.com/mwaskom/seaborn/issues/3288
-    "test_subplot_kws"
-
     # requires internet connection
     "test_load_dataset_string_error"
-  ] ++ lib.optionals (!stdenv.hostPlatform.isx86) [
+    # matplotlib error string matching
+    "test_theme_validation"
+    # log scale transformation match too strict
+    "test_log_scale"
+  ]
+  ++ lib.optionals (!stdenv.hostPlatform.isx86) [
     # overly strict float tolerances
     "TestDendrogram"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # overly strict float tolerances
+    "test_ticklabels_overlap"
   ];
 
   # All platforms should use Agg. Let's set it explicitly to avoid probing GUI
   # backends (leads to crashes on macOS).
-  MPLBACKEND="Agg";
+  env.MPLBACKEND = "Agg";
 
-  pythonImportsCheck = [
-    "seaborn"
-  ];
+  pythonImportsCheck = [ "seaborn" ];
 
-  meta = with lib; {
+  meta = {
     description = "Statistical data visualization";
     homepage = "https://seaborn.pydata.org/";
-    license = with licenses; [ bsd3 ];
-    maintainers = with maintainers; [ fridh ];
+    changelog = "https://github.com/mwaskom/seaborn/blob/${finalAttrs.src.tag}/doc/whatsnew/${finalAttrs.src.tag}.rst";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ miniharinn ];
   };
-}
+})

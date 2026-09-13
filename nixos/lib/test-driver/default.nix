@@ -1,44 +1,92 @@
-{ lib
-, python3Packages
-, enableOCR ? false
-, qemu_pkg ? qemu_test
-, coreutils
-, imagemagick_light
-, libtiff
-, netpbm
-, qemu_test
-, socat
-, tesseract4
-, vde2
-, extraPythonPackages ? (_ : [])
+{
+  lib,
+  stdenv,
+
+  buildPythonApplication,
+  colorama,
+  coreutils,
+  imagemagick_light,
+  ipython,
+  junit-xml,
+  ptpython,
+  pydantic,
+  python,
+  ovmfvartool,
+  remote-pdb,
+  ruff,
+  ty,
+
+  netpbm,
+  vhost-device-vsock,
+  nixosTests,
+  setuptools,
+  socat,
+  systemd,
+  tesseract4,
+  util-linux,
+  vde2,
+
+  enableNspawn ? false,
+  enableOCR ? false,
+  extraPythonPackages ? (_: [ ]),
 }:
 
-python3Packages.buildPythonApplication rec {
+buildPythonApplication {
   pname = "nixos-test-driver";
   version = "1.1";
-  src = ./.;
+  pyproject = true;
+
+  src = ./src;
+
+  build-system = [
+    setuptools
+  ];
+
+  dependencies = [
+    colorama
+    ipython
+    junit-xml
+    ptpython
+    pydantic
+    ovmfvartool
+    remote-pdb
+  ]
+  ++ extraPythonPackages python.pkgs;
 
   propagatedBuildInputs = [
     coreutils
     netpbm
-    python3Packages.colorama
-    python3Packages.ptpython
-    qemu_pkg
     socat
+    util-linux
     vde2
   ]
-    ++ (lib.optionals enableOCR [ imagemagick_light tesseract4 ])
-    ++ extraPythonPackages python3Packages;
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    vhost-device-vsock
+  ]
+  ++ lib.optionals enableNspawn [
+    systemd
+  ]
+  ++ lib.optionals enableOCR [
+    imagemagick_light
+    tesseract4
+  ];
+
+  # containers test requires extra nix features that are not available in ofborg.
+  passthru.tests = removeAttrs nixosTests.nixos-test-driver [ "containers" ];
 
   doCheck = true;
-  nativeCheckInputs = with python3Packages; [ mypy pylint black ];
+
+  nativeCheckInputs = [
+    ruff
+    ty
+  ];
+
   checkPhase = ''
-    mypy --disallow-untyped-defs \
-          --no-implicit-optional \
-          --pretty \
-          --no-color-output \
-          --ignore-missing-imports ${src}/test_driver
-    pylint --errors-only --enable=unused-import ${src}/test_driver
-    black --check --diff ${src}/test_driver
+    echo -e "\x1b[32m## run ty\x1b[0m"
+    ty check --error-on-warning test_driver extract-docstrings.py
+    echo -e "\x1b[32m## run ruff check\x1b[0m"
+    ruff check .
+    echo -e "\x1b[32m## run ruff format\x1b[0m"
+    ruff format --check --diff .
   '';
 }

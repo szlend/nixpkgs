@@ -1,25 +1,48 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, glibcLocales
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  setuptools,
+  hypothesis,
+  pytest-timeout,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "nameparser";
-  version = "1.1.2";
+  version = "2.1.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-9LbHwQSNUovWqisnz0KgZEfSsx5FqVsgRJUTB48dhu8=";
+  __structuredAttrs = true;
+
+  src = fetchFromGitHub {
+    owner = "derek73";
+    repo = "python-nameparser";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-MDzw2F9oH6cvvIYxYRv85+e61uGYFDWubfJ+WP8h7mQ=";
   };
 
-  LC_ALL="en_US.UTF-8";
-  buildInputs = [ glibcLocales ];
+  build-system = [ setuptools ];
 
-  meta = with lib; {
-    description = "A simple Python module for parsing human names into their individual components";
+  nativeCheckInputs = [
+    pytestCheckHook
+    hypothesis
+    pytest-timeout
+  ];
+
+  disabledTests = [
+    # Flaky when build system is under dynamic load
+    "test_parse_cost_grows_no_worse_than_linearly"
+    "test_policy_gated_cost_grows_no_worse_than_linearly"
+  ];
+
+  pythonImportsCheck = [ "nameparser" ];
+
+  meta = {
+    description = "Module for parsing human names into their individual components";
     homepage = "https://github.com/derek73/python-nameparser";
-    license = licenses.lgpl21Plus;
+    changelog = "https://github.com/derek73/python-nameparser/releases/tag/v${finalAttrs.version}";
+    license = lib.licenses.lgpl21Plus;
+    maintainers = [ ];
   };
-
-}
+})

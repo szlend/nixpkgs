@@ -1,39 +1,53 @@
-{ buildPythonPackage
-, fetchFromGitHub
-, lib
-, mbstrdecoder
-, typepy
-, pytestCheckHook
-, termcolor
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools-scm,
+  loguru,
+  mbstrdecoder,
+  pytestCheckHook,
+  tcolorpy,
+  termcolor,
+  typepy,
 }:
 
 buildPythonPackage rec {
   pname = "dataproperty";
-  version = "0.55.0";
+  version = "1.1.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "thombashi";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-ODSrKZ8M/ni9r2gkVIKWaKkdr+3AVi4INkEKJ+cmb44=";
+    repo = "dataproperty";
+    tag = "v${version}";
+    hash = "sha256-PLXF9g0VIkmsRLl5+KvXcbbwVwaJSYjWB7l8xz1mPZM=";
   };
 
-  propagatedBuildInputs = [ mbstrdecoder typepy ];
+  build-system = [ setuptools-scm ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
-  checkInputs = [ termcolor ];
+  dependencies = [
+    mbstrdecoder
+    typepy
+    tcolorpy
+  ]
+  ++ typepy.optional-dependencies.datetime;
 
-  # Tests fail, even on non-nixos
-  pytestFlagsArray = [
-    "--deselect test/test_dataproperty.py::Test_DataPeroperty_len::test_normal_ascii_escape_sequence"
-    "--deselect test/test_dataproperty.py::Test_DataPeroperty_is_include_ansi_escape::test_normal"
-    "--deselect test/test_dataproperty.py::Test_DataPeroperty_repr::test_normal"
+  optional-dependencies = {
+    logging = [ loguru ];
+  };
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    termcolor
   ];
 
-  meta = with lib; {
-    homepage = "https://github.com/thombashi/dataproperty";
-    description = "A library for extracting properties from data";
-    maintainers = with maintainers; [ genericnerdyusername ];
-    license = licenses.mit;
+  pythonImportsCheck = [ "dataproperty" ];
+
+  meta = {
+    description = "Library for extracting properties from data";
+    homepage = "https://github.com/thombashi/DataProperty";
+    changelog = "https://github.com/thombashi/DataProperty/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

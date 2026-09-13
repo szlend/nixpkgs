@@ -1,15 +1,16 @@
-{ lib
-, python
-, buildPythonPackage
-, fetchFromGitLab
-, isPy27
-, jinja2
-, pytest
+{
+  lib,
+  python,
+  buildPythonPackage,
+  fetchFromGitLab,
+  jinja2,
+  pytest,
 }:
 
 buildPythonPackage rec {
   pname = "debts";
   version = "0.5";
+  format = "setuptools";
 
   # pypi does not ship tests
   src = fetchFromGitLab {
@@ -19,8 +20,6 @@ buildPythonPackage rec {
     rev = "d887bd8b340172d1c9bbcca6426529b8d1c2a241"; # no tags
     sha256 = "1d66nka81mv9c07mki78lp5hdajqv4cq6aq2k7bh3mhkc5hwnwlg";
   };
-
-  disabled = isPy27;
 
   propagatedBuildInputs = [ jinja2 ];
 
@@ -33,10 +32,11 @@ buildPythonPackage rec {
     py.test tests
   '';
 
-  meta = with lib; {
+  meta = {
     inherit (src.meta) homepage;
-    description = "A simple library and cli-tool to help you solve some debts settlement scenarios";
-    license = licenses.beerware;
-    maintainers = [ maintainers.symphorien ];
+    description = "Simple library and cli-tool to help you solve some debts settlement scenarios";
+    mainProgram = "debts";
+    license = lib.licenses.beerware;
+    maintainers = [ lib.maintainers.symphorien ];
   };
 }

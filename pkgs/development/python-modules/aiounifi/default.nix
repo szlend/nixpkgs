@@ -1,54 +1,67 @@
-{ lib
-, aiohttp
-, aioresponses
-, buildPythonPackage
-, fetchFromGitHub
-, orjson
-, pytest-aiohttp
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiohttp,
+  aioresponses,
+  buildPythonPackage,
+  fetchFromGitHub,
+  orjson,
+  pyotp,
+  pytest-aiohttp,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
+  pythonOlder,
+  segno,
+  setuptools,
+  trustme,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aiounifi";
-  version = "48";
-  format = "setuptools";
+  version = "95";
+  pyproject = true;
 
-  disabled = pythonOlder "3.9";
+  disabled = pythonOlder "3.13";
 
   src = fetchFromGitHub {
     owner = "Kane610";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-HxZoHul8Nef52st/e10jjtRUvI9NGXuX6/pFYoFI/80=";
+    repo = "aiounifi";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-fnD2y/eG+47o3c8MeCw67qq2/+WCcSmQzprrvenTdGY=";
   };
 
-  propagatedBuildInputs = [
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "setuptools==84.0.0" "setuptools" \
+      --replace-fail "wheel==0.48.0" "wheel"
+  '';
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     aiohttp
     orjson
+    pyotp
+    segno
   ];
 
   nativeCheckInputs = [
     aioresponses
     pytest-aiohttp
     pytest-asyncio
+    pytest-cov-stub
     pytestCheckHook
+    trustme
   ];
 
-  pytestFlagsArray = [
-    "--asyncio-mode=auto"
-  ];
+  pythonImportsCheck = [ "aiounifi" ];
 
-  pythonImportsCheck = [
-    "aiounifi"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Python library for communicating with Unifi Controller API";
     homepage = "https://github.com/Kane610/aiounifi";
-    changelog = "https://github.com/Kane610/aiounifi/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ peterhoeg ];
+    changelog = "https://github.com/Kane610/aiounifi/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = [ ];
+    mainProgram = "aiounifi";
   };
-}
+})

@@ -1,56 +1,48 @@
-{ lib
-, buildPythonPackage
-, dissect-cstruct
-, dissect-util
-, fetchFromGitHub
-, setuptools
-, setuptools-scm
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  dissect-cstruct,
+  dissect-util,
+  fetchFromGitHub,
+  setuptools,
+  setuptools-scm,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "dissect-extfs";
-  version = "3.5";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "3.15";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "fox-it";
     repo = "dissect.extfs";
-    rev = "refs/tags/${version}";
-    hash = "sha256-JLMOW1DkLI/8+1Zx3DL0fwWKaMi8OcQMxUNE9k8zhXA=";
+    tag = version;
+    hash = "sha256-Ffm4AT5PLqlIOq6kxPcwqzRHNXP0tQ5tvkMS7dv9fZ4=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
-
-  nativeBuildInputs = [
+  build-system = [
     setuptools
     setuptools-scm
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     dissect-cstruct
     dissect-util
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pythonImportsCheck = [
-    "dissect.extfs"
-  ];
+  pythonImportsCheck = [ "dissect.extfs" ];
 
   # Archive files seems to be corrupt
   doCheck = false;
 
-  meta = with lib; {
+  meta = {
     description = "Dissect module implementing a parser for the ExtFS file system";
     homepage = "https://github.com/fox-it/dissect.extfs";
-    changelog = "https://github.com/fox-it/dissect.extfs/releases/tag/${version}";
-    license = licenses.agpl3Only;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/fox-it/dissect.extfs/releases/tag/${src.tag}";
+    license = lib.licenses.agpl3Only;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

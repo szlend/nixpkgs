@@ -1,37 +1,46 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, pytestCheckHook
-, hypothesis
-, numpy
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  hypothesis,
+  numpy,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cmaes";
-  version = "0.9.1";
-  disabled = pythonOlder "3.7";
-  format = "pyproject";
+  version = "0.13.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "CyberAgentAILab";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-dd5vLT4Q0cI5ts0WgBpjPtOA81exGNjWSNHEiPggYbg=";
+    repo = "cmaes";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-GzBAymSb6frMXvHtd1Xl5gK62pYuXKd3XU9TLhe+sJ4=";
   };
 
   nativeBuildInputs = [ setuptools ];
+
   propagatedBuildInputs = [ numpy ];
 
-  nativeCheckInputs = [ pytestCheckHook hypothesis ];
+  nativeCheckInputs = [
+    hypothesis
+    pytestCheckHook
+  ];
 
   pythonImportsCheck = [ "cmaes" ];
 
-  meta = with lib; {
+  disabledTests = [
+    # Disable time-sensitive test
+    "test_cma_tell"
+  ];
+
+  meta = {
     description = "Python library for CMA evolution strategy";
     homepage = "https://github.com/CyberAgentAILab/cmaes";
-    license = licenses.mit;
-    maintainers = [ maintainers.bcdarwin ];
+    changelog = "https://github.com/CyberAgentAILab/cmaes/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ bcdarwin ];
   };
-}
+})

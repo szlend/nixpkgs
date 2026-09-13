@@ -1,14 +1,16 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, fetchpatch
-, packaging
-, unittestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  fetchpatch,
+  packaging,
+  unittestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "deprecation";
   version = "2.1.0";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -28,9 +30,9 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [ unittestCheckHook ];
 
-  meta = with lib; {
-    description = "A library to handle automated deprecations";
+  meta = {
+    description = "Library to handle automated deprecations";
     homepage = "https://deprecation.readthedocs.io/";
-    license = licenses.asl20;
+    license = lib.licenses.asl20;
   };
 }

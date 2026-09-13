@@ -1,25 +1,24 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, flit-core
-, click
-, pyyaml
-, sphinx
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  flit-core,
+  click,
+  pyyaml,
+  sphinx,
+  sphinx-multitoc-numbering,
 }:
 
 buildPythonPackage rec {
   pname = "sphinx-external-toc";
-  version = "0.3.1";
+  version = "1.1.0";
 
-  format = "flit";
-
-  disabled = pythonOlder "3.7";
+  pyproject = true;
 
   src = fetchPypi {
     inherit version;
     pname = "sphinx_external_toc";
-    sha256 = "9c8ea9980ea0e57bf3ce98f6a400f9b69eb1df808f7dd796c9c8cc1873d8b355";
+    hash = "sha256-+BgzhlAG9rSpslUKJHSm49fn8ssjuiMwkmBXfqZVUvY=";
   };
 
   nativeBuildInputs = [ flit-core ];
@@ -28,15 +27,17 @@ buildPythonPackage rec {
     click
     pyyaml
     sphinx
+    sphinx-multitoc-numbering
   ];
 
   pythonImportsCheck = [ "sphinx_external_toc" ];
 
-  meta = with lib; {
-    description = "A sphinx extension that allows the site-map to be defined in a single YAML file";
+  meta = {
+    description = "Sphinx extension that allows the site-map to be defined in a single YAML file";
+    mainProgram = "sphinx-etoc";
     homepage = "https://github.com/executablebooks/sphinx-external-toc";
     changelog = "https://github.com/executablebooks/sphinx-external-toc/raw/v${version}/CHANGELOG.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ marsam ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

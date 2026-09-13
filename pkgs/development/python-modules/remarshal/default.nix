@@ -1,60 +1,60 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
 
-# build deps
-, poetry-core
+  # build deps
+  poetry-core,
 
-# propagates
-, cbor2
-, python-dateutil
-, pyyaml
-, tomlkit
-, u-msgpack-python
+  # propagates
+  cbor2,
+  colorama,
+  ruamel-yaml,
+  starlark,
+  termcolor,
+  tomli,
+  tomlkit,
+  u-msgpack-python,
 
-# tested using
-, pytestCheckHook
+  # tested using
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "remarshal";
-  version = "0.14.0";
-  format = "pyproject";
+  version = "2.1.4"; # test with `nix-build pkgs/pkgs-lib/tests -A formats`
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "dbohdan";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256:nTM3jrPf0kGE15J+ZXBIt2+NGSW2a6VlZCKj70n5kHM=";
+    owner = "remarshal-project";
+    repo = "remarshal";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-QMz8XNdoI0ZNox7ah7flr67K7573y3rjWdHgOba1Rhg=";
   };
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "poetry.masonry.api" "poetry.core.masonry.api" \
-      --replace 'PyYAML = "^5.3"' 'PyYAML = "*"' \
-      --replace 'tomlkit = "^0.7"' 'tomlkit = "*"'
-  '';
+  build-system = [ poetry-core ];
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
-
-  propagatedBuildInputs = [
+  dependencies = [
     cbor2
-    python-dateutil
-    pyyaml
+    colorama
+    ruamel-yaml
+    starlark
+    termcolor
+    tomli
     tomlkit
     u-msgpack-python
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  pythonRelaxDeps = [ "cbor2" ];
 
-  meta = with lib; {
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  meta = {
+    changelog = "https://github.com/remarshal-project/remarshal/releases/tag/${finalAttrs.src.tag}";
     description = "Convert between TOML, YAML and JSON";
-    license = licenses.mit;
-    homepage = "https://github.com/dbohdan/remarshal";
-    maintainers = with maintainers; [ offline ];
+    license = lib.licenses.mit;
+    homepage = "https://github.com/remarshal-project/remarshal";
+    maintainers = [ ];
+    mainProgram = "remarshal";
   };
-}
+})

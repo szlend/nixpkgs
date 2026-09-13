@@ -1,50 +1,90 @@
-{ fetchFromGitHub
-, buildPythonPackage
-, cargo
-, rustPlatform
-, rustc
-, setuptools-rust
-, numpy
-, fixtures
-, networkx
-, libiconv
-, stdenv
-, lib
+{
+  lib,
+  fetchFromGitHub,
+  fetchpatch,
+  buildPythonPackage,
+  rustPlatform,
+
+  # nativeBuildInputs
+  cargo,
+  rustc,
+
+  # build-system
+  setuptools,
+  setuptools-rust,
+
+  # dependencies
+  numpy,
+
+  # tests
+  fixtures,
+  networkx,
+  pytestCheckHook,
+  testtools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "rustworkx";
-  version = "0.12.1";
+  version = "0.17.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Qiskit";
-    repo = pname;
-    rev = version;
-    hash = "sha256-d/KCxhJdyzhTjwJZ+GsXJE4ww30iPaXcPngpCi4hBZw=";
+    repo = "rustworkx";
+    tag = finalAttrs.version;
+    hash = "sha256-aBKGJwm9EmGwLOhIx6qTuDco5uNcnwUlZf3ztFzmIGs=";
   };
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src;
-    hash = "sha256-imhiPj763iumRQb+oeBOpICD1nCvzZx+3yQWu1QRRQQ=";
+  patches = [
+    (fetchpatch {
+      name = "networkx-3.6-test-compat.patch";
+      url = "https://github.com/Qiskit/rustworkx/commit/04780a59005d0a80bdc3e22427566aea86783eb8.patch";
+      hash = "sha256-oUosh1pu/I6Zpg2Di/Gnp5SCwetgs9HDY96Q2bQ7R6M=";
+    })
+  ];
+
+  # Otherwise, `rust-src` is required
+  # https://github.com/Qiskit/rustworkx/pull/1447
+  postPatch = ''
+    rm -rf .cargo/config.toml
+  '';
+
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit (finalAttrs) pname version src;
+    hash = "sha256-2jqyXk6xWpSGdpaVGu7YW9643MBYDfl3A6InFw/cCUM=";
   };
 
   nativeBuildInputs = [
-    setuptools-rust
     rustPlatform.cargoSetupHook
     cargo
     rustc
   ];
 
-  buildInputs = [ numpy ] ++ lib.optionals stdenv.isDarwin [ libiconv ];
+  build-system = [
+    setuptools
+    setuptools-rust
+  ];
 
-  checkInputs = [ fixtures networkx ];
+  dependencies = [ numpy ];
+
+  nativeCheckInputs = [
+    fixtures
+    networkx
+    pytestCheckHook
+    testtools
+  ];
+
+  preCheck = ''
+    rm -r rustworkx
+  '';
 
   pythonImportsCheck = [ "rustworkx" ];
 
-  meta = with lib; {
-    description = "A high performance Python graph library implemented in Rust.";
+  meta = {
+    description = "High performance Python graph library implemented in Rust";
     homepage = "https://github.com/Qiskit/rustworkx";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ raitobezarius ];
+    changelog = "https://github.com/Qiskit/rustworkx/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

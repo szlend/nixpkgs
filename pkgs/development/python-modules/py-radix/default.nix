@@ -1,31 +1,30 @@
-{ lib
-, buildPythonPackage
-, pythonAtLeast
-, fetchFromGitHub
-, coverage
-, nose
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "py-radix";
-  version = "0.10.0";
-
-  disabled = pythonAtLeast "3.10"; # abandoned, remove when we move to py310/py311
+  version = "1.1.0";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "mjschultz";
     repo = "py-radix";
-    rev = "v${version}";
-    sha256 = "01xyn9lg6laavnzczf5bck1l1c2718ihxx0hvdkclnnxjqhbrqis";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-++QuZEwOHKjOsIbwLmDy30PvyG0Xe29l45PvOF+YWYw=";
   };
 
-  doCheck = true;
-  nativeCheckInputs = [ coverage nose ];
+  pythonImportsCheck = [ "radix" ];
 
-  meta = with lib; {
-    description = "Python radix tree for IPv4 and IPv6 prefix matching";
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  meta = {
+    description = "Python radix tree implementation for IPv4 and IPv6 prefix matching";
     homepage = "https://github.com/mjschultz/py-radix";
-    license = with licenses; [ isc bsdOriginal ];
-    maintainers = with maintainers; [ mkg ];
+    license = lib.licenses.bsdOriginal;
+    maintainers = with lib.maintainers; [ marcel ];
   };
-}
+})

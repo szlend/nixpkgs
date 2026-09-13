@@ -1,27 +1,26 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, poetry-core
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  poetry-core,
+  pydantic,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "ttp-templates";
-  version = "0.3.5";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.6.4";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "dmulyalin";
     repo = "ttp_templates";
-    rev = "refs/tags/${version}";
-    hash = "sha256-NlTTydGdjn+hwAKYEyINg/9k/EdnLq2gU9cnujpZQLM=";
+    tag = finalAttrs.version;
+    hash = "sha256-MKa1kfo+fw5VTrXaZu5NWD9t3DoJqliMsw1qureO70A=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  build-system = [ poetry-core ];
+
+  dependencies = [ pydantic ];
 
   postPatch = ''
     # Drop circular dependency on ttp
@@ -31,11 +30,11 @@ buildPythonPackage rec {
   # Circular dependency on ttp
   doCheck = false;
 
-  meta = with lib; {
+  meta = {
     description = "Template Text Parser Templates collections";
     homepage = "https://github.com/dmulyalin/ttp_templates";
-    changelog = "https://github.com/dmulyalin/ttp_templates/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/dmulyalin/ttp_templates/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

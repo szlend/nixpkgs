@@ -1,33 +1,58 @@
-{ lib, stdenv, fetchurl, fetchpatch
-, cmake, pkg-config, perl, go, python3
-, protobuf, zlib, gtest, brotli, lz4, zstd, libusb1, pcre2
+{
+  lib,
+  stdenv,
+  fetchurl,
+  cmake,
+  ninja,
+  pkg-config,
+  perl,
+  python3,
+  # fails to build with protobuf_36
+  # FIXME: unpin when upstream is fixed
+  protobuf_35,
+  zlib,
+  gtest,
+  brotli,
+  lz4,
+  zstd,
+  libusb1,
+  pcre2,
+  fmt,
 }:
 
 let
-  pythonEnv = python3.withPackages(ps: [ ps.protobuf ]);
+  pythonEnv = python3.withPackages (ps: [ ps.protobuf ]);
 in
 
 stdenv.mkDerivation rec {
   pname = "android-tools";
-  version = "34.0.1";
+  version = "37.0.0";
 
   src = fetchurl {
     url = "https://github.com/nmeum/android-tools/releases/download/${version}/android-tools-${version}.tar.xz";
-    hash = "sha256-YCNOy8oZoXp+L0akWBlg1kW3xVuHDZJKIUlMdqb1SOw=";
+    hash = "sha256-JyXQn4kqOjjlNEKfR6Mh9Y7PajFpyqQskV+yy31Gvg4=";
   };
 
-  nativeBuildInputs = [ cmake pkg-config perl go ];
-  buildInputs = [ protobuf zlib gtest brotli lz4 zstd libusb1 pcre2 ];
+  nativeBuildInputs = [
+    cmake
+    ninja
+    pkg-config
+    perl
+  ];
+  buildInputs = [
+    protobuf_35
+    zlib
+    gtest
+    brotli
+    lz4
+    zstd
+    libusb1
+    pcre2
+    fmt
+  ];
   propagatedBuildInputs = [ pythonEnv ];
 
-  # Don't try to fetch any Go modules via the network:
-  GOFLAGS = [ "-mod=vendor" ];
-
-  preConfigure = ''
-    export GOCACHE=$TMPDIR/go-cache
-  '';
-
-  meta = with lib; {
+  meta = {
     description = "Android SDK platform tools";
     longDescription = ''
       Android SDK Platform-Tools is a component for the Android SDK. It
@@ -47,8 +72,12 @@ stdenv.mkDerivation rec {
     # https://developer.android.com/studio/command-line#tools-platform
     # https://developer.android.com/studio/releases/platform-tools
     homepage = "https://github.com/nmeum/android-tools";
-    license = with licenses; [ asl20 unicode-dfs-2015 ];
-    platforms = platforms.unix;
-    maintainers = with maintainers; [ primeos ];
+    license = with lib.licenses; [
+      asl20
+      unicode-dfs-2015
+      mit
+    ];
+    platforms = lib.platforms.unix;
+    teams = [ lib.teams.android ];
   };
 }

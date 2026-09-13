@@ -1,63 +1,61 @@
-{ lib
-, buildPythonPackage
-, cherrypy
-, fetchFromGitHub
-, lockfile
-, mock
-, msgpack
-, pytestCheckHook
-, pythonOlder
-, redis
-, requests
+{
+  lib,
+  buildPythonPackage,
+  cherrypy,
+  fetchFromGitHub,
+  filelock,
+  msgpack,
+  pytestCheckHook,
+  redis,
+  requests,
+  uv-build,
 }:
 
 buildPythonPackage rec {
   pname = "cachecontrol";
-  version = "0.12.11";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.6";
+  version = "0.14.4";
+  pyproject = true;
 
   __darwinAllowLocalNetworking = true;
 
   src = fetchFromGitHub {
     owner = "ionrock";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-uUPIQz/n347Q9G7NDOGuB760B/KxOglUxiS/rYjt5Po=";
+    repo = "cachecontrol";
+    tag = "v${version}";
+    hash = "sha256-627SqJocVOO0AfI8vswPqOr15MA/Lx7RLAdRAXzWu84=";
   };
 
   postPatch = ''
-    # https://github.com/ionrock/cachecontrol/issues/297
-    substituteInPlace tests/test_etag.py --replace \
-      "requests.adapters.HTTPResponse.from_httplib" \
-      "urllib3.response.HTTPResponse.from_httplib"
+    substituteInPlace pyproject.toml \
+      --replace-fail "uv_build>=0.9.6,<0.10.0" uv_build
   '';
 
-  propagatedBuildInputs = [
+  build-system = [ uv-build ];
+
+  dependencies = [
     msgpack
     requests
   ];
 
-  nativeCheckInputs = [
-    cherrypy
-    mock
-    pytestCheckHook
-  ] ++ passthru.optional-dependencies.filecache;
-
-  pythonImportsCheck = [
-    "cachecontrol"
-  ];
-
-  passthru.optional-dependencies = {
-    filecache = [ lockfile ];
+  optional-dependencies = {
+    filecache = [ filelock ];
     redis = [ redis ];
   };
 
-  meta = with lib; {
+  nativeCheckInputs = [
+    cherrypy
+    pytestCheckHook
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
+
+  pythonImportsCheck = [ "cachecontrol" ];
+
+  meta = {
     description = "Httplib2 caching for requests";
+    mainProgram = "doesitcache";
     homepage = "https://github.com/ionrock/cachecontrol";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ costrouc ];
+    changelog = "https://github.com/psf/cachecontrol/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

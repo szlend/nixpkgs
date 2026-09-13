@@ -1,27 +1,24 @@
-{ lib
-, buildPythonPackage
-, callPackage
-, fetchFromGitHub
-, flaky
-, hypothesis
-, pytest
-, pytestCheckHook
-, pythonOlder
-, setuptools-scm
+{
+  lib,
+  buildPythonPackage,
+  callPackage,
+  fetchFromGitHub,
+  pythonOlder,
+  pytest,
+  setuptools-scm,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "pytest-asyncio";
-  version = "0.20.3";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.4.0"; # N.B.: when updating, tests bleak and aioesphomeapi tests
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pytest-dev";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-oq28wJ/Tq4yuQ/98tdzYKDyatpliS0Xcbc6T46ZTP7I=";
+    repo = "pytest-asyncio";
+    tag = "v${version}";
+    hash = "sha256-MuTLCRHCuD9TwJkMiFIC5Xv5Xz6NL8j4JZpW8BA45SI=";
   };
 
   outputs = [
@@ -29,14 +26,14 @@ buildPythonPackage rec {
     "testout"
   ];
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  build-system = [ setuptools-scm ];
 
-  nativeBuildInputs = [
-    setuptools-scm
-  ];
+  pythonRelaxDeps = [ "pytest" ];
 
-  buildInputs = [
-    pytest
+  buildInputs = [ pytest ];
+
+  dependencies = lib.optionals (pythonOlder "3.13") [
+    typing-extensions
   ];
 
   postInstall = ''
@@ -45,17 +42,15 @@ buildPythonPackage rec {
   '';
 
   doCheck = false;
-  passthru.tests.pytest = callPackage ./tests.nix {};
+  passthru.tests.pytest = callPackage ./tests.nix { };
 
-  pythonImportsCheck = [
-    "pytest_asyncio"
-  ];
+  pythonImportsCheck = [ "pytest_asyncio" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library for testing asyncio code with pytest";
     homepage = "https://github.com/pytest-dev/pytest-asyncio";
-    changelog = "https://github.com/pytest-dev/pytest-asyncio/blob/v${version}/CHANGELOG.rst";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ dotlambda ];
+    changelog = "https://github.com/pytest-dev/pytest-asyncio/blob/${src.tag}/docs/reference/changelog.rst";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

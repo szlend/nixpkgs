@@ -1,47 +1,51 @@
-{ lib
-, fetchpatch
-, python3
-, fetchPypi
-, docutils
-, sphinx
-, postfix
-, lynx
+{
+  lib,
+  fetchpatch,
+  python3,
+  fetchPypi,
+  postfix,
+  lynx,
+  nixosTests,
 }:
 
 with python3.pkgs;
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mailman";
-  version = "3.3.8";
-  disabled = pythonOlder "3.6";
+  version = "3.3.10";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-g6wH7lXqK0yJ8AxO1HFxMvBicBJ9NGWlPePFyxl9Qc4=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-DeR4/PMm8l2TGTjDdE5hxc1nWWtG5bHjuyq/mdVEVjI=";
   };
 
-  propagatedBuildInputs = with python3.pkgs; [
+  build-system = with python3.pkgs; [
+    pdm-backend
+  ];
+
+  dependencies = with python3.pkgs; [
     aiosmtpd
     alembic
     authheaders
     click
     dnspython
     falcon
-    flufl_bounce
-    flufl_i18n
-    flufl_lock
+    flufl-bounce
+    flufl-i18n
+    flufl-lock
     gunicorn
-    importlib-resources
-    lazr_config
+    lazr-config
     passlib
+    python-dateutil
     requests
     sqlalchemy
-    zope_component
-    zope_configuration
+    standard-nntplib
+    zope-component
+    zope-configuration
   ];
 
   checkInputs = [
-    docutils
     sphinx
   ];
 
@@ -54,17 +58,24 @@ buildPythonPackage rec {
       url = "https://gitlab.com/mailman/mailman/-/commit/9613154f3c04fa2383fbf017031ef263c291418d.patch";
       sha256 = "0vyw87s857vfxbf7kihwb6w094xyxmxbi1bpdqi3ybjamjycp55r";
     })
+    (fetchpatch {
+      name = "python-3.13.patch";
+      url = "https://gitlab.com/mailman/mailman/-/commit/685d9a7bdbd382d9e8d4a2da74bd973e93356e05.patch";
+      hash = "sha256-KCXVP+5zqgluUXQCGmMRC+G1hEDnFBlTUETGpmFDOOk=";
+    })
     ./log-stderr.patch
   ];
 
   postPatch = ''
-    substituteInPlace setup.py \
-      --replace "alembic>=1.6.2,<1.7" "alembic>=1.6.2"
-
     substituteInPlace src/mailman/config/postfix.cfg \
       --replace /usr/sbin/postmap ${postfix}/bin/postmap
     substituteInPlace src/mailman/config/schema.cfg \
       --replace /usr/bin/lynx ${lynx}/bin/lynx
+
+    # Backport of
+    # https://gitlab.com/mailman/mailman/-/commit/3a22537382d41ab3e46b859054547755963b069d.patch
+    substituteInPlace pyproject.toml \
+      --replace-fail '"nntplib;' '"standard-nntplib;'
   '';
 
   # Mailman assumes that those scripts in $out/bin are Python scripts. Wrapping
@@ -76,10 +87,12 @@ buildPythonPackage rec {
   # 'runner' scripts.
   dontWrapPythonPrograms = true;
 
+  passthru.tests = { inherit (nixosTests) mailman; };
+
   meta = {
     homepage = "https://www.gnu.org/software/mailman/";
     description = "Free software for managing electronic mail discussion and newsletter lists";
     license = lib.licenses.gpl3Plus;
-    maintainers = with lib.maintainers; [ qyliss ma27 ];
+    maintainers = with lib.maintainers; [ qyliss ];
   };
-}
+})

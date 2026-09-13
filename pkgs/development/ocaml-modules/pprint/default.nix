@@ -1,22 +1,26 @@
-{ lib, fetchFromGitHub, buildDunePackage }:
+{
+  lib,
+  fetchFromGitHub,
+  buildDunePackage,
+}:
 
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "pprint";
-  version = "20220103";
+  version = "20230830";
 
-  useDune2 = true;
+  minimalOCamlVersion = "4.03";
 
   src = fetchFromGitHub {
     owner = "fpottier";
-    repo = pname;
-    rev = version;
-    sha256 = "sha256:09y6nwnjldifm47406q1r9987njlk77g4ifqg6qs54dckhr64vax";
+    repo = "pprint";
+    rev = finalAttrs.version;
+    sha256 = "sha256-avf71vAgCL1MU8O7Q3FNN3wEdCDtbNZP0ipETnn8AqA=";
   };
 
-  meta = with lib; {
-    inherit (src.meta) homepage;
-    description = "An OCaml library for pretty-printing textual documents";
-    license = licenses.lgpl2Only;
-    maintainers = [ maintainers.vbgl ];
+  meta = {
+    inherit (finalAttrs.src.meta) homepage;
+    description = "OCaml library for pretty-printing textual documents";
+    license = lib.licenses.lgpl2Only;
+    maintainers = [ lib.maintainers.vbgl ];
   };
-}
+})

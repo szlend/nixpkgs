@@ -69,8 +69,8 @@ _multioutConfig() {
     # try to detect share/doc/${shareDocName}
     # Note: sadly, $configureScript detection comes later in configurePhase,
     #   and reordering would cause more trouble than worth.
-    if [ -z "$shareDocName" ]; then
-        local confScript="$configureScript"
+    if [ -z "${shareDocName:-}" ]; then
+        local confScript="${configureScript:-}"
         if [ -z "$confScript" ] && [ -x ./configure ]; then
             confScript=./configure
         fi
@@ -85,7 +85,7 @@ _multioutConfig() {
 
     prependToVar configureFlags \
         --bindir="${!outputBin}"/bin --sbindir="${!outputBin}"/sbin \
-        --includedir="${!outputInclude}"/include --oldincludedir="${!outputInclude}"/include \
+        --includedir="${!outputInclude}"/include \
         --mandir="${!outputMan}"/share/man --infodir="${!outputInfo}"/share/info \
         --docdir="${!outputDoc}"/share/doc/"${shareDocName}" \
         --libdir="${!outputLib}"/lib --libexecdir="${!outputLib}"/libexec \

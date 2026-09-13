@@ -1,37 +1,49 @@
-{ lib
-, buildPythonPackage
-, isPy27
-, fetchPypi
-, agate
-, sqlalchemy
-, crate
-, pytestCheckHook
-, geojson
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  agate,
+  setuptools,
+  sqlalchemy,
+  pytestCheckHook,
+  geojson,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "agate-sql";
-  version = "0.5.9";
+  version = "0.7.3";
+  pyproject = true;
 
-  disabled = isPy27;
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-MLZCoypbZxFhq++ejsNjUvLniiTOhJBU7axpRti53cY=";
+  src = fetchFromGitHub {
+    owner = "wireservice";
+    repo = "agate-sql";
+    tag = finalAttrs.version;
+    hash = "sha256-YPpvLMidW0RnNz1x6FK1QwhOIc9AhwnSm6vxUzbLLBM=";
   };
 
-  propagatedBuildInputs = [ agate sqlalchemy ];
+  build-system = [ setuptools ];
 
-  nativeCheckInputs = [ crate geojson pytestCheckHook ];
+  dependencies = [
+    agate
+    sqlalchemy
+  ];
+
+  nativeCheckInputs = [
+    geojson
+    pytestCheckHook
+  ];
 
   pythonImportsCheck = [ "agatesql" ];
 
-  meta = with lib; {
-    # https://github.com/wireservice/agate-sql/commit/74af1badd85408909ea72cb6ca8c0b223d178c6f
-    broken = lib.versionAtLeast sqlalchemy.version "2.0";
-    description = "Adds SQL read/write support to agate.";
+  disabledTests = [
+    # requires crate (sqlalchemy-cratedb)
+    "test_to_sql_create_statement_with_dialects"
+  ];
+
+  meta = {
+    description = "Adds SQL read/write support to agate";
     homepage = "https://github.com/wireservice/agate-sql";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ vrthra ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
-}
+})

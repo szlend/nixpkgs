@@ -1,21 +1,33 @@
-{ lib, buildPythonPackage, fetchPypi }:
-
-buildPythonPackage rec {
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+}:
+let
+  version = "4.6.1";
+in
+buildPythonPackage {
   pname = "pypresence";
-  version = "4.2.1";
+  inherit version;
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "691daf98c8189fd216d988ebfc67779e0f664211512d9843f37ab0d51d4de066";
+  src = fetchFromGitHub {
+    owner = "qwertyquerty";
+    repo = "pypresence";
+    tag = "v${version}";
+    hash = "sha256-VvVHJ3S+Yusq4cK4KyDQlnL3VwAyrZqNKYzEgJPU8Vk=";
   };
+
+  build-system = [ setuptools ];
 
   doCheck = false; # tests require internet connection
   pythonImportsCheck = [ "pypresence" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://qwertyquerty.github.io/pypresence/html/index.html";
     description = "Discord RPC client written in Python";
-    license = licenses.mit;
-    maintainers = with maintainers; [ xfix ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

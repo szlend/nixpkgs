@@ -1,39 +1,53 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchFromGitHub
-, pyasn1
-, pyasn1-modules
-, pythonAtLeast
-, pythonOlder
-, pytestCheckHook
-, openldap
-, cyrus_sasl
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  distutils,
+  setuptools,
+
+  # native dependencies
+  openldap,
+  cyrus_sasl,
+
+  pyasn1,
+  pyasn1-modules,
+
+  # tests
+  pytestCheckHook,
+  jaraco-functools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-ldap";
-  version = "3.4.3";
-  disabled = pythonOlder "3.6";
+  version = "3.4.7";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
-    rev = "refs/tags/python-ldap-${version}";
-    hash = "sha256-/ehvSs2qjuTPhaaOP0agPbWyyRugBpUlPq/Ny9t2C58=";
+    owner = "python-ldap";
+    repo = "python-ldap";
+    tag = "python-ldap-${finalAttrs.version}";
+    hash = "sha256-uSP8c5gid5TBenBaNVdlteHatkctAafz6yFHuIYKiTY=";
   };
+
+  build-system = [
+    distutils
+    setuptools
+  ];
 
   buildInputs = [
     openldap
     cyrus_sasl
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     pyasn1
     pyasn1-modules
   ];
 
   nativeCheckInputs = [
+    jaraco-functools
     pytestCheckHook
   ];
 
@@ -50,11 +64,14 @@ buildPythonPackage rec {
     "test_tls_ext_noca"
   ];
 
-  doCheck = !stdenv.isDarwin;
+  __darwinAllowLocalNetworking = true;
 
-  meta = with lib; {
+  meta = {
     description = "Python modules for implementing LDAP clients";
+    downloadPage = "https://github.com/python-ldap/python-ldap";
     homepage = "https://www.python-ldap.org/";
-    license = licenses.psfl;
+    changelog = "https://github.com/python-ldap/python-ldap/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.psfl;
+    maintainers = [ ];
   };
-}
+})

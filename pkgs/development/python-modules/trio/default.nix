@@ -1,59 +1,83 @@
-{ lib, buildPythonPackage, fetchPypi, pythonOlder
-, attrs
-, sortedcontainers
-, async_generator
-, exceptiongroup
-, idna
-, outcome
-, pytestCheckHook
-, pyopenssl
-, trustme
-, sniffio
-, stdenv
-, jedi
-, astor
-, yapf
-, coreutils
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  attrs,
+  idna,
+  outcome,
+  sniffio,
+  sortedcontainers,
+
+  # tests
+  astor,
+  jedi,
+  pyopenssl,
+  pytestCheckHook,
+  pytest-trio,
+  pyyaml,
+  trustme,
 }:
 
+let
+  # escape infinite recursion with pytest-trio
+  pytest-trio' = (pytest-trio.override { trio = null; }).overrideAttrs {
+    # `pythonRemoveDeps` is not working properly
+    dontCheckRuntimeDeps = true;
+    doCheck = false;
+    pythonImportsCheck = [ ];
+  };
+in
 buildPythonPackage rec {
   pname = "trio";
-  version = "0.22.0";
-  format = "setuptools";
-  disabled = pythonOlder "3.7";
+  version = "0.33.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-zmjxxUAKR7E3xaTecsfJAb1OeiT73r/ptB3oxsBOqs8=";
+  src = fetchFromGitHub {
+    owner = "python-trio";
+    repo = "trio";
+    tag = "v${version}";
+    hash = "sha256-juqlTJPcXpLdzO5OBCcwVR7rckABza9TAhPs9ta5c8U=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     attrs
-    sortedcontainers
-    async_generator
     idna
     outcome
     sniffio
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    exceptiongroup
+    sortedcontainers
   ];
 
-  # tests are failing on Darwin
-  doCheck = !stdenv.isDarwin;
+  __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
     astor
-    jedi
     pyopenssl
     pytestCheckHook
+    pytest-trio'
+    pyyaml
     trustme
-    yapf
-  ];
+  ]
+  # jedi has no compatibility with python 3.14 yet
+  # https://github.com/davidhalter/jedi/issues/2064
+  ++ lib.optional (pythonOlder "3.14") jedi;
 
   preCheck = ''
-    substituteInPlace trio/tests/test_subprocess.py \
-      --replace "/bin/sleep" "${coreutils}/bin/sleep"
+    export HOME=$TMPDIR
+    # $out is first in path which causes "import file mismatch"
+    PYTHONPATH=$PWD/src:$PYTHONPATH
   '';
+
+  pytestFlags = [
+    "-Wignore::DeprecationWarning"
+  ];
 
   # It appears that the build sandbox doesn't include /etc/services, and these tests try to use it.
   disabledTests = [
@@ -64,16 +88,22 @@ buildPythonPackage rec {
     "static_tool_sees_all_symbols"
     # tests pytest more than python
     "fallback_when_no_hook_claims_it"
+    # requires mypy
+    "test_static_tool_sees_class_members"
   ];
 
-  pytestFlagsArray = [
-    "-W" "ignore::DeprecationWarning"
+  disabledTestPaths = [
+    # linters
+    "src/trio/_tests/tools/test_gen_exports.py"
   ];
 
   meta = {
-    description = "An async/await-native I/O library for humans and snake people";
+    changelog = "https://github.com/python-trio/trio/blob/${src.tag}/docs/source/history.rst";
+    description = "Async/await-native I/O library for humans and snake people";
     homepage = "https://github.com/python-trio/trio";
-    license = with lib.licenses; [ mit asl20 ];
-    maintainers = with lib.maintainers; [ catern ];
+    license = with lib.licenses; [
+      mit
+      asl20
+    ];
   };
 }

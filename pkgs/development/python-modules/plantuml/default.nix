@@ -1,14 +1,16 @@
-{ buildPythonPackage
-, fetchFromGitHub
-, lib
+{
+  buildPythonPackage,
+  fetchFromGitHub,
+  lib,
   # Runtime dependencies
-, httplib2
-, six
+  httplib2,
+  six,
 }:
 
 buildPythonPackage {
   pname = "plantuml";
   version = "0.3.0";
+  format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "dougn";
@@ -27,10 +29,9 @@ buildPythonPackage {
 
   pythonImportsCheck = [ "plantuml" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python interface to a plantuml web service instead of having to run java locally";
     homepage = "https://github.com/dougn/python-plantuml";
-    license = licenses.bsd2;
-    maintainers = with maintainers; [ nikstur ];
+    license = lib.licenses.bsd2;
   };
 }

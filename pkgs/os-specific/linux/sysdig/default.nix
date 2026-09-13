@@ -1,61 +1,80 @@
-{ lib, stdenv, fetchFromGitHub, fetchpatch, cmake, kernel, installShellFiles, pkg-config
-, luajit, ncurses, perl, jsoncpp, libb64, openssl, curl, jq, gcc, elfutils, tbb, protobuf, grpc
-, yaml-cpp, nlohmann_json, re2, zstd
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  kernel,
+  installShellFiles,
+  pkg-config,
+  luajit,
+  ncurses,
+  perl,
+  jsoncpp,
+  openssl,
+  curl,
+  jq,
+  gcc,
+  elfutils,
+  onetbb,
+  protobuf,
+  grpc,
+  yaml-cpp,
+  nlohmann_json,
+  re2,
+  zstd,
+  uthash,
+  clang,
+  libbpf,
+  bpftools,
 }:
 
 let
-  # Compare with https://github.com/draios/sysdig/blob/dev/cmake/modules/falcosecurity-libs.cmake
-  libsRev = "0.11.0";
-  libsSha256 = "sha256-QvRTz3yMS6i+qdiSG51wvho9D7w/dMQhY72OYd3qOgU=";
+  # Compare with https://github.com/draios/sysdig/blob/0.40.1/cmake/modules/falcosecurity-libs.cmake
+  libsRev = "0.20.0";
+  libsHash = "sha256-G5MMVNceNa1y7CczfoaRBektc//uUN6ijmcTMnnKMRA=";
 
-  # Compare with https://github.com/falcosecurity/libs/blob/master/cmake/modules/valijson.cmake#L17
+  # Compare with https://github.com/falcosecurity/libs/blob/0.17.2/cmake/modules/valijson.cmake
   valijson = fetchFromGitHub {
     owner = "tristanpenman";
     repo = "valijson";
-    rev = "v0.6";
-    sha256 = "sha256-ZD19Q2MxMQd3yEKbY90GFCrerie5/jzgO8do4JQDoKM=";
+    rev = "v1.0.2";
+    hash = "sha256-wvFdjsDtKH7CpbEpQjzWtLC4RVOU9+D2rSK0Xo1cJqo=";
   };
 
-  # https://github.com/draios/sysdig/blob/0.31.5/cmake/modules/driver.cmake
+  # https://github.com/draios/sysdig/blob/0.40.1/cmake/modules/driver.cmake
   driver = fetchFromGitHub {
     owner = "falcosecurity";
     repo = "libs";
-    rev = "5.0.1+driver";
-    sha256 = "sha256-CQ6QTcyTnThpJHDXgOM1Zdp5SG7rngp9XtEM+2mS8ro=";
+    rev = "8.0.0+driver";
+    hash = "sha256-G5MMVNceNa1y7CczfoaRBektc//uUN6ijmcTMnnKMRA=";
   };
 
+  version = "0.40.1";
 in
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "sysdig";
-  version = "0.31.5";
+  inherit version;
 
   src = fetchFromGitHub {
     owner = "draios";
     repo = "sysdig";
-    rev = version;
-    sha256 = "sha256-RuoPqVulATtn7jSga/8fECs7weNfjt/YFh7iHmfCKjw=";
+    tag = version;
+    hash = "sha256-MPiNfxGePtQvh3l9RA6Vg+glB9RiR3ia1vv06MAw9do=";
   };
 
-  # to fix the build against the latest kernel
-  patches = [
-    (fetchpatch {
-      url = "https://github.com/draios/sysdig/compare/35ded9aab87801281e22898242e24e0bc63873b2...954e6fc6238f21d4870a491395d68a7dd3062aa9.patch";
-      sha256 = "sha256-gnLURnv8FW5LvqjbreCf9DPGdBcn7rfizGeznFqJ+Fk=";
-    })
+  nativeBuildInputs = [
+    cmake
+    perl
+    installShellFiles
+    pkg-config
   ];
-
-  nativeBuildInputs = [ cmake perl installShellFiles pkg-config ];
   buildInputs = [
     luajit
     ncurses
-    libb64
     openssl
     curl
     jq
-    gcc
-    elfutils
-    tbb
-    libb64
+    onetbb
     re2
     protobuf
     grpc
@@ -63,23 +82,42 @@ stdenv.mkDerivation rec {
     jsoncpp
     nlohmann_json
     zstd
-  ] ++ lib.optionals (kernel != null) kernel.moduleBuildDependencies;
+    uthash
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    bpftools
+    elfutils
+    libbpf
+    clang
+    gcc
+  ]
+  ++ lib.optionals (kernel != null) kernel.moduleBuildDependencies;
 
-  hardeningDisable = [ "pic" ];
+  hardeningDisable = [
+    "pic"
+    "zerocallusedregs"
+  ];
 
   postUnpack = ''
-    cp -r ${fetchFromGitHub {
-      owner = "falcosecurity";
-      repo = "libs";
-      rev = libsRev;
-      sha256 = libsSha256;
-    }} libs
+    cp -r ${
+      fetchFromGitHub {
+        owner = "falcosecurity";
+        repo = "libs";
+        rev = libsRev;
+        hash = libsHash;
+      }
+    } libs
     chmod -R +w libs
+
+    substituteInPlace libs/userspace/libscap/libscap.pc.in libs/userspace/libsinsp/libsinsp.pc.in \
+      --replace-fail "\''${prefix}/@CMAKE_INSTALL_LIBDIR@" "@CMAKE_INSTALL_FULL_LIBDIR@" \
+      --replace-fail "\''${prefix}/@CMAKE_INSTALL_INCLUDEDIR@" "@CMAKE_INSTALL_FULL_INCLUDEDIR@"
+
     cp -r ${driver} driver-src
     chmod -R +w driver-src
+
     cmakeFlagsArray+=(
       "-DFALCOSECURITY_LIBS_SOURCE_DIR=$(pwd)/libs"
-      "-DVALIJSON_INCLUDE=${valijson}/include"
       "-DDRIVER_SOURCE_DIR=$(pwd)/driver-src/driver"
     )
   '';
@@ -90,14 +128,17 @@ stdenv.mkDerivation rec {
     "-DUSE_BUNDLED_B64=OFF"
     "-DUSE_BUNDLED_TBB=OFF"
     "-DUSE_BUNDLED_RE2=OFF"
+    "-DUSE_BUNDLED_JSONCPP=OFF"
     "-DCREATE_TEST_TARGETS=OFF"
-  ] ++ lib.optional (kernel == null) "-DBUILD_DRIVER=OFF";
+    "-DVALIJSON_INCLUDE=${valijson}/include"
+    "-DUTHASH_INCLUDE=${uthash}/include"
+    (lib.cmakeBool "USE_BUNDLED_FALCOSECURITY_LIBS" true)
+  ]
+  ++ lib.optional (kernel == null) "-DBUILD_DRIVER=OFF";
 
   env.NIX_CFLAGS_COMPILE =
-   # needed since luajit-2.1.0-beta3
-   "-DluaL_reg=luaL_Reg -DluaL_getn(L,i)=((int)lua_objlen(L,i)) " +
-   # fix compiler warnings been treated as errors
-   "-Wno-error";
+    # fix compiler warnings been treated as errors
+    "-Wno-error";
 
   preConfigure = ''
     if ! grep -q "${libsRev}" cmake/modules/falcosecurity-libs.cmake; then
@@ -105,13 +146,14 @@ stdenv.mkDerivation rec {
       exit 1
     fi
     cmakeFlagsArray+=(-DCMAKE_EXE_LINKER_FLAGS="-ltbb -lcurl -lzstd -labsl_synchronization")
-  '' + lib.optionalString (kernel != null) ''
+  ''
+  + lib.optionalString (kernel != null) ''
     export INSTALL_MOD_PATH="$out"
     export KERNELDIR="${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
   '';
 
   postInstall =
-    ''
+    lib.optionalString stdenv.hostPlatform.isLinux ''
       # Fix the bash completion location
       installShellCompletion --bash $out/etc/bash_completion.d/sysdig
       rm $out/etc/bash_completion.d/sysdig
@@ -136,13 +178,16 @@ stdenv.mkDerivation rec {
       fi
     '';
 
-
-  meta = with lib; {
-    description = "A tracepoint-based system tracing tool for Linux (with clients for other OSes)";
-    license = with licenses; [ asl20 gpl2 mit ];
-    maintainers = [maintainers.raskin];
-    platforms = ["x86_64-linux"] ++ platforms.darwin;
-    broken = kernel != null && versionOlder kernel.version "4.14";
+  meta = {
+    description = "Tracepoint-based system tracing tool for Linux (with clients for other OSes)";
+    license = with lib.licenses; [
+      asl20
+      gpl2Only
+      mit
+    ];
+    maintainers = with lib.maintainers; [ raskin ];
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
+    broken = kernel != null && ((lib.versionOlder kernel.version "4.14") || kernel.isZen);
     homepage = "https://sysdig.com/opensource/";
     downloadPage = "https://github.com/draios/sysdig/releases";
   };

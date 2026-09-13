@@ -1,16 +1,18 @@
-{ lib, fetchFromGitHub, ocamlPackages }:
+{
+  lib,
+  fetchFromGitHub,
+  ocamlPackages,
+}:
 
 ocamlPackages.buildDunePackage rec {
   pname = "orpie";
   version = "1.6.1";
 
-  duneVersion = "3";
-
   src = fetchFromGitHub {
     owner = "pelzlpj";
-    repo = pname;
-    rev = "release-${version}";
-    sha256 = "1rx2nl6cdv609pfymnbq53pi3ql5fr4kda8x10ycd9xq2gc4f21g";
+    repo = "orpie";
+    tag = "release-${version}";
+    sha256 = "sha256-LwhH2BO4p8Y8CB2pNkl2heIR7yh42erdTcDsxgy1ouc=";
   };
 
   patches = [ ./prefix.patch ];
@@ -20,11 +22,15 @@ ocamlPackages.buildDunePackage rec {
   '';
 
   nativeBuildInputs = [ ocamlPackages.camlp5 ];
-  buildInputs = with ocamlPackages; [ curses num gsl ];
+  buildInputs = with ocamlPackages; [
+    curses
+    num
+    gsl
+  ];
 
   meta = {
     inherit (src.meta) homepage;
-    description = "A Curses-based RPN calculator";
+    description = "Curses-based RPN calculator";
     license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [ obadz ];
   };

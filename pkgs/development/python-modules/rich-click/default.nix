@@ -1,43 +1,44 @@
-{ lib
-, buildPythonPackage
-, click
-, fetchFromGitHub
-, pythonOlder
-, rich
-, typer
+{
+  lib,
+  buildPythonPackage,
+  click,
+  fetchFromGitHub,
+  rich,
+  setuptools,
+  typing-extensions,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "rich-click";
-  version = "1.6.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.8";
+  version = "1.9.8";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "ewels";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-Be6okg3zmbdbdlB4/uwioUxn6CZUay/istiIoiFrsJk=";
+    repo = "rich-click";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-FjtwlWYFqI7vQ7JtpCtTIi90mbEkmHSKH8SROy9d+vU=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     click
     rich
+    typing-extensions
   ];
 
   # Module has no test
   doCheck = false;
 
-  pythonImportsCheck = [
-    "rich_click"
-  ];
+  pythonImportsCheck = [ "rich_click" ];
 
-  meta = with lib; {
+  meta = {
     description = "Module to format click help output nicely with rich";
     homepage = "https://github.com/ewels/rich-click";
-    changelog = "https://github.com/ewels/rich-click/blob/v${version}/CHANGELOG.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/ewels/rich-click/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "rich-click";
   };
-}
+})

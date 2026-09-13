@@ -1,54 +1,64 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, rednose
-, six
-, mock
-, isPyPy
-, pythonOlder
-, fetchpatch
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  pytestCheckHook,
+  pytest-cov-stub,
+  mock,
+  six,
+  isPyPy,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "sure";
-  version = "2.0.0";
-  format = "setuptools";
-
-  disabled = isPyPy;
+  version = "2.0.1";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "34ae88c846046742ef074036bf311dc90ab152b7bc09c342b281cebf676727a2";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-yPxvq8Dn9phO6ruUJUDkVkblvvC7mf5Z4C2mNOTUuco=";
   };
 
-  patches = [
-    # https://github.com/gabrielfalcao/sure/issues/169
-    (fetchpatch {
-      url = "https://raw.githubusercontent.com/archlinux/svntogit-community/055baa81cd987e566de62a5657513937521a90d4/trunk/python310.diff";
-      hash = "sha256-BKylV8xpTOuO/X4hzZKpoIcAQcdAK0kXYENRad7AGPc=";
-    })
-  ];
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace-fail version=version 'version="${finalAttrs.version}"'
 
-  propagatedBuildInputs = [
-    six
+    substituteInPlace setup.cfg \
+      --replace "rednose = 1" ""
+  '';
+
+  build-system = [ setuptools ];
+
+  dependencies = [
     mock
+    six
   ];
 
   nativeCheckInputs = [
-    rednose
+    pytestCheckHook
+    pytest-cov-stub
+    mock
   ];
 
-  doCheck = pythonOlder "3.11";
-
-  pythonImportsCheck = [
-    "sure"
+  disabledTestPaths = [
+    "tests/test_old_api.py" # require nose
   ];
 
-  meta = with lib; {
+  disabledTests = lib.optionals isPyPy [
+    # test extension of 'dict' object is broken
+    "test_should_compare_dict_with_non_orderable_key_types"
+    "test_should_compare_dict_with_enum_keys"
+  ];
+
+  pythonImportsCheck = [ "sure" ];
+
+  meta = {
     description = "Utility belt for automated testing";
+    mainProgram = "sure";
     homepage = "https://sure.readthedocs.io/";
-    changelog = "https://github.com/gabrielfalcao/sure/blob/${version}/CHANGELOG.md";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ ];
+    changelog = "https://github.com/gabrielfalcao/sure/blob/v${finalAttrs.version}/CHANGELOG.md";
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ sigmanificient ];
   };
-}
+})

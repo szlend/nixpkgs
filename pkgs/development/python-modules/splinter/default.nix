@@ -1,46 +1,61 @@
-{ lib
-, buildPythonPackage
-, isPy27
-, fetchFromGitHub
-, urllib3
-, selenium
-, cssselect
-, django
-, flask
-, lxml
-, pytestCheckHook
-, zope-testbrowser
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  urllib3,
+  selenium,
+  cssselect,
+  django,
+  flask,
+  lxml,
+  pytestCheckHook,
+  zope-testbrowser,
 }:
 
 buildPythonPackage rec {
   pname = "splinter";
-  version = "0.19.0";
-
-  disabled = isPy27;
-
-  format = "setuptools";
+  version = "0.21.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "cobrateam";
     repo = "splinter";
-    rev = "refs/tags/${version}";
-    hash = "sha256-K10zrQOM/khVcf+OT4s5UCY8zE2+nWtaAkRLy9/feU0=";
+    tag = version;
+    hash = "sha256-PGGql8yI1YosoUBAyDoI/8k7s4sVYnXEV7eow3GHH88=";
   };
 
-  propagatedBuildInputs = [
-    urllib3
+  patches = [
+    ./lxml-6.patch
   ];
 
-  passthru.optional-dependencies = {
-    "zope.testbrowser" = [ zope-testbrowser lxml cssselect ];
-    django = [ django lxml cssselect ];
-    flask = [ flask lxml cssselect ];
+  build-system = [ setuptools ];
+
+  dependencies = [ urllib3 ];
+
+  optional-dependencies = {
+    "zope.testbrowser" = [
+      zope-testbrowser
+      lxml
+      cssselect
+    ];
+    django = [
+      django
+      lxml
+      cssselect
+    ];
+    flask = [
+      flask
+      lxml
+      cssselect
+    ];
     selenium = [ selenium ];
   };
 
   nativeCheckInputs = [
     pytestCheckHook
-  ] ++ lib.flatten (lib.attrValues passthru.optional-dependencies);
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
   disabledTests = [
     # driver is present and fails with a different error during loading
@@ -69,10 +84,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "splinter" ];
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://splinter.readthedocs.io/en/latest/news.html";
     description = "Browser abstraction for web acceptance testing";
     homepage = "https://github.com/cobrateam/splinter";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ dotlambda ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

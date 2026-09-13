@@ -1,24 +1,37 @@
-{ lib
-, python
-, buildPythonPackage
-, fetchFromGitHub
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "objsize";
-  version = "0.6.1";
+  version = "0.8.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "liran-funaro";
-    repo = pname;
-    rev = version;
-    hash = "sha256-FgRB7EENwNOlC7ynIRxcwucoywNjko494s75kOp5O+w=";
+    repo = "objsize";
+    tag = version;
+    hash = "sha256-u4PTUk3K3ZCNZ87xM+PoCabsw+EjOoDgNySDWWB7yho=";
   };
 
-  meta = with lib; {
+  build-system = [
+    setuptools
+  ];
+
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  pythonImportsCheck = [ "objsize" ];
+
+  enabledTestPaths = [ "test_objsize.py" ];
+
+  meta = {
     description = "Traversal over objects subtree and calculate the total size";
     homepage = "https://github.com/liran-funaro/objsize";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ ocfox ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ ocfox ];
   };
 }

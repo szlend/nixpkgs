@@ -1,66 +1,56 @@
-{ lib
-, aiofiles
-, buildPythonPackage
-, cached-property
-, colorama
-, fetchFromGitHub
-, git
-, jsonschema
-, pdm-backend
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiofiles,
+  buildPythonPackage,
+  colorama,
+  fetchFromGitHub,
+  git,
+  jsonschema,
+  pdm-backend,
+  pytest-gitconfig,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "griffe";
-  version = "0.30.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.15.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mkdocstrings";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-OiDNK/NqC1nDiN2uoYaVj07BirzNB6DBKvMKNrfWDIA=";
+    repo = "griffe";
+    tag = version;
+    hash = "sha256-AMMTAqsJfj2MltTgAxfvjUTVzi+ZFmx+J9pzhMp28Z4=";
   };
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace 'license = "ISC"' 'license = {file = "LICENSE"}' \
-  '';
+  build-system = [ pdm-backend ];
 
-  nativeBuildInputs = [
-    pdm-backend
-  ];
-
-  propagatedBuildInputs = [
-    colorama
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    cached-property
-  ];
+  dependencies = [ colorama ];
 
   nativeCheckInputs = [
     git
     jsonschema
+    pytest-gitconfig
     pytestCheckHook
   ];
 
-  passthru.optional-dependencies = {
-    async = [
-      aiofiles
-    ];
+  optional-dependencies = {
+    async = [ aiofiles ];
   };
 
-  pythonImportsCheck = [
-    "griffe"
+  pythonImportsCheck = [ "griffe" ];
+
+  disabledTestPaths = [
+    # Circular dependencies
+    "tests/test_api.py"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Signatures for entire Python programs";
     homepage = "https://github.com/mkdocstrings/griffe";
-    changelog = "https://github.com/mkdocstrings/griffe/blob/${version}/CHANGELOG.md";
-    license = licenses.isc;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/mkdocstrings/griffe/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.isc;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "griffe";
   };
 }

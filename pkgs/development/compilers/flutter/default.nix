@@ -1,77 +1,135 @@
-{ callPackage, fetchzip, dart, lib, stdenv }:
+{
+  callPackage,
+  fetchzip,
+  fetchFromGitHub,
+  dart,
+  dart-bin,
+  lib,
+  stdenv,
+  runCommand,
+}:
 let
   mkCustomFlutter = args: callPackage ./flutter.nix args;
   wrapFlutter = flutter: callPackage ./wrapper.nix { inherit flutter; };
-  getPatches = dir:
-    let files = builtins.attrNames (builtins.readDir dir);
-    in map (f: dir + ("/" + f)) files;
-  mkFlutter = { version, engineVersion, dartVersion, hash, dartHash, patches }:
+  getPatches =
+    dir:
+    let
+      files = builtins.attrNames (builtins.readDir dir);
+    in
+    if (builtins.pathExists dir) then map (f: dir + ("/" + f)) files else [ ];
+  mkFlutter =
+    {
+      version,
+      engineVersion,
+      dartVersion,
+      flutterHash,
+      dartHash,
+      patches,
+      pubspecLock,
+      artifactHashes,
+      channel,
+    }:
     let
       args = {
-        inherit version engineVersion patches;
+        inherit
+          version
+          engineVersion
+          patches
+          pubspecLock
+          artifactHashes
+          channel
+          ;
 
-        dart = dart.override {
-          version = dartVersion;
-          sources = {
-            "${dartVersion}-x86_64-linux" = fetchzip {
-              url = "https://storage.googleapis.com/dart-archive/channels/stable/release/${dartVersion}/sdk/dartsdk-linux-x64-release.zip";
-              sha256 = dartHash.x86_64-linux;
+        dart =
+          let
+            hash =
+              dartHash.${stdenv.hostPlatform.system}
+                or (throw "Unsupported system: ${stdenv.hostPlatform.system}");
+          in
+          (
+            if lib.versionAtLeast version "3.41" then
+              (dart-bin.overrideAttrs (oldAttrs: {
+                version = dartVersion;
+                src = oldAttrs.src.overrideAttrs (_: {
+                  inherit hash;
+                });
+              }))
+            else
+              (dart-bin.overrideAttrs (_: {
+                # This overrideAttrs is used to replace the version in src.url
+                version = dartVersion;
+                __intentionallyOverridingVersion = true;
+              })).overrideAttrs
+                (oldAttrs: {
+                  src = fetchzip {
+                    inherit (oldAttrs.src) url;
+                    inherit hash;
+                  };
+                })
+          );
+        src =
+          let
+            source = fetchFromGitHub {
+              owner = "flutter";
+              repo = "flutter";
+              tag = version;
+              hash = flutterHash;
             };
-            "${dartVersion}-aarch64-linux" = fetchzip {
-              url = "https://storage.googleapis.com/dart-archive/channels/stable/release/${dartVersion}/sdk/dartsdk-linux-arm64-release.zip";
-              sha256 = dartHash.aarch64-linux;
-            };
-          };
-        };
-        src = fetchzip {
-          url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${version}-stable.tar.xz";
-          sha256 = hash;
-        };
+          in
+          (
+            if lib.versionAtLeast version "3.32" then
+              # # Could not determine engine revision
+              (runCommand source.name { } ''
+                cp --recursive ${source} $out
+                chmod +w $out/bin
+                mkdir $out/bin/cache
+                cp $out/bin/internal/engine.version $out/bin/cache/engine.stamp
+                touch $out/bin/cache/engine.realm
+              '')
+            else
+              source
+          );
       };
     in
-    (mkCustomFlutter args).overrideAttrs (prev: next: {
-      passthru = next.passthru // rec {
-        inherit wrapFlutter mkCustomFlutter mkFlutter;
-        buildFlutterApplication = callPackage ../../../build-support/flutter {
-          # Package a minimal version of Flutter that only uses Linux desktop release artifacts.
-          flutter = (wrapFlutter (mkCustomFlutter args)).override {
-            supportsAndroid = false;
-            includedEngineArtifacts = {
-              common = [ "flutter_patched_sdk_product" ];
-              platform.linux = lib.optionals stdenv.hostPlatform.isLinux
-                (lib.genAttrs ((lib.optional stdenv.hostPlatform.isx86_64 "x64") ++ (lib.optional stdenv.hostPlatform.isAarch64 "arm64"))
-                  (architecture: [ "release" ]));
-            };
+    (mkCustomFlutter args).overrideAttrs (
+      prev: next: {
+        passthru = next.passthru // {
+          inherit wrapFlutter mkCustomFlutter mkFlutter;
+          buildFlutterApplication = callPackage ./build-support/build-flutter-application.nix {
+            flutter = wrapFlutter (mkCustomFlutter args);
           };
         };
-      };
-    });
+      }
+    );
 
-  flutter3Patches = getPatches ./patches/flutter3;
+  flutterVersions = lib.mapAttrs' (
+    version: _:
+    let
+      versionDir = ./versions + "/${version}";
+      data = lib.importJSON (versionDir + "/data.json");
+    in
+    lib.nameValuePair "v${version}" (
+      wrapFlutter (
+        mkFlutter (
+          {
+            patches = (getPatches ./patches) ++ (getPatches (versionDir + "/patches"));
+          }
+          // data
+        )
+      )
+    )
+  ) (builtins.readDir ./versions);
+
+  stableFlutterVersions = lib.attrsets.filterAttrs (_: v: v.channel == "stable") flutterVersions;
+  betaFlutterVersions = lib.attrsets.filterAttrs (_: v: v.channel == "beta") flutterVersions;
 in
-{
-  inherit wrapFlutter;
-  stable = mkFlutter {
-    version = "3.10.5";
-    engineVersion = "45f6e009110df4f34ec2cf99f63cf73b71b7a420";
-    dartVersion = "3.0.5";
-    hash = "sha256-lLppUQzu+fl81TMYSPD+HA83BqeIg7bXpURyo49NPwI=";
-    dartHash = {
-      x86_64-linux = "sha256-UVVwPFk0qsKNR4JZMOGSGh1T482MN/8Xp4MZ3SA3C28=";
-      aarch64-linux = "sha256-phzaFfrv7qbZOOhPq92q39R6mr5vFeBqEmYDU7e7lZQ=";
-    };
-    patches = flutter3Patches;
-  };
-
-  v37 = mkFlutter {
-    version = "3.7.12";
-    engineVersion = "1a65d409c7a1438a34d21b60bf30a6fd5db59314";
-    dartVersion = "2.19.6";
-    hash = "sha256-5ExDBQXIpoZ5NwS66seY3m9/V8xDiyq/RdzldAyHdEE=";
-    dartHash = {
-      x86_64-linux = "sha256-4ezRuwhQHVCxZg5WbzU/tBUDvZVpfCo6coDE4K0UzXo=";
-      aarch64-linux = "sha256-pYmClIqOo0sRPOkrcF4xQbo0mHlrr1TkhT1fnNyYNck=";
-    };
-    patches = flutter3Patches;
-  };
+flutterVersions
+// {
+  inherit wrapFlutter mkFlutter;
+}
+// lib.optionalAttrs (betaFlutterVersions != { }) {
+  beta = flutterVersions.${lib.last (lib.naturalSort (builtins.attrNames betaFlutterVersions))};
+}
+// lib.optionalAttrs (stableFlutterVersions != { }) {
+  stable = flutterVersions.${lib.last (lib.naturalSort (builtins.attrNames stableFlutterVersions))};
 }

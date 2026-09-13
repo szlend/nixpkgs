@@ -1,49 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, pythonOlder
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "goodwe";
-  version = "0.2.31";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "0.4.10";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "marcelblijleven";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-h5FXb8abSpyCDnaRox3J0XFLvl6V9IMcePtTZ3wbTPM=";
+    repo = "goodwe";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-2wnfc+W1lhUgvWa1iwHxJu4WGZHaXvmxgtBAkTJHJ3E=";
   };
 
   postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "'marcelblijleven@gmail.com" "marcelblijleven@gmail.com" \
-      --replace "version: file: VERSION" "version = ${version}"
+    echo '${finalAttrs.version}' > VERSION
   '';
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  pythonImportsCheck = [
-    "goodwe"
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  pythonImportsCheck = [ "goodwe" ];
 
-
-  meta = with lib; {
+  meta = {
     description = "Python library for connecting to GoodWe inverter";
     homepage = "https://github.com/marcelblijleven/goodwe";
-    changelog = "https://github.com/marcelblijleven/goodwe/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/marcelblijleven/goodwe/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

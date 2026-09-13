@@ -1,44 +1,49 @@
-{ lib
-, buildPythonPackage
-, cachetools
-, cytoolz
-, fetchPypi
-, jellyfish
-, joblib
-, matplotlib
-, networkx
-, numpy
-, pyemd
-, pyphen
-, pytestCheckHook
-, pythonOlder
-, requests
-, scikit-learn
-, scipy
-, spacy
-, tqdm
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  cachetools,
+  cytoolz,
+  fetchPypi,
+  floret,
+  jellyfish,
+  joblib,
+  matplotlib,
+  networkx,
+  numpy,
+  pyphen,
+  pytestCheckHook,
+  requests,
+  scikit-learn,
+  scipy,
+  spacy,
+  tqdm,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "textacy";
-  version = "0.12.0";
-  disabled = pythonOlder "3.7";
-  format = "pyproject";
+  version = "0.13.0";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "2c92bdd6b47305447b64e4cb6cc43c11675f021f910a8074bc8149dbf5325e5b";
+  src = fetchFromGitHub {
+    owner = "chartbeat-labs";
+    repo = "textacy";
+    tag = finalAttrs.version;
+    hash = "sha256-QVxC9oV1X5ifQ9VVYissppni1A8LACz/FVgaoG5/GFU=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     cachetools
     cytoolz
+    floret
     jellyfish
     joblib
-    matplotlib
     networkx
     numpy
-    pyemd
     pyphen
     requests
     scikit-learn
@@ -47,11 +52,13 @@ buildPythonPackage rec {
     tqdm
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  optional-dependencies = {
+    vis = [ matplotlib ];
+  };
 
-  pytestFlagsArray = [
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  enabledTestPaths = [
     # Almost all tests have to deal with downloading a dataset, only test pure tests
     "tests/test_constants.py"
     "tests/preprocessing/test_normalize.py"
@@ -62,10 +69,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "textacy" ];
 
-  meta = with lib; {
+  meta = {
     description = "Higher-level text processing, built on spaCy";
     homepage = "https://textacy.readthedocs.io/";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ rvl ];
+    changelog = "https://github.com/chartbeat-labs/textacy/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

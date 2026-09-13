@@ -1,41 +1,56 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-# dependencies
-, ply
-# test dependencies
-, elasticsearch-dsl
+{
+  lib,
+  buildPythonPackage,
+  elastic-transport,
+  elasticsearch-dsl,
+  fetchFromGitHub,
+  ply,
+  pytestCheckHook,
+  pytest-cov-stub,
+  setuptools,
 }:
-let
-  pname = "luqum";
-  version = "0.13.0";
-in
-buildPythonPackage {
-  inherit pname version;
-  format = "setuptools";
 
-  disabled = pythonOlder "3.8";
+buildPythonPackage rec {
+  pname = "luqum";
+  version = "1.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jurismarches";
-    repo = pname;
-    rev = version;
-    hash = "sha256-lcJCLl0crCl3Y5UlWBMZJR2UtVP96gaJNRxwY9Xn7TM=";
+    repo = "luqum";
+    tag = version;
+    hash = "sha256-X1P7sACcp2yVjW3xWmD88iDT4T9dSDi8yxwDFaRbEsc=";
   };
 
-  propagatedBuildInputs = [
-    ply
-  ];
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace '--doctest-modules --doctest-glob="test_*.rst"' ""
+  '';
+
+  nativeBuildInputs = [ setuptools ];
+
+  propagatedBuildInputs = [ ply ];
 
   nativeCheckInputs = [
+    elastic-transport
     elasticsearch-dsl
+    pytestCheckHook
+    pytest-cov-stub
   ];
 
-  meta = with lib; {
-    description = "A lucene query parser generating ElasticSearch queries and more !";
+  pythonImportsCheck = [ "luqum" ];
+
+  disabledTestPaths = [
+    # Tests require an Elasticsearch instance
+    "tests/test_elasticsearch/test_es_integration.py"
+    "tests/test_elasticsearch/test_es_naming.py"
+  ];
+
+  meta = {
+    description = "Lucene query parser generating ElasticSearch queries";
     homepage = "https://github.com/jurismarches/luqum";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ happysalada ];
+    changelog = "https://github.com/jurismarches/luqum/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ happysalada ];
   };
 }

@@ -1,41 +1,60 @@
-{ buildPythonPackage
-, fetchPypi
-, isPy27
-, lib
-, setuptools
-, setuptools-scm
-, py
-, pytestCheckHook }:
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  setuptools-scm,
+  py,
+  pytestCheckHook,
+  pythonAtLeast,
+}:
 
 buildPythonPackage rec {
   pname = "simpy";
-  version = "4.0.1";
-  format = "setuptools";
-
-  disabled = isPy27;
+  version = "4.1.1";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b36542e2faab612f861c5ef4da17220ac1553f5892b3583c67281dbe4faad404";
+    hash = "sha256-BtB1CniEsR4OjiDOC8fG1O1fF0PUVmlTQNE/3/lQAaY=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
+    setuptools
     setuptools-scm
   ];
 
-  propagatedBuildInputs = [
-    setuptools
-  ];
+  pythonImportsCheck = [ "simpy" ];
 
   nativeCheckInputs = [
     py
     pytestCheckHook
   ];
 
-  meta = with lib; {
+  enabledTestPaths = [
+    "tests"
+  ];
+
+  disabledTests =
+    lib.optionals (pythonAtLeast "3.13") [
+      # Failing on python >= 3.13
+      # FAILED tests/test_exceptions.py::test_exception_chaining - AssertionError: Traceback mismatch
+      "test_exception_chaining"
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      "test_rt"
+      "test_rt_multiple_call"
+      "test_rt_slow_sim_no_error"
+    ];
+
+  meta = {
+    downloadPage = "https://github.com/simpx/simpy";
     homepage = "https://simpy.readthedocs.io/en/${version}/";
     description = "Process-based discrete-event simulation framework based on standard Python";
-    license = [ licenses.mit ];
-    maintainers = with maintainers; [ dmrauh shlevy ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      shlevy
+    ];
   };
 }

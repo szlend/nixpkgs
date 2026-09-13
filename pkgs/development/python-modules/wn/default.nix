@@ -1,48 +1,55 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pytestCheckHook
-, flit-core
-, requests
-, tomli
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pytestCheckHook,
+  pytest-benchmark,
+  hatchling,
+  httpx,
+  tomli,
+  starlette,
 }:
 
 buildPythonPackage rec {
   pname = "wn";
-  version = "0.9.4";
-  format = "pyproject";
+  version = "0.14.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-n03hFoGMAqLu57gw52tY2jkE8uuLFAbwTZ63sHG2168=";
+    hash = "sha256-z2mDEFx7Qn5LKyji4CgFhxvCUblZeXLf2hjy4i6lMjQ=";
   };
 
-  nativeBuildInputs = [
-    flit-core
+  build-system = [ hatchling ];
+
+  dependencies = [
+    httpx
+    tomli
   ];
 
-  propagatedBuildInputs = [
-    requests
-    tomli
+  optional-dependencies.web = [
+    starlette
   ];
 
   nativeCheckInputs = [
     pytestCheckHook
-  ];
+    pytest-benchmark
+  ]
+  ++ optional-dependencies.web;
+
+  pytestFlags = [ "--benchmark-disable" ];
 
   preCheck = ''
     export HOME=$(mktemp -d)
   '';
 
-  pythonImportsCheck = [
-    "wn"
-  ];
+  pythonImportsCheck = [ "wn" ];
 
-  meta = with lib; {
-    description = "A modern, interlingual wordnet interface for Python";
+  meta = {
+    description = "Modern, interlingual wordnet interface for Python";
     homepage = "https://github.com/goodmami/wn";
     changelog = "https://github.com/goodmami/wn/blob/v${version}/CHANGELOG.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ zendo ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ zendo ];
   };
 }

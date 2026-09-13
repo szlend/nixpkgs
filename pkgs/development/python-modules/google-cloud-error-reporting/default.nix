@@ -1,47 +1,61 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, google-api-core
-, google-cloud-logging
-, google-cloud-testutils
-, mock
-, proto-plus
-, protobuf
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  google-api-core,
+  google-cloud-logging,
+  proto-plus,
+  protobuf,
+
+  # testing
+  google-cloud-testutils,
+  mock,
+  pytest-asyncio,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "google-cloud-error-reporting";
-  version = "1.9.1";
-  format = "setuptools";
+  version = "1.14.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-3N7LtFKvTdV0zBGIyUgi6tCVZX7+rbJD5Lb+xZafJNw=";
+  src = fetchFromGitHub {
+    owner = "googleapis";
+    repo = "python-error-reporting";
+    tag = "v${version}";
+    hash = "sha256-do/pxm+Bo2c57ehg1cRlpax+UggSUMv8WSK30sXhHpo=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  pythonRelaxDeps = [ "protobuf" ];
+
+  dependencies = [
     google-api-core
     google-cloud-logging
     proto-plus
     protobuf
-  ] ++ google-api-core.optional-dependencies.grpc;
+  ]
+  ++ google-api-core.optional-dependencies.grpc;
 
   nativeCheckInputs = [
     google-cloud-testutils
     mock
-    pytestCheckHook
     pytest-asyncio
+    pytestCheckHook
   ];
 
   disabledTests = [
     # Tests require credentials
     "test_report_error_event"
     "test_report_exception"
+    # Import is already tested
+    "test_namespace_package_compat"
   ];
 
   preCheck = ''
@@ -49,11 +63,16 @@ buildPythonPackage rec {
     rm -r google
   '';
 
-  meta = with lib; {
+  pythonImportsCheck = [
+    "google.cloud.error_reporting"
+    "google.cloud.errorreporting_v1beta1"
+  ];
+
+  meta = {
     description = "Stackdriver Error Reporting API client library";
     homepage = "https://github.com/googleapis/python-error-reporting";
-    changelog = "https://github.com/googleapis/python-error-reporting/blob/v${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    changelog = "https://github.com/googleapis/python-error-reporting/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = [ lib.maintainers.sarahec ];
   };
 }

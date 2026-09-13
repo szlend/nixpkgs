@@ -1,6 +1,3 @@
-if [ -e .attrs.sh ]; then source .attrs.sh; fi
-source "$stdenv/setup"
-
 echo "exporting \`$url' (revision $rev) into \`$out'"
 
 # Perform a lightweight checkout so that we don't end up importing

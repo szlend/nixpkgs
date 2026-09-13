@@ -1,44 +1,48 @@
-{ backoff
-, sparqlwrapper
-, boto3
-, buildPythonPackage
-, fetchFromGitHub
-, gremlinpython
-, jsonpath-ng
-, lib
-, moto
-, openpyxl
-, opensearch-py
-, pandas
-, pg8000
-, poetry-core
-, progressbar2
-, pyarrow
-, pymysql
-, pyodbc
-, pytestCheckHook
-, pythonOlder
-, redshift-connector
-, requests-aws4auth
+{
+  lib,
+  boto3,
+  buildPythonPackage,
+  fetchFromGitHub,
+  gremlinpython,
+  hatchling,
+  jsonpath-ng,
+  moto,
+  openpyxl,
+  opensearch-py,
+  pandas,
+  pg8000,
+  progressbar2,
+  pyarrow,
+  pymysql,
+  pyodbc,
+  pyparsing,
+  pytestCheckHook,
+  redshift-connector,
+  requests-aws4auth,
+  setuptools,
+  sparqlwrapper,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "awswrangler";
-  version = "3.0.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "3.16.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "aws";
     repo = "aws-sdk-pandas";
-    rev = "refs/tags/${version}";
-    hash = "sha256-uuY6+GCMBtqcj4pLbns0ESRDA8I/0kzJ6Cc4eqsyQ44=";
+    tag = finalAttrs.version;
+    hash = "sha256-utxSM8S3uelwrLHrXx5NglOmqjS7YKnAPujNS7UhWf8=";
   };
 
-  nativeBuildInputs = [ poetry-core ];
+  pythonRelaxDeps = [
+    "packaging"
+    "pyarrow"
+  ];
 
-  propagatedBuildInputs = [
+  build-system = [ hatchling ];
+
+  dependencies = [
     boto3
     gremlinpython
     jsonpath-ng
@@ -51,11 +55,23 @@ buildPythonPackage rec {
     pymysql
     redshift-connector
     requests-aws4auth
+    setuptools
   ];
 
-  nativeCheckInputs = [ moto pytestCheckHook ];
+  optional-dependencies = {
+    sqlserver = [ pyodbc ];
+    sparql = [ sparqlwrapper ];
+  };
 
-  pytestFlagsArray = [
+  nativeCheckInputs = [
+    moto
+    pyparsing
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [ "awswrangler" ];
+
+  enabledTestPaths = [
     # Subset of tests that run in upstream CI (many others require credentials)
     # https://github.com/aws/aws-sdk-pandas/blob/20fec775515e9e256e8cee5aee12966516608840/.github/workflows/minimal-tests.yml#L36-L43
     "tests/unit/test_metadata.py"
@@ -64,16 +80,11 @@ buildPythonPackage rec {
     "tests/unit/test_moto.py"
   ];
 
-  passthru.optional-dependencies = {
-    sqlserver = [ pyodbc ];
-    sparql = [ sparqlwrapper ];
-  };
-
   meta = {
     description = "Pandas on AWS";
     homepage = "https://github.com/aws/aws-sdk-pandas";
-    changelog = "https://github.com/aws/aws-sdk-pandas/releases/tag/${version}";
+    changelog = "https://github.com/aws/aws-sdk-pandas/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ mcwitt ];
   };
-}
+})

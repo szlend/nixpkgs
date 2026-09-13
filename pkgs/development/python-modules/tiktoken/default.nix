@@ -1,42 +1,51 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, rustPlatform
-, cargo
-, rustc
-, setuptools-rust
-, libiconv
-, requests
-, regex
-, blobfile
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+  rustPlatform,
+  cargo,
+  rustc,
+  setuptools,
+  setuptools-rust,
+  libiconv,
+  requests,
+  regex,
+  blobfile,
 }:
 let
   pname = "tiktoken";
-  version = "0.3.3";
+  version = "0.12.0";
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-l7WLe/2pRXkeyFXlPRZujsIMY3iUK5OFGmyRnd+dBJY=";
+    hash = "sha256-sYun7isJOGOXj8sU90s3B83I1NTTg2hTzn7GB3ITmTE=";
   };
   postPatch = ''
     cp ${./Cargo.lock} Cargo.lock
   '';
 in
 buildPythonPackage {
-  inherit pname version src postPatch;
-  format = "setuptools";
+  inherit
+    pname
+    version
+    src
+    postPatch
+    ;
+  pyproject = true;
 
-  disabled = pythonOlder "3.8";
-
-  nativeBuildInput = [
+  build-system = [
+    setuptools
     setuptools-rust
   ];
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src postPatch;
-    name = "${pname}-${version}";
-    hash = "sha256-27xR7xVH/u40Xl4VbJW/yEbURf0UcGPG5QK/04igseA=";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit
+      pname
+      version
+      src
+      postPatch
+      ;
+    hash = "sha256-daIKasW/lwYwIqMs3KvCDJWAoMn1CkPRpNqhl1jKpYY=";
   };
 
   nativeBuildInputs = [
@@ -46,18 +55,23 @@ buildPythonPackage {
     rustc
   ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ libiconv ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     requests
     regex
     blobfile
   ];
 
-  meta = with lib; {
-    description = "tiktoken is a fast BPE tokeniser for use with OpenAI's models.";
+  # almost all tests require network access
+  doCheck = false;
+
+  pythonImportsCheck = [ "tiktoken" ];
+
+  meta = {
+    description = "Fast BPE tokeniser for use with OpenAI's models";
     homepage = "https://github.com/openai/tiktoken";
-    license = licenses.mit;
-    maintainers = with maintainers; [ happysalada ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ happysalada ];
   };
 }

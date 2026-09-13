@@ -1,28 +1,29 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pip
-, pretend
-, pytestCheckHook
-, pythonOlder
-, virtualenv
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pip,
+  pretend,
+  pytestCheckHook,
+  setuptools,
+  virtualenv,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pip-api";
-  version = "0.0.30";
-  format = "setuptools";
+  version = "0.0.34";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-oF3yx6qbcVc3S89Cc1RCAaDHuuYKnGW8+E85We84lvM=";
+  src = fetchFromGitHub {
+    owner = "di";
+    repo = "pip-api";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-nmCP4hp+BsD80OBjerOu+QTBBExGHvn/v19od4V3ncI=";
   };
 
-  propagatedBuildInputs = [
-    pip
-  ];
+  build-system = [ setuptools ];
+
+  dependencies = [ pip ];
 
   nativeCheckInputs = [
     pretend
@@ -30,9 +31,7 @@ buildPythonPackage rec {
     virtualenv
   ];
 
-  pythonImportsCheck = [
-    "pip_api"
-  ];
+  pythonImportsCheck = [ "pip_api" ];
 
   disabledTests = [
     "test_hash"
@@ -41,12 +40,15 @@ buildPythonPackage rec {
     "test_invoke_install"
     "test_invoke_uninstall"
     "test_isolation"
+    # Tests fails on hydra
+    "test_parse_requirements_editable"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Importable pip API";
-    homepage = "https://github.com/di/pip-api";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    homepage = "https://github.com/di/pip-api/";
+    changelog = "https://github.com/di/pip-api/blob/${finalAttrs.src.tag}/CHANGELOG";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

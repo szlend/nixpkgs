@@ -1,25 +1,41 @@
-{ lib, stdenv, fetchFromGitHub, postgresql, openssl, zlib, readline }:
+{
+  fetchFromGitHub,
+  gitUpdater,
+  lib,
+  postgresql,
+  postgresqlBuildExtension,
+  postgresqlTestExtension,
+  testers,
+}:
 
-stdenv.mkDerivation rec {
+postgresqlBuildExtension (finalAttrs: {
   pname = "pg_repack";
-  version = "1.4.8";
+  version = "1.5.3";
 
-  buildInputs = [ postgresql openssl zlib readline ];
+  buildInputs = postgresql.buildInputs;
 
   src = fetchFromGitHub {
-    owner  = "reorg";
-    repo   = "pg_repack";
-    rev    = "ver_${version}";
-    sha256 = "sha256-Et8aMRzG7ez0uy9wG6qsg57/kPPZdUhb+/gFxW86D08=";
+    owner = "reorg";
+    repo = "pg_repack";
+    tag = "ver_${finalAttrs.version}";
+    hash = "sha256-Ufh/dKrKumRKeQ/CpwvxbjAmgILAn04BduPZMRvS+nU=";
   };
 
-  installPhase = ''
-    install -D bin/pg_repack -t $out/bin/
-    install -D lib/pg_repack.so -t $out/lib/
-    install -D lib/{pg_repack--${version}.sql,pg_repack.control} -t $out/share/postgresql/extension
-  '';
+  passthru.updateScript = gitUpdater {
+    rev-prefix = "ver_";
+  };
 
-  meta = with lib; {
+  passthru.tests = {
+    version = testers.testVersion {
+      package = finalAttrs.finalPackage;
+    };
+    extension = postgresqlTestExtension {
+      inherit (finalAttrs) finalPackage;
+      sql = "CREATE EXTENSION pg_repack;";
+    };
+  };
+
+  meta = {
     description = "Reorganize tables in PostgreSQL databases with minimal locks";
     longDescription = ''
       pg_repack is a PostgreSQL extension which lets you remove bloat from tables and indexes, and optionally restore
@@ -28,8 +44,9 @@ stdenv.mkDerivation rec {
       with performance comparable to using CLUSTER directly.
     '';
     homepage = "https://github.com/reorg/pg_repack";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ danbst ];
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
     inherit (postgresql.meta) platforms;
+    mainProgram = "pg_repack";
   };
-}
+})

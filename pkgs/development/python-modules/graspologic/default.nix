@@ -1,51 +1,123 @@
-{ lib
-, buildPythonPackage
-, isPy27
-, fetchFromGitHub
-, pytestCheckHook
-, pytest-cov
-, hyppo
-, matplotlib
-, networkx
-, numpy
-, scikit-learn
-, scipy
-, seaborn
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  poetry-core,
+  poetry-dynamic-versioning,
+
+  # dependencies
+  anytree,
+  beartype,
+  future,
+  gensim,
+  graspologic-native,
+  hyppo,
+  joblib,
+  matplotlib,
+  networkx,
+  numpy,
+  pot,
+  scikit-learn,
+  scipy,
+  seaborn,
+  statsmodels,
+  typing-extensions,
+  umap-learn,
+
+  # tests
+  pytestCheckHook,
+  testfixtures,
 }:
 
 buildPythonPackage rec {
   pname = "graspologic";
-  version = "2.0.1";
-
-  disabled = isPy27;
+  version = "3.4.4";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "microsoft";
+    owner = "graspologic-org";
     repo = "graspologic";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-EmbCA4JpY2OIwXrRWjBxA4iNm0ddQODjoGmHIYgvAWs=";
+    tag = "v${version}";
+    hash = "sha256-ulsb7jD/tIVEISjnNRif7VO+ZcXCAGIFl1SNZhOC7ik=";
   };
 
-  propagatedBuildInputs = [
+  # Fix numpy 2 compat
+  postPatch = ''
+    substituteInPlace graspologic/utils/utils.py \
+      --replace-fail "np.float_" "np.float64"
+    substituteInPlace graspologic/embed/omni.py \
+      --replace-fail \
+        "A = np.array(graphs, copy=False, ndmin=3)" \
+        "A = np.asarray(graphs)"
+  '';
+
+  build-system = [
+    poetry-core
+    poetry-dynamic-versioning
+  ];
+
+  pythonRelaxDeps = [
+    "beartype"
+    "hyppo"
+    "numpy"
+    "scipy"
+  ];
+
+  dependencies = [
+    anytree
+    beartype
+    future
+    gensim
+    graspologic-native
     hyppo
+    joblib
     matplotlib
     networkx
     numpy
+    pot
     scikit-learn
     scipy
     seaborn
+    statsmodels
+    typing-extensions
+    umap-learn
   ];
 
-  nativeCheckInputs = [ pytestCheckHook pytest-cov ];
-  pytestFlagsArray = [ "tests" "--ignore=docs" "--ignore=tests/test_sklearn.py" ];
+  preInstallCheck = ''
+    export NUMBA_CACHE_DIR=$(mktemp -d)
+  '';
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    testfixtures
+  ];
+
+  enabledTestPaths = [
+    "tests"
+  ];
+
   disabledTests = [ "gridplot_outputs" ];
 
-  meta = with lib; {
-    homepage = "https://graspologic.readthedocs.io";
-    description = "A package for graph statistical algorithms";
-    license = licenses.asl20;  # changing to `licenses.mit` in next release
-    maintainers = with maintainers; [ bcdarwin ];
-    # graspologic-native is not available
-    broken = true;
+  disabledTestPaths = [
+    "docs"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # SIGABRT
+    "tests/test_plot.py"
+    "tests/test_plot_matrix.py"
+
+    # Hang forever
+    "tests/pipeline/embed/"
+  ];
+
+  meta = {
+    description = "Package for graph statistical algorithms";
+    homepage = "https://graspologic-org.github.io/graspologic";
+    changelog = "https://github.com/graspologic-org/graspologic/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ bcdarwin ];
   };
 }

@@ -1,36 +1,41 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, setuptools
-, setuptools-scm
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  setuptools,
+  setuptools-scm,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "stringparser";
-  version = "0.6";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.5";
+  version = "0.7";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "hgrecco";
-    repo = pname;
-    rev = version;
-    sha256 = "sha256-uyeHuH0UfpZqh7sMRI6+fR/Rr2jSzdR+5O/MtzslO5w=";
+    repo = "stringparser";
+    tag = version;
+    hash = "sha256-gj0ooeb869JhlB9Mf5nBydiV2thTes8ys+BLJ516iSA=";
   };
 
-  nativeBuildInputs = [ setuptools setuptools-scm ];
+  nativeBuildInputs = [
+    setuptools
+    setuptools-scm
+  ];
 
-  pythonImportsCheck = [ "stringparser" ];
+  propagatedBuildInputs = [ typing-extensions ];
 
   nativeCheckInputs = [ pytestCheckHook ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "stringparser" ];
+
+  meta = {
     description = "Easy to use pattern matching and information extraction";
     homepage = "https://github.com/hgrecco/stringparser";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ evilmav ];
+    changelog = "https://github.com/hgrecco/stringparser/blob/${version}/CHANGES";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ evilmav ];
   };
 }

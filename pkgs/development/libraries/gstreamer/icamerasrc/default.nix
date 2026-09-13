@@ -1,22 +1,34 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, autoreconfHook
-, pkg-config
-, gst_all_1
-, ipu6-camera-hal
-, libdrm
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  autoreconfHook,
+  pkg-config,
+  gst_all_1,
+  ipu6-camera-hal,
+  ipu7x-camera-hal,
+  ipuVariant ? "ipu6",
+  libdrm,
+  libva,
+  apple-sdk_gstreamer,
 }:
-
-stdenv.mkDerivation rec {
-  pname = "icamerasrc-${ipu6-camera-hal.ipuVersion}";
-  version = "unstable-2023-03-09";
+let
+  ipu-camera-hal =
+    {
+      ipu6 = ipu6-camera-hal;
+      ipu7 = ipu7x-camera-hal;
+    }
+    .${ipuVariant};
+in
+stdenv.mkDerivation (finalAttrs: {
+  pname = "icamerasrc-${ipu-camera-hal.ipuVersion}";
+  version = "20251226_1140_191_PTL_PV_IoT";
 
   src = fetchFromGitHub {
     owner = "intel";
     repo = "icamerasrc";
-    rev = "17841ab6249aaa69bd9b3959262bf182dee74111";
-    hash = "sha256-j8ZYe4nyy5yfo10CGeXDwbAaAPvdr0ptMWB8hQDyESQ=";
+    tag = finalAttrs.version;
+    hash = "sha256-BYURJfNz4D8bXbSeuWyUYnoifozFOq6rSfG9GBKVoHo=";
   };
 
   nativeBuildInputs = [
@@ -25,20 +37,32 @@ stdenv.mkDerivation rec {
   ];
 
   preConfigure = ''
-    # https://github.com/intel/ipu6-camera-hal/issues/1
     export CHROME_SLIM_CAMHAL=ON
-    # https://github.com/intel/icamerasrc/issues/22
-    export STRIP_VIRTUAL_CHANNEL_CAMHAL=ON
   '';
+
+  separateDebugInfo = true;
+
+  __structuredAttrs = true;
+  strictDeps = true;
+
+  configureFlags = [
+    "--enable-gstdrmformat=yes"
+  ];
 
   buildInputs = [
     gst_all_1.gstreamer
     gst_all_1.gst-plugins-base
-    ipu6-camera-hal
+    gst_all_1.gst-plugins-bad
+    ipu-camera-hal
     libdrm
+    libva
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    apple-sdk_gstreamer
   ];
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
+    "-Wno-error"
     # gstcameradeinterlace.cpp:55:10: fatal error: gst/video/video.h: No such file or directory
     "-I${gst_all_1.gst-plugins-base.dev}/include/gstreamer-1.0"
   ];
@@ -46,14 +70,14 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   passthru = {
-    inherit (ipu6-camera-hal) ipuVersion;
+    inherit (ipu-camera-hal) ipuVersion;
   };
 
-  meta = with lib; {
-    description = "GStreamer Plugin for MIPI camera support through the IPU6/IPU6EP/IPU6SE on Intel Tigerlake/Alderlake/Jasperlake platforms";
+  meta = {
+    description = "GStreamer Plugin for MIPI camera support through the IPU6/IPU7 on Intel platforms";
     homepage = "https://github.com/intel/icamerasrc/tree/icamerasrc_slim_api";
-    license = licenses.lgpl21Plus;
-    maintainers = with maintainers; [ hexa ];
+    license = lib.licenses.lgpl21Plus;
+    maintainers = [ ];
     platforms = [ "x86_64-linux" ];
   };
-}
+})

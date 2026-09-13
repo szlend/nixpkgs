@@ -1,23 +1,31 @@
-{ buildPythonPackage
-, meson
-, ninja
-, pkg-config
-, tblite
-, numpy
-, simple-dftd3
-, cffi
-, gfortran
-, blas
-, lapack
-, mctc-lib
-, mstore
-, toml-f
-, multicharge
-, dftd4
+{
+  buildPythonPackage,
+  meson,
+  ninja,
+  pkg-config,
+  tblite,
+  numpy,
+  simple-dftd3,
+  cffi,
+  gfortran,
+  blas,
+  lapack,
+  mctc-lib,
+  mstore,
+  toml-f,
+  multicharge,
+  dftd4,
+  setuptools,
 }:
 
 buildPythonPackage {
-  inherit (tblite) pname version src meta;
+  inherit (tblite)
+    pname
+    version
+    src
+    postPatch
+    meta
+    ;
 
   nativeBuildInputs = [
     tblite
@@ -26,6 +34,7 @@ buildPythonPackage {
     pkg-config
     gfortran
     mctc-lib
+    setuptools
   ];
 
   buildInputs = [
@@ -40,19 +49,22 @@ buildPythonPackage {
     dftd4
   ];
 
-  propagatedBuildInputs = [ tblite simple-dftd3 cffi numpy ];
+  propagatedBuildInputs = [
+    tblite
+    simple-dftd3
+    cffi
+    numpy
+  ];
 
-  # Add multicharge to the meson deps; otherwise we get missing mod_multicharge errors
-  patches = [ ./0001-fix-multicharge-dep-needed-for-static-compilation.patch ];
+  patches = [
+    # Add multicharge to the meson deps; otherwise we get missing mod_multicharge errors
+    ./0001-fix-multicharge-dep-needed-for-static-compilation.patch
+  ];
 
-  format = "other";
-  pythonImportsCheck = [ "tblite" "tblite.interface" ];
-  configurePhase = ''
-    runHook preConfigure
-
-    meson setup build -Dpython=true --prefix=$out
-    cd build
-
-    runHook postConfigure
-  '';
+  pyproject = false;
+  pythonImportsCheck = [
+    "tblite"
+    "tblite.interface"
+  ];
+  mesonFlags = [ "-Dpython=true" ];
 }

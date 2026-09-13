@@ -1,28 +1,38 @@
-{ lib, fetchFromGitHub, buildPythonPackage, python, lxml, pythonOlder }:
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+  unittestCheckHook,
+  lxml,
+  setuptools,
+}:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "gpxpy";
-  version = "1.5.0";
-  disabled = pythonOlder "3.6";
+  version = "1.6.2";
+
+  __structuredAttrs = true;
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "tkrajina";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-Fkl2dte1WkPi2hBOdT23BMfNflR0j4GeNH86d46WNQk=";
+    repo = "gpxpy";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-s65k0u4LIwHX9RJMJIYMkNS4/Z0wstzqYVPAjydo2iI=";
   };
 
-  propagatedBuildInputs = [ lxml ];
+  build-system = [ setuptools ];
 
-  checkPhase = ''
-    ${python.interpreter} -m unittest test
-  '';
+  dependencies = [ lxml ];
 
-  meta = with lib; {
+  nativeCheckInputs = [ unittestCheckHook ];
+
+  meta = {
     description = "Python GPX (GPS eXchange format) parser";
+    mainProgram = "gpxinfo";
     homepage = "https://github.com/tkrajina/gpxpy";
-    license = licenses.asl20;
-    platforms = platforms.unix;
-    maintainers = with maintainers; [ sikmir ];
+    license = lib.licenses.asl20;
+    platforms = lib.platforms.unix;
+    maintainers = with lib.maintainers; [ sikmir ];
   };
-}
+})

@@ -1,8 +1,13 @@
-{ lib, buildPythonPackage, fetchPypi }:
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+}:
 
 buildPythonPackage rec {
   pname = "rpi-gpio";
   version = "0.7.1";
+  format = "setuptools";
 
   src = fetchPypi {
     pname = "RPi.GPIO";
@@ -14,11 +19,11 @@ buildPythonPackage rec {
   # Raspberry Pi
   doCheck = false;
 
-  meta = with lib; {
+  meta = {
     homepage = "https://sourceforge.net/p/raspberry-gpio-python";
     description = "Python module to control the GPIO on a Raspberry Pi";
-    license = licenses.mit;
-    platforms = platforms.linux;
-    maintainers = with maintainers; [ onny ];
+    license = lib.licenses.mit;
+    platforms = lib.platforms.linux;
+    maintainers = with lib.maintainers; [ onny ];
   };
 }

@@ -1,46 +1,79 @@
-{ lib
-, buildPythonPackage
-, callPackage
-, fetchPypi
-, appdirs
-, cryptography
-, dogpile-cache
-, jmespath
-, jsonpatch
-, keystoneauth1
-, munch
-, netifaces
-, os-service-types
-, pbr
-, pythonOlder
-, pyyaml
-, requestsexceptions
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  callPackage,
+  pbr,
+  setuptools,
+
+  # direct
+  cryptography,
+  dogpile-cache,
+  jmespath,
+  jsonpatch,
+  keystoneauth1,
+  munch,
+  os-service-types,
+  platformdirs,
+  psutil,
+  pyyaml,
+
+  # docs
+  sphinxHook,
+  openstackdocstheme,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "openstacksdk";
-  version = "1.3.1";
-  format = "setuptools";
+  version = "4.20.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-+g/YOGv311SaOs65xOKai3BJp4GbhkD1awEFL4oQLMo=";
+  src = fetchFromGitHub {
+    owner = "openstack";
+    repo = "openstacksdk";
+    tag = finalAttrs.version;
+    hash = "sha256-5a4BIbdgAauq8dRBhY+8X2Y90HkGxN3X2VXa6iU0e1E=";
   };
 
-  propagatedBuildInputs = [
-    appdirs
+  patches = [
+    ./fix-pyproject.patch
+  ];
+
+  postPatch = ''
+    # Disable rsvgconverter not needed to build manpage
+    substituteInPlace doc/source/conf.py \
+      --replace-fail "'sphinxcontrib.rsvgconverter'," "#'sphinxcontrib.rsvgconverter',"
+  '';
+
+  env.PBR_VERSION = finalAttrs.version;
+
+  build-system = [
+    pbr
+    setuptools
+  ];
+
+  outputs = [
+    "out"
+    "man"
+  ];
+
+  sphinxBuilders = [ "man" ];
+
+  nativeBuildInputs = [
+    openstackdocstheme
+    sphinxHook
+  ];
+
+  dependencies = [
+    platformdirs
     cryptography
     dogpile-cache
     jmespath
     jsonpatch
     keystoneauth1
     munch
-    netifaces
     os-service-types
-    pbr
-    requestsexceptions
+    psutil
     pyyaml
   ];
 
@@ -51,14 +84,20 @@ buildPythonPackage rec {
     tests = callPackage ./tests.nix { };
   };
 
+  # Non-exhaustive imports
   pythonImportsCheck = [
     "openstack"
+    "openstack.config.loader"
+    "openstack.compute.v2.server"
+    "openstack.test"
   ];
 
-  meta = with lib; {
-    description = "An SDK for building applications to work with OpenStack";
-    homepage = "https://github.com/openstack/openstacksdk";
-    license = licenses.asl20;
-    maintainers = teams.openstack.members;
+  meta = {
+    description = "SDK for building applications to work with OpenStack clouds";
+    mainProgram = "openstack";
+    homepage = "https://docs.openstack.org/openstacksdk/latest/";
+    downloadPage = "https://github.com/openstack/openstacksdk/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    teams = [ lib.teams.openstack ];
   };
-}
+})

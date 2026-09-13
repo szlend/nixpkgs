@@ -1,32 +1,30 @@
-{ lib
-, alsa-lib
-, buildPythonPackage
-, fetchFromGitHub
-, gitpython
-, libpcap
-, meson
-, ninja
-, openal
-, pillow
-, pkg-config
-, pygobject3
-, pythonOlder
-, SDL2
-, soundtouch
+{
+  lib,
+  alsa-lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  gitpython,
+  libpcap,
+  meson,
+  ninja,
+  openal,
+  pillow,
+  pkg-config,
+  pygobject3,
+  SDL2,
+  soundtouch,
 }:
 
 buildPythonPackage rec {
   pname = "py-desmume";
-  version = "0.0.5.post0";
+  version = "0.0.9";
   format = "setuptools";
-
-  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "SkyTemple";
-    repo = pname;
-    rev = version;
-    hash = "sha256-q6E7J7e0yXt+jo1KNqqAw2cG/Us+Tw0dLfTqAKWfAlc=";
+    repo = "py-desmume";
+    tag = version;
+    hash = "sha256-AlejNgCgncZGCS/xOb3FZiLuEtMsMcprnhnM759aKgY=";
     fetchSubmodules = true;
   };
 
@@ -50,20 +48,16 @@ buildPythonPackage rec {
     pygobject3
   ];
 
-  hardeningDisable = [
-    "format"
-  ];
+  hardeningDisable = [ "format" ];
 
   doCheck = false; # there are no tests
 
-  pythonImportsCheck = [
-    "desmume"
-  ];
+  pythonImportsCheck = [ "desmume" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python library to interface with DeSmuME, the Nintendo DS emulator";
     homepage = "https://github.com/SkyTemple/py-desmume";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ marius851000 xfix ];
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ marius851000 ];
   };
 }

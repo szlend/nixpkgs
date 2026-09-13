@@ -1,35 +1,31 @@
-{ lib
-, aiohttp
-, buildPythonPackage
-, fetchFromGitHub
-, asyncio-mqtt
-, pydantic
-, pythonOlder
-, setuptools
-, tenacity
+{
+  lib,
+  aiohttp,
+  aiomqtt,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pydantic,
+  setuptools,
+  tenacity,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "yolink-api";
-  version = "0.2.9";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.6.5";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "YoSmart-Inc";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-DbdoGNwz7HtscnDv+rOI2zcs4i4Dl1DpRZNH/DOcJHc=";
+    repo = "yolink-api";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-2nZNrCLxgO/pwjZZQYb3C4ImVn70WRa+THbi4iRDgJw=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     aiohttp
-    asyncio-mqtt
+    aiomqtt
     pydantic
     tenacity
   ];
@@ -37,15 +33,13 @@ buildPythonPackage rec {
   # Module has no tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "yolink"
-  ];
+  pythonImportsCheck = [ "yolink" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library to interface with Yolink";
     homepage = "https://github.com/YoSmart-Inc/yolink-api";
-    changelog = "https://github.com/YoSmart-Inc/yolink-api/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/YoSmart-Inc/yolink-api/releases/tag/v${finalAttrs.version}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

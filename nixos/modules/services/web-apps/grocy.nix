@@ -1,16 +1,24 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
 let
   cfg = config.services.grocy;
-in {
+in
+{
   options.services.grocy = {
-    enable = mkEnableOption (lib.mdDoc "grocy");
+    enable = mkEnableOption "grocy";
+
+    package = mkPackageOption pkgs "grocy" { };
 
     hostName = mkOption {
       type = types.str;
-      description = lib.mdDoc ''
+      description = ''
         FQDN for the grocy instance.
       '';
     };
@@ -18,19 +26,25 @@ in {
     nginx.enableSSL = mkOption {
       type = types.bool;
       default = true;
-      description = lib.mdDoc ''
+      description = ''
         Whether or not to enable SSL (with ACME and let's encrypt)
         for the grocy vhost.
       '';
     };
 
     phpfpm.settings = mkOption {
-      type = with types; attrsOf (oneOf [ int str bool ]);
+      type =
+        with types;
+        attrsOf (oneOf [
+          int
+          str
+          bool
+        ]);
       default = {
         "pm" = "dynamic";
         "php_admin_value[error_log]" = "stderr";
         "php_admin_flag[log_errors]" = true;
-        "listen.owner" = "nginx";
+        "listen.owner" = config.services.nginx.user;
         "catch_workers_output" = true;
         "pm.max_children" = "32";
         "pm.start_servers" = "2";
@@ -38,8 +52,22 @@ in {
         "pm.max_spare_servers" = "4";
         "pm.max_requests" = "500";
       };
+      defaultText = lib.literalExpression ''
+        {
+          "pm" = "dynamic";
+          "php_admin_value[error_log]" = "stderr";
+          "php_admin_flag[log_errors]" = true;
+          "listen.owner" = config.services.nginx.user;
+          "catch_workers_output" = true;
+          "pm.max_children" = "32";
+          "pm.start_servers" = "2";
+          "pm.min_spare_servers" = "2";
+          "pm.max_spare_servers" = "4";
+          "pm.max_requests" = "500";
+        }
+      '';
 
-      description = lib.mdDoc ''
+      description = ''
         Options for grocy's PHPFPM pool.
       '';
     };
@@ -47,7 +75,7 @@ in {
     dataDir = mkOption {
       type = types.str;
       default = "/var/lib/grocy";
-      description = lib.mdDoc ''
+      description = ''
         Home directory of the `grocy` user which contains
         the application's state.
       '';
@@ -58,15 +86,49 @@ in {
         type = types.str;
         default = "USD";
         example = "EUR";
-        description = lib.mdDoc ''
+        description = ''
           ISO 4217 code for the currency to display.
         '';
       };
 
       culture = mkOption {
-        type = types.enum [ "de" "en" "da" "en_GB" "es" "fr" "hu" "it" "nl" "no" "pl" "pt_BR" "ru" "sk_SK" "sv_SE" "tr" ];
+        type = types.enum [
+          "bg_BG"
+          "ca"
+          "cs"
+          "da"
+          "de"
+          "el_GR"
+          "en"
+          "en_GB"
+          "es"
+          "et_EE"
+          "fi"
+          "fr"
+          "he_IL"
+          "hu"
+          "it"
+          "ja"
+          "ko_KR"
+          "lt"
+          "nl"
+          "no"
+          "pl"
+          "pt_BR"
+          "pt_PT"
+          "ro_RO"
+          "ru"
+          "sk_SK"
+          "sl"
+          "sv_SE"
+          "ta"
+          "tr"
+          "uk"
+          "zh_CN"
+          "zh_TW"
+        ];
         default = "en";
-        description = lib.mdDoc ''
+        description = ''
           Display language of the frontend.
         '';
       };
@@ -75,19 +137,50 @@ in {
         showWeekNumber = mkOption {
           default = true;
           type = types.bool;
-          description = lib.mdDoc ''
+          description = ''
             Show the number of the weeks in the calendar views.
           '';
         };
         firstDayOfWeek = mkOption {
           default = null;
           type = types.nullOr (types.enum (range 0 6));
-          description = lib.mdDoc ''
+          description = ''
             Which day of the week (0=Sunday, 1=Monday etc.) should be the
             first day.
           '';
         };
       };
+
+      entryPage = mkOption {
+        # https://github.com/grocy/grocy/blob/v4.6.0/config-dist.php#L75-L78
+        type = types.enum [
+          "stock"
+          "shoppinglist"
+          "recipes"
+          "chores"
+          "tasks"
+          "batteries"
+          "equipment"
+          "calendar"
+          "mealplan"
+        ];
+        default = "stock";
+        description = ''
+          Specify an custom homepage if desired.
+        '';
+      };
+    };
+
+    extraConfig = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        These lines go at the end of config.php verbatim.
+      '';
+      example = ''
+        Setting('FEATURE_FLAG_RECIPES', false);
+        Setting('FEATURE_FLAG_STOCK_PRODUCT_FREEZING', false);
+      '';
     };
   };
 
@@ -98,6 +191,8 @@ in {
       Setting('CURRENCY', '${cfg.settings.currency}');
       Setting('CALENDAR_FIRST_DAY_OF_WEEK', '${toString cfg.settings.calendar.firstDayOfWeek}');
       Setting('CALENDAR_SHOW_WEEK_OF_YEAR', ${boolToString cfg.settings.calendar.showWeekNumber});
+      Setting('ENTRY_PAGE', '${cfg.settings.entryPage}');
+      ${cfg.extraConfig}
     '';
 
     users.users.grocy = {
@@ -107,21 +202,19 @@ in {
       group = "nginx";
     };
 
-    systemd.tmpfiles.rules = map (
-      dirName: "d '${cfg.dataDir}/${dirName}' - grocy nginx - -"
-    ) [ "viewcache" "plugins" "settingoverrides" "storage" ];
+    systemd.tmpfiles.rules = map (dirName: "d '${cfg.dataDir}/${dirName}' - grocy nginx - -") [
+      "viewcache"
+      "plugins"
+      "settingoverrides"
+      "storage"
+    ];
 
     services.phpfpm.pools.grocy = {
       user = "grocy";
       group = "nginx";
 
-      # PHP 8.0 is the only version which is supported/tested by upstream:
-      # https://github.com/grocy/grocy/blob/v3.3.0/README.md#how-to-install
-      # Compatibility with PHP 8.1 is available on their development branch:
-      # https://github.com/grocy/grocy/commit/38a4ad8ec480c29a1bff057b3482fd103b036848
-      phpPackage = pkgs.php81;
-
       inherit (cfg.phpfpm) settings;
+      inherit (cfg.package.passthru) phpPackage;
 
       phpEnv = {
         GROCY_CONFIG_FILE = "/etc/grocy/config.php";
@@ -132,10 +225,22 @@ in {
       };
     };
 
+    # After an update of grocy, the viewcache needs to be deleted. Otherwise grocy will not work
+    # https://github.com/grocy/grocy#how-to-update
+    systemd.services.grocy-setup = {
+      wantedBy = [ "multi-user.target" ];
+      before = [ "phpfpm-grocy.service" ];
+      unitConfig.RequiresMountsFor = [ cfg.dataDir ];
+      script = ''
+        rm -rf ${cfg.dataDir}/viewcache/*
+      '';
+    };
+
     services.nginx = {
       enable = true;
       virtualHosts."${cfg.hostName}" = mkMerge [
-        { root = "${pkgs.grocy}/public";
+        {
+          root = "${cfg.package}/public";
           locations."/".extraConfig = ''
             rewrite ^ /index.php;
           '';
@@ -148,7 +253,6 @@ in {
           locations."~ \\.(js|css|ttf|woff2?|png|jpe?g|svg)$".extraConfig = ''
             add_header Cache-Control "public, max-age=15778463";
             add_header X-Content-Type-Options nosniff;
-            add_header X-XSS-Protection "1; mode=block";
             add_header X-Robots-Tag none;
             add_header X-Download-Options noopen;
             add_header X-Permitted-Cross-Domain-Policies none;
@@ -168,7 +272,7 @@ in {
   };
 
   meta = {
-    maintainers = with maintainers; [ ma27 ];
+    maintainers = with maintainers; [ diogotcorreia ];
     doc = ./grocy.md;
   };
 }

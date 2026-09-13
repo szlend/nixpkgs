@@ -1,9 +1,13 @@
-{ lib, buildPythonPackage, fetchPypi, pythonAtLeast }:
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+}:
 
 buildPythonPackage rec {
   pname = "crashtest";
   version = "0.4.1";
-  disabled = !(pythonAtLeast "3.6");
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -16,10 +20,10 @@ buildPythonPackage rec {
     "crashtest.inspector"
   ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/sdispater/crashtest";
     description = "Manage Python errors with ease";
-    license = licenses.mit;
-    maintainers = with maintainers; [ ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

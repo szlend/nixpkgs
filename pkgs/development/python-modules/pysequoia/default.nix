@@ -1,61 +1,40 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitLab
-, pkg-config
-, rustPlatform
-, cargo
-, rustc
-, bzip2
-, nettle
-, openssl
-, pcsclite
-, stdenv
-, darwin
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  rustPlatform,
+  cargo,
 }:
 
 buildPythonPackage rec {
   pname = "pysequoia";
-  version = "0.1.14";
-  format = "pyproject";
+  version = "0.1.35";
+  pyproject = true;
 
-  src = fetchFromGitLab {
-    owner = "sequoia-pgp";
-    repo = "pysequoia";
-    rev = "v${version}";
-    hash = "sha256-63kUUxZTG33cB/IiD4AiDpLOI6Uew/fETgqhaGc7zp0=";
+  src = fetchPypi {
+    inherit pname version;
+    hash = "sha256-m2l7esurlIWnqM+hMPh/Y/jkodZU7ogwWxl+HLrhPco=";
   };
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src;
-    name = "${pname}-${version}";
-    hash = "sha256-S/j3bGgU46nvVQFs35ih05teVEIJrFN4Ryq4B7rLFDE=";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit pname version src;
+    hash = "sha256-dfmNYKWjfL6WbI8UFMCM7YE6Cy9oOusPNbZNCjD8o10=";
   };
 
   nativeBuildInputs = [
-    pkg-config
     rustPlatform.bindgenHook
     rustPlatform.cargoSetupHook
     rustPlatform.maturinBuildHook
     cargo
-    rustc
-  ];
-
-  buildInputs = [
-    bzip2
-    nettle
-    openssl
-    pcsclite
-  ] ++ lib.optionals stdenv.isDarwin [
-    darwin.apple_sdk.frameworks.CoreFoundation
-    darwin.apple_sdk.frameworks.Security
   ];
 
   pythonImportsCheck = [ "pysequoia" ];
 
-  meta = with lib; {
+  meta = {
     description = "This library provides OpenPGP facilities in Python through the Sequoia PGP library";
-    homepage = "https://sequoia-pgp.gitlab.io/pysequoia";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ doronbehar ];
+    downloadPage = "https://github.com/wiktor-k/pysequoia";
+    homepage = "https://github.com/wiktor-k/pysequoia";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ doronbehar ];
   };
 }

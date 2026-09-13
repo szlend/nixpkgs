@@ -1,34 +1,34 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, mypy-extensions
-, pytest-xdist
-, pytestCheckHook
-, pythonOlder
-, ruamel-yaml
-, schema-salad
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  mypy-extensions,
+  pytest-xdist,
+  pytestCheckHook,
+  ruamel-yaml,
+  schema-salad,
+  setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cwl-upgrader";
-  version = "1.2.8";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.2.15";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "common-workflow-language";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-DwXwzhsv92t6PU4emmG7xlIU7uj3rcHh4+o9NqBMA+A=";
+    repo = "cwl-upgrader";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-7gmwz3a3IYky/Eof4fnSp3P5oSAko91drcX7i9CwZUY=";
   };
 
   postPatch = ''
-    substituteInPlace setup.py \
-      --replace "ruamel.yaml >= 0.15, < 0.17.22" "ruamel.yaml" \
-      --replace "setup_requires=PYTEST_RUNNER," ""
-    sed -i "/ruamel.yaml/d" setup.py
+    # Version detection doesn't work for schema_salad
+    substituteInPlace pyproject.toml \
+      --replace '"schema_salad",' ""
   '';
+
+  nativeBuildInputs = [ setuptools ];
 
   propagatedBuildInputs = [
     mypy-extensions
@@ -41,15 +41,14 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "cwlupgrader"
-  ];
+  pythonImportsCheck = [ "cwlupgrader" ];
 
-  meta = with lib; {
-    description = "Library to interface with Yolink";
-    homepage = "https://github.com/common-workflow-language/cwl-utils";
-    changelog = "https://github.com/common-workflow-language/cwl-utils/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ fab ];
+  meta = {
+    description = "Library to upgrade CWL syntax to a newer version";
+    homepage = "https://github.com/common-workflow-language/cwl-upgrader";
+    changelog = "https://github.com/common-workflow-language/cwl-upgrader/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "cwl-upgrader";
   };
-}
+})

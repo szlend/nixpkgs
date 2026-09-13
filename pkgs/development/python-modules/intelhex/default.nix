@@ -1,12 +1,14 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "intelhex";
   version = "2.3.0";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -15,7 +17,7 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [ pytestCheckHook ];
 
-  pytestFlagsArray = [ "intelhex/test.py" ];
+  enabledTestPaths = [ "intelhex/test.py" ];
 
   pythonImportsCheck = [ "intelhex" ];
 

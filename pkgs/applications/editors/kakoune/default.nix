@@ -1,21 +1,32 @@
-{ lib, stdenv, fetchFromGitHub }:
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+}:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "kakoune-unwrapped";
-  version = "2022.10.31";
+  version = "2026.05.21";
   src = fetchFromGitHub {
     repo = "kakoune";
     owner = "mawww";
-    rev = "v${version}";
-    sha256 = "sha256-vmzGaGl0KSjseSD/s6DXxvMUTmAle+Iv/ZP9llaFnXk=";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-4nhhvq871mgbpKYhAAVkIi2+MaO1jlt3d3lIXNGkh6I=";
   };
-  makeFlags = [ "debug=no" "PREFIX=${placeholder "out"}" ];
 
-  preConfigure = ''
-    export version="v${version}"
+  makeFlags = [
+    "debug=no"
+    "PREFIX=${placeholder "out"}"
+  ];
+
+  postPatch = ''
+    echo "v${finalAttrs.version}" >.version
   '';
 
   enableParallelBuilding = true;
+  preBuild = ''
+    appendToVar makeFlags "CXX=$CXX"
+  '';
 
   doInstallCheck = true;
   installCheckPhase = ''
@@ -31,12 +42,12 @@ stdenv.mkDerivation rec {
     ln -s --relative "$autoload_target" autoload
   '';
 
-  meta = with lib; {
+  meta = {
     homepage = "http://kakoune.org/";
-    description = "A vim inspired text editor";
-    license = licenses.publicDomain;
+    description = "Vim inspired text editor";
+    license = lib.licenses.publicDomain;
     mainProgram = "kak";
-    maintainers = with maintainers; [ vrthra srapenne ];
-    platforms = platforms.unix;
+    maintainers = with lib.maintainers; [ philiptaron ];
+    platforms = lib.platforms.unix;
   };
-}
+})

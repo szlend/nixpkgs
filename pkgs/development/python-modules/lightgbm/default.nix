@@ -1,78 +1,136 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, cmake
-, numpy
-, scipy
-, scikit-learn
-, llvmPackages ? null
-, pythonOlder
-, python
-, ocl-icd
-, opencl-headers
-, boost
-, gpuSupport ? stdenv.isLinux
+{
+  lib,
+  config,
+  stdenv,
+  pkgs,
+  buildPythonPackage,
+  fetchPypi,
+
+  # build-system
+  scikit-build-core,
+
+  # nativeBuildInputs
+  cmake,
+  ninja,
+  pathspec,
+  pyproject-metadata,
+  writableTmpDirAsHomeHook,
+
+  # buildInputs
+  llvmPackages,
+  boost187,
+  ocl-icd,
+  opencl-headers,
+
+  # dependencies
+  numpy,
+  scipy,
+
+  # optional-dependencies
+  cffi,
+  dask,
+  pandas,
+  pyarrow,
+  scikit-learn,
+
+  # optionals: gpu
+  gpuSupport ? stdenv.hostPlatform.isLinux && !cudaSupport,
+  cudaSupport ? config.cudaSupport,
+  cudaPackages,
 }:
 
-buildPythonPackage rec {
-  pname = "lightgbm";
-  version = "3.3.5";
-  format = "setuptools";
+assert gpuSupport -> !cudaSupport;
+assert cudaSupport -> !gpuSupport;
 
-  disabled = pythonOlder "3.7";
+let
+  effectiveStdenv = if cudaSupport then cudaPackages.backendStdenv else stdenv;
+in
+buildPythonPackage.override { stdenv = effectiveStdenv; } (finalAttrs: {
+  inherit (pkgs.lightgbm)
+    pname
+    version
+    patches
+    ;
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-ELj73PhR5PaKHwLzjZm9xEx8f7mxpi3PkkoNKf9zOVw=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-yxxZcg61aTicC6dNFPUjUbVzr0ifIwAyocnzFPi6t/4=";
   };
+
+  build-system = [
+    scikit-build-core
+  ];
 
   nativeBuildInputs = [
     cmake
-  ];
+    ninja
+    pathspec
+    pyproject-metadata
+    writableTmpDirAsHomeHook
+  ]
+  ++ lib.optionals cudaSupport [ cudaPackages.cuda_nvcc ];
 
   dontUseCmakeConfigure = true;
 
-  buildInputs = (lib.optionals stdenv.cc.isClang [
-    llvmPackages.openmp
-  ]) ++ (lib.optionals gpuSupport [
-    boost
-    ocl-icd
-    opencl-headers
-  ]);
+  buildInputs =
+    (lib.optionals stdenv.cc.isClang [ llvmPackages.openmp ])
+    ++ (lib.optionals gpuSupport [
+      boost187
+      ocl-icd
+      opencl-headers
+    ])
+    ++ lib.optionals cudaSupport [
+      cudaPackages.cuda_nvcc
+      cudaPackages.cuda_cudart
+    ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     numpy
     scipy
-    scikit-learn
   ];
 
-  buildPhase = ''
-    runHook preBuild
+  cmakeFlags = [
+    (lib.cmakeBool "USE_GPU" gpuSupport)
+    (lib.cmakeBool "USE_CUDA" cudaSupport)
+    # Set in pyproject.toml for `cmake.args` in `[tool.scikit-build]`,
+    # but not set by our hooks.
+    (lib.cmakeBool "__BUILD_FOR_PYTHON" true)
+  ]
+  ++ lib.optionals cudaSupport [
+    # build fails otherwise
+    (lib.cmakeFeature "CMAKE_CUDA_STANDARD" "14")
+  ];
 
-    ${python.pythonForBuild.interpreter} setup.py bdist_wheel ${lib.optionalString gpuSupport "--gpu"}
+  optional-dependencies = {
+    arrow = [
+      cffi
+      pyarrow
+    ];
+    dask = [
+      dask
+      pandas
+    ]
+    ++ dask.optional-dependencies.array
+    ++ dask.optional-dependencies.dataframe
+    ++ dask.optional-dependencies.distributed;
+    pandas = [ pandas ];
+    scikit-learn = [ scikit-learn ];
+  };
 
-    runHook postBuild
-  '';
-
-  postConfigure = ''
-    export HOME=$(mktemp -d)
-  '';
-
-  # The pypi package doesn't distribute the tests from the GitHub
-  # repository. It contains c++ tests which don't seem to wired up to
-  # `make check`.
+  # No python tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "lightgbm"
-  ];
+  pythonImportsCheck = [ "lightgbm" ];
 
   meta = {
-    description = "A fast, distributed, high performance gradient boosting (GBDT, GBRT, GBM or MART) framework";
-    homepage = "https://github.com/Microsoft/LightGBM";
-    changelog = "https://github.com/microsoft/LightGBM/releases/tag/v${version}";
+    description = "Fast, distributed, high performance gradient boosting (GBDT, GBRT, GBM or MART) framework";
+    homepage = "https://github.com/lightgbm-org/LightGBM";
+    changelog = "https://github.com/lightgbm-org/LightGBM/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ teh costrouc ];
+    maintainers = with lib.maintainers; [
+      flokli
+      teh
+    ];
   };
-}
+})

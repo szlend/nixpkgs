@@ -1,60 +1,66 @@
-{ lib
-, aiohttp
-, aioresponses
-, buildPythonPackage
-, click
-, fetchFromGitHub
-, pydantic
-, poetry-core
-, pytestCheckHook
-, pythonOlder
-, yarl
+{
+  lib,
+  aiohttp,
+  aiointercept,
+  aioresponses,
+  buildPythonPackage,
+  ciso8601,
+  fetchFromGitHub,
+  mashumaro,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
+  setuptools,
+  sybil,
+  typer,
+  yarl,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aiortm";
-  version = "0.6.3";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "0.20.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "MartinHjelmare";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-9Ny1Xby2e1lyrDTZLd6UVASx8/kwjsq4ogMTSKryQqg=";
+    repo = "aiortm";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-KhvqTj33dtJschS9ImSJdjwdAjXrm7b6Ng1KDBgMFog=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  pythonRelaxDeps = [ "typer" ];
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     aiohttp
-    click
-    pydantic
+    ciso8601
+    mashumaro
     yarl
   ];
 
+  optional-dependencies = {
+    cli = [ typer ];
+  };
+
   nativeCheckInputs = [
     aioresponses
+    aiointercept
+    pytest-asyncio
+    pytest-cov-stub
     pytestCheckHook
-  ];
+    sybil
+  ]
+  ++ lib.flatten (builtins.attrValues finalAttrs.passthru.optional-dependencies);
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace " --cov=aiortm --cov-report=term-missing:skip-covered" ""
-  '';
+  pythonImportsCheck = [ "aiortm" ];
 
-  pythonImportsCheck = [
-    "aiortm"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Library for the Remember the Milk API";
     homepage = "https://github.com/MartinHjelmare/aiortm";
-    changelog = "https://github.com/MartinHjelmare/aiortm/blob/v${version}/CHANGELOG.md";
-    license = with licenses; [ asl20 ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/MartinHjelmare/aiortm/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "aiortm";
   };
-}
+})

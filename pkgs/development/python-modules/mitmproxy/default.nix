@@ -1,62 +1,69 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, pythonOlder
-  # Mitmproxy requirements
-, asgiref
-, blinker
-, brotli
-, certifi
-, cryptography
-, flask
-, h11
-, h2
-, hyperframe
-, kaitaistruct
-, ldap3
-, mitmproxy-wireguard
-, msgpack
-, passlib
-, protobuf
-, publicsuffix2
-, pyopenssl
-, pyparsing
-, pyperclip
-, ruamel-yaml
-, setuptools
-, sortedcontainers
-, tornado
-, urwid
-, wsproto
-, zstandard
-  # Additional check requirements
-, hypothesis
-, parver
-, pytest-asyncio
-, pytest-timeout
-, pytest-xdist
-, pytestCheckHook
-, requests
+{
+  lib,
+  aioquic_1_2,
+  argon2-cffi,
+  asgiref,
+  bcrypt,
+  brotli,
+  buildPythonPackage,
+  certifi,
+  cryptography,
+  fetchFromGitHub,
+  flask,
+  h11,
+  h2,
+  hyperframe,
+  hypothesis,
+  kaitaistruct,
+  ldap3,
+  mitmproxy-rs,
+  nixosTests,
+  publicsuffix2,
+  pyopenssl,
+  pyparsing,
+  pyperclip,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytest-timeout,
+  pytest-xdist,
+  pytestCheckHook,
+  requests,
+  ruamel-yaml,
+  setuptools,
+  sortedcontainers,
+  tornado,
+  urwid,
+  wsproto,
+  zstandard,
 }:
 
 buildPythonPackage rec {
   pname = "mitmproxy";
-  version = "9.0.1";
-  disabled = pythonOlder "3.9";
+  version = "12.2.3";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mitmproxy";
     repo = "mitmproxy";
-    rev = "refs/tags/${version}";
-    hash = "sha256-CINKvRnBspciS+wefJB8gzBE13L8CjbYCkmLmTTeYlA=";
+    tag = "v${version}";
+    hash = "sha256-YgM8GjWmWKxOZcahR3+9XO2Xyfu9v8rNgxKn/2oL35Y=";
   };
 
-  propagatedBuildInputs = [
-    setuptools
-    # setup.py
+  # pins many dependencies way to strict
+  pythonRelaxDeps = true;
+
+  # msgpack is unused and was removed upstream:
+  # https://github.com/mitmproxy/mitmproxy/pull/8319
+  pythonRemoveDeps = [ "msgpack" ];
+
+  build-system = [ setuptools ];
+
+  dependencies = [
+    aioquic_1_2
+    argon2-cffi
     asgiref
-    blinker
     brotli
+    bcrypt
     certifi
     cryptography
     flask
@@ -65,12 +72,9 @@ buildPythonPackage rec {
     hyperframe
     kaitaistruct
     ldap3
-    mitmproxy-wireguard
-    msgpack
-    passlib
-    protobuf
-    pyopenssl
+    mitmproxy-rs
     publicsuffix2
+    pyopenssl
     pyparsing
     pyperclip
     ruamel-yaml
@@ -83,17 +87,20 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     hypothesis
-    parver
     pytest-asyncio
+    pytest-cov-stub
     pytest-timeout
     pytest-xdist
     pytestCheckHook
     requests
   ];
 
+  __darwinAllowLocalNetworking = true;
+
   postPatch = ''
-    # remove dependency constraints
-    sed 's/>=\([0-9]\.\?\)\+\( \?, \?<\([0-9]\.\?\)\+\)\?\( \?, \?!=\([0-9]\.\?\)\+\)\?//' -i setup.py
+    # Rename to fix pytest exception
+    substituteInPlace pyproject.toml \
+      --replace-warn "[tool.pytest.individual_coverage]" "[tool.mitmproxy.individual_coverage]"
   '';
 
   preCheck = ''
@@ -105,30 +112,53 @@ buildPythonPackage rec {
     "test_get_version"
     # https://github.com/mitmproxy/mitmproxy/commit/36ebf11916704b3cdaf4be840eaafa66a115ac03
     # Tests require terminal
-    "test_integration"
+    "test_commands_exist"
     "test_contentview_flowview"
     "test_flowview"
-    # ValueError: Exceeds the limit (4300) for integer string conversion
-    "test_roundtrip_big_integer"
-
-    "test_wireguard"
-    "test_commands_exist"
+    "test_get_hex_editor"
+    "test_integration"
+    "test_spawn_editor"
     "test_statusbar"
+    # FileNotFoundError: [Errno 2] No such file or directory
+    # likely wireguard is also not working in the sandbox
+    "test_tun_mode"
+    "test_wireguard"
+    # test require a DNS server
+    # RuntimeError: failed to get dns servers: io error: entity not found
+    "test_errorcheck"
+    "test_errorcheck"
+    "test_dns"
+    "test_order"
+    # fails in pytest asyncio internals
+    "test_decorator"
+    "test_exception_handler"
   ];
 
   disabledTestPaths = [
-    # teardown of half the tests broken
-    "test/mitmproxy/addons/test_onboarding.py"
+    # test require a DNS server
+    # RuntimeError: failed to get dns servers: io error: entity not found
+    "test/mitmproxy/addons/test_dns_resolver.py"
+    "test/mitmproxy/tools/test_dump.py"
+    "test/mitmproxy/tools/test_main.py"
+    "test/mitmproxy/tools/web/test_app.py"
+    "test/mitmproxy/tools/web/test_app.py" # 2 out of 31 tests work
+    "test/mitmproxy/tools/web/test_master.py"
   ];
 
   dontUsePytestXdist = true;
 
   pythonImportsCheck = [ "mitmproxy" ];
 
-  meta = with lib; {
+  passthru.tests = {
+    inherit (nixosTests) mitmproxy;
+  };
+
+  meta = {
     description = "Man-in-the-middle proxy";
     homepage = "https://mitmproxy.org/";
-    license = licenses.mit;
-    maintainers = with maintainers; [ kamilchm SuperSandro2000 ];
+    changelog = "https://github.com/mitmproxy/mitmproxy/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ SuperSandro2000 ];
+    mainProgram = "mitmproxy";
   };
 }

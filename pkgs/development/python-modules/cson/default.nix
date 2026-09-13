@@ -1,12 +1,14 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, speg
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  speg,
 }:
 
 buildPythonPackage rec {
   pname = "cson";
   version = "0.8";
+  format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
@@ -15,12 +17,12 @@ buildPythonPackage rec {
 
   propagatedBuildInputs = [ speg ];
 
-  pythonImportChecks = [ "cson" ];
+  pythonImportsCheck = [ "cson" ];
 
-  meta = with lib; {
-    description = "A python parser for the Coffeescript Object Notation (CSON)";
+  meta = {
+    description = "Python parser for the Coffeescript Object Notation (CSON)";
     homepage = "https://github.com/avakar/pycson";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ xworld21 ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ xworld21 ];
   };
 }

@@ -1,61 +1,170 @@
-{ lib
-, stdenv
-, fetchPypi
-, python
-, pythonOlder
-, buildPythonPackage
-, cython
-, gfortran
-, meson-python
-, pkg-config
-, pythran
-, wheel
-, nose
-, pytest
-, pytest-xdist
-, numpy
-, pybind11
-, pooch
-, libxcrypt
+{
+  lib,
+  stdenv,
+  fetchurl,
+  writeTextFile,
+  python,
+  buildPythonPackage,
+  fetchFromGitHub,
+  fetchpatch,
+
+  # build-system
+  cython,
+  gfortran,
+  meson-python,
+  nukeReferences,
+  pythran,
+  pkg-config,
+  setuptools,
+
+  # buildInputs
+  # Upstream has support for using Darwin's Accelerate package. However this
+  # requires a Darwin user to work on a nice way to do that via an override.
+  # See:
+  # https://github.com/scipy/scipy/blob/v1.14.0/scipy/meson.build#L194-L211
+  blas,
+  lapack,
+  pybind11,
+  pooch,
+  xsimd,
+  boost191,
+  qhull,
+
+  # dependencies
+  numpy,
+
+  # tests
+  hypothesis,
+  pytestCheckHook,
+  pytest-xdist,
+
+  # Reverse dependency
+  sage,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "scipy";
-  version = "1.10.1";
-  format = "pyproject";
+  version = "1.18.1";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-LPnfuAp7RYm6TEDOdYiYbW1c68VFfK0sKID2vC1C86U=";
+  src = fetchFromGitHub {
+    owner = "scipy";
+    repo = "scipy";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-gVHCO4+DmZ6Jg+zenfIY90v1/De1qbPYecoT+amQKJ0=";
+    fetchSubmodules = true;
   };
 
   patches = [
-    # These tests require internet connection, currently impossible to disable
-    # them otherwise, see:
-    # https://github.com/scipy/scipy/pull/17965
-    ./disable-datasets-tests.patch
+    # Helps with cross compilation, see https://github.com/scipy/scipy/pull/18167
+    (fetchpatch {
+      url = "https://github.com/scipy/scipy/commit/33696c545b74d6fda6f6f39e818d26c2b7631498.patch";
+      hash = "sha256-R5rgSz/9+T2+fpDFTfZQLTvdISTGUAuHEBAWT39x9LQ=";
+      excludes = [ "doc/source/building/cross_compilation.rst" ];
+    })
   ];
+  postPatch = lib.optionalString (stdenv.hostPlatform.isDarwin) ''
+    substituteInPlace scipy/meson.build \
+      --replace-fail "r = run_command('xcrun', '-sdk', 'macosx', '--show-sdk-version', check: true)" ""
+    substituteInPlace scipy/meson.build \
+      --replace-fail "sdkVersion = r.stdout().strip()" "sdkVersion = '${stdenv.hostPlatform.darwinSdkVersion}'"
+  '';
 
-  nativeBuildInputs = [ cython gfortran meson-python pythran pkg-config wheel ];
+  build-system = [
+    cython
+    gfortran
+    meson-python
+    nukeReferences
+    pythran
+    pkg-config
+    setuptools
+  ];
 
   buildInputs = [
-    numpy.blas
+    blas
+    lapack
     pybind11
     pooch
-  ] ++ lib.optionals (pythonOlder "3.9") [
-    libxcrypt
+    xsimd
+    boost191
+    qhull
   ];
 
-  propagatedBuildInputs = [ numpy ];
+  dependencies = [ numpy ];
 
-  nativeCheckInputs = [ nose pytest pytest-xdist ];
+  __darwinAllowLocalNetworking = true;
 
-  doCheck = !(stdenv.isx86_64 && stdenv.isDarwin);
+  nativeCheckInputs = [
+    hypothesis
+    pytestCheckHook
+    pytest-xdist
+  ];
+
+  disabledTests = [
+    # precision issues on at least some x86_64 and aarch64
+    # see: https://github.com/scipy/scipy/issues/25488
+    "test_nyquist"
+  ]
+  ++ lib.optionals (stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isAarch64) [
+    # more flakiness
+    # see: https://github.com/scipy/scipy/issues/25522
+    "test_convergence"
+  ]
+  ++ lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) [
+    # The following tests are broken on aarch64-darwin with newer compilers and library versions.
+    # See https://github.com/scipy/scipy/issues/18308
+    "test_a_b_neg_int_after_euler_hypergeometric_transformation"
+    "test_dst4_definition_ortho"
+    "test_load_mat4_le"
+    "hyp2f1_test_case47"
+    "hyp2f1_test_case3"
+    "test_uint64_max"
+    "test_large_m4" # https://github.com/scipy/scipy/issues/22466
+    "test_spiral_cleanup"
+  ]
+  ++ lib.optionals (stdenv.hostPlatform.isPower64 && stdenv.hostPlatform.isBigEndian) [
+    # https://github.com/scipy/scipy/issues/24090
+    "test_cython_api"
+    "test_distance_transform_cdt05"
+    "test_eval_chebyt_gh20129"
+    "test_hyp0f1"
+    "test_hyp0f1_gh5764"
+    "test_simple_det_shapes_real_complex"
+  ]
+  ++ lib.optionals (python.isPy312) [
+    # failure caused by the inconsistent RNG implementation across python versions
+    # https://github.com/NixOS/nixpkgs/issues/547063
+    "test_support_moments_sample"
+  ];
+
+  doCheck = !(stdenv.hostPlatform.isx86_64 && stdenv.hostPlatform.isDarwin);
 
   preConfigure = ''
-    sed -i '0,/from numpy.distutils.core/s//import setuptools;from numpy.distutils.core/' setup.py
+    # Helps parallelization a bit
     export NPY_NUM_BUILD_JOBS=$NIX_BUILD_CORES
-  '';
+    # We download manually the datasets and this variable tells the pooch
+    # library where these files are cached. See also:
+    # https://github.com/scipy/scipy/pull/18518#issuecomment-1562350648 And at:
+    # https://github.com/scipy/scipy/pull/17965#issuecomment-1560759962
+    export XDG_CACHE_HOME=$PWD; export HOME=$(mktemp -d); mkdir scipy-data
+  ''
+  + (lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      d: dpath:
+      # Actually copy the datasets
+      "cp ${dpath} scipy-data/${d}.dat"
+    ) finalAttrs.finalPackage.passthru.datasets
+  ));
+
+  mesonFlags = [
+    "-Dblas=${blas.pname}"
+    "-Dlapack=${lapack.pname}"
+    # We always run what's necessary for cross compilation, which is passing to
+    # meson the proper cross compilation related arguments. See also:
+    # https://docs.scipy.org/doc/scipy/building/cross_compilation.html
+    "--cross-file=${finalAttrs.finalPackage.passthru.crossFile}"
+    "-Duse-system-libraries=all"
+  ];
 
   # disable stackprotector on aarch64-darwin for now
   #
@@ -65,31 +174,71 @@ buildPythonPackage rec {
   #
   #         ldr     x0, [x0, ___stack_chk_guard];momd
   #
-  hardeningDisable = lib.optionals (stdenv.isAarch64 && stdenv.isDarwin) [ "stackprotector" ];
+  hardeningDisable = lib.optionals (stdenv.hostPlatform.isAarch64 && stdenv.hostPlatform.isDarwin) [
+    "stackprotector"
+  ];
 
-  checkPhase = ''
-    runHook preCheck
-    pushd "$out"
-    export OMP_NUM_THREADS=$(( $NIX_BUILD_CORES / 4 ))
-    ${python.interpreter} -c "import scipy; scipy.test('fast', verbose=10, parallel=$NIX_BUILD_CORES)"
-    popd
-    runHook postCheck
+  # remove references to dev dependencies
+  postInstall = ''
+    nuke-refs $out/${python.sitePackages}/scipy/__config__.py
+    rm $out/${python.sitePackages}/scipy/__pycache__/__config__.*.opt-1.pyc
+  '';
+
+  preCheck = ''
+    cd $out
   '';
 
   requiredSystemFeatures = [ "big-parallel" ]; # the tests need lots of CPU time
 
   passthru = {
-    blas = numpy.blas;
+    inherit blas;
+    tests = {
+      inherit sage;
+    };
+    # NOTE: Every once in a while, these hashes might need an update. Use:
+    #
+    #   nix build -Lf. --rebuild python3.pkgs.scipy.passthru.datasets
+    #
+    # To verify the hashes are correct.
+    datasetsHashes = {
+      ascent = "sha256-A84STBr8iA+HtV9rBhEQ4uHpOWeRhPVhTjjazGwZV+I=";
+      ecg = "sha256-8grTNl+5t/hF0OXEi2/mcIE3fuRmw6Igt/afNciVi68=";
+      face = "sha256-nYsLTQgTE+K0hXSMdwRy5ale0XOBRog9hMcDBJPoKIY=";
+    };
+    datasets = lib.mapAttrs (
+      d: hash:
+      fetchurl {
+        url = "https://raw.githubusercontent.com/scipy/dataset-${d}/main/${d}.dat";
+        inherit hash;
+      }
+    ) finalAttrs.finalPackage.passthru.datasetsHashes;
+    # Additional cross compilation related properties that scipy reads in scipy/meson.build
+    buildConfig = {
+      properties = {
+        numpy-include-dir = numpy.coreIncludeDir;
+        pythran-include-dir = "${pythran}/${python.sitePackages}/pythran";
+        host-python-path = python.interpreter;
+        host-python-version = python.pythonVersion;
+      };
+    };
+    crossFile = writeTextFile {
+      name = "cross-file-scipy.conf";
+      text = lib.generators.toINI {
+        mkKeyValue = lib.generators.mkKeyValueDefault {
+          mkValueString = v: "'${v}'";
+        } " = ";
+      } finalAttrs.finalPackage.passthru.buildConfig;
+    };
   };
 
-  setupPyBuildFlags = [ "--fcompiler='gnu95'" ];
+  env.SCIPY_USE_G77_ABI_WRAPPER = 1;
 
-  SCIPY_USE_G77_ABI_WRAPPER = 1;
-
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/scipy/scipy/releases/tag/v${finalAttrs.version}";
     description = "SciPy (pronounced 'Sigh Pie') is open-source software for mathematics, science, and engineering";
+    downloadPage = "https://github.com/scipy/scipy";
     homepage = "https://www.scipy.org/";
-    license = licenses.bsd3;
-    maintainers = [ maintainers.fridh ];
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ doronbehar ];
   };
-}
+})

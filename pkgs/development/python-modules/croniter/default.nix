@@ -1,28 +1,38 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pytestCheckHook
-, python-dateutil
-, pythonOlder
-, pytz
-, tzlocal
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  packaging,
+  pytestCheckHook,
+  python,
+  python-dateutil,
+  pytz,
+  trove-classifiers,
+  tzlocal,
+  versionCheckHook,
+  which,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "croniter";
-  version = "1.4.1";
-  format = "setuptools";
+  version = "6.2.4";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-Gm32DqzsO3oKpSqPLvJRrj3Sp8fIuYdOc+eRY21Vo2E=";
+  src = fetchFromGitHub {
+    owner = "pallets-eco";
+    repo = "croniter";
+    tag = "${finalAttrs.version}";
+    hash = "sha256-Ff6fHFBOBQmrf8OLPNuhHjRqyPuS1sStd5hWh4oI0cI=";
   };
 
-  propagatedBuildInputs = [
-    python-dateutil
+  build-system = [
+    hatchling
+    packaging
+    trove-classifiers
   ];
+
+  dependencies = [ python-dateutil ];
 
   nativeCheckInputs = [
     pytestCheckHook
@@ -30,15 +40,29 @@ buildPythonPackage rec {
     tzlocal
   ];
 
-  pythonImportsCheck = [
-    "croniter"
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "hatchling==1.30.1" "hatchling>=1.30.1"
+  '';
+
+  pythonImportsCheck = [ "croniter" ];
+
+  nativeInstallCheckInputs = [
+    versionCheckHook
+    which
   ];
 
-  meta = with lib; {
+  versionCheckProgramArg = "${placeholder "out"}/${python.sitePackages}";
+
+  preInstallCheck = ''
+    versionCheckProgram="$(which ls)"
+  '';
+
+  meta = {
     description = "Library to iterate over datetime object with cron like format";
     homepage = "https://github.com/kiorky/croniter";
-    changelog = "https://github.com/kiorky/croniter/blob/${version}/CHANGELOG.rst";
-    license = licenses.mit;
-    maintainers = with maintainers; [ costrouc ];
+    changelog = "https://github.com/kiorky/croniter/blob/${finalAttrs.version}/CHANGELOG.rst";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
-}
+})

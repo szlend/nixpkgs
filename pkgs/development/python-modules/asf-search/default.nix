@@ -1,63 +1,70 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, requests
-, shapely
-, python-dateutil
-, pytz
-, importlib-metadata
-, numpy
-, dateparser
-, remotezip
-, pytestCheckHook
-, requests-mock
-, defusedxml
+{
+  lib,
+  buildPythonPackage,
+  dateparser,
+  defusedxml,
+  fetchFromGitHub,
+  importlib-metadata,
+  numpy,
+  pytestCheckHook,
+  python-dateutil,
+  pytz,
+  remotezip,
+  requests-mock,
+  requests,
+  setuptools-scm,
+  shapely,
+  tenacity,
 }:
 
 buildPythonPackage rec {
   pname = "asf-search";
-  version = "6.3.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "11.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "asfadmin";
     repo = "Discovery-asf_search";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-9mhb8PEpRdFjbPBZ/B8he/UcRSLryBQU0Dgjcii7LGY=";
+    tag = "v${version}";
+    hash = "sha256-Z6DZOjXpziCAn9ZqbRa1c0cAVAbPEt5Go63BlA4Umog=";
   };
 
-  propagatedBuildInputs = [
-    requests
-    shapely
-    python-dateutil
-    pytz
+  pythonRelaxDeps = [ "tenacity" ];
+
+  build-system = [ setuptools-scm ];
+
+  dependencies = [
+    dateparser
     importlib-metadata
     numpy
-    dateparser
+    python-dateutil
+    pytz
     remotezip
+    requests
+    shapely
   ];
 
   nativeCheckInputs = [
-    pytestCheckHook
-  ];
-
-  checkInputs = [
-    requests-mock
     defusedxml
+    pytestCheckHook
+    requests-mock
+    tenacity
   ];
 
-  pythonImportsCheck = [
-    "asf_search"
+  disabledTestPaths = [
+    # requires asf_enumeration, not packaged
+    "tests/BaselineSearch/test_baseline_search.py"
+    # requires network
+    "tests/Pair/test_Pair.py"
   ];
 
-  meta = with lib; {
-    changelog = "https://github.com/asfadmin/Discovery-asf_search/blob/${src.rev}/CHANGELOG.md";
+  pythonImportsCheck = [ "asf_search" ];
+
+  meta = {
     description = "Python wrapper for the ASF SearchAPI";
     homepage = "https://github.com/asfadmin/Discovery-asf_search";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ bzizou ];
+    changelog = "https://github.com/asfadmin/Discovery-asf_search/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ bzizou ];
   };
 }

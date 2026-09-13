@@ -1,21 +1,27 @@
-{ lib, stdenv, fetchFromGitHub, which, ocaml, findlib }:
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  ocaml,
+  findlib,
+  nix-update-script,
+}:
 
-if lib.versionOlder ocaml.version "4.10"
-then throw "camlpdf is not available for OCaml ${ocaml.version}"
-else
-
-stdenv.mkDerivation rec {
-  version = "2.5";
+stdenv.mkDerivation (finalAttrs: {
+  version = "2.9.1";
   pname = "ocaml${ocaml.version}-camlpdf";
 
   src = fetchFromGitHub {
     owner = "johnwhitington";
     repo = "camlpdf";
-    rev = "v${version}";
-    sha256 = "sha256:1qmsa0xgi960y7r20mvf8hxiiml7l1908s4dm7nq262f19w51gsl";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-f3Bm64T27eiIzOY2nwdzMRH68VlyNp2jXpOPyBouSCs=";
   };
 
-  nativeBuildInputs = [ which ocaml findlib ];
+  nativeBuildInputs = [
+    ocaml
+    findlib
+  ];
 
   strictDeps = true;
 
@@ -23,10 +29,15 @@ stdenv.mkDerivation rec {
     mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/stublibs
   '';
 
-  meta = with lib; {
-    description = "An OCaml library for reading, writing and modifying PDF files";
+  passthru.updateScript = nix-update-script { };
+
+  meta = {
+    description = "OCaml library for reading, writing and modifying PDF files";
     homepage = "https://github.com/johnwhitington/camlpdf";
-    license = licenses.lgpl21Plus;
-    maintainers = with maintainers; [vbgl];
+    changelog = "https://github.com/johnwhitington/camlpdf/blob/${finalAttrs.src.rev}/Changes.txt";
+    license = lib.licenses.lgpl21Plus;
+    maintainers = with lib.maintainers; [ vbgl ];
+    teams = with lib.teams; [ ngi ];
+    broken = lib.versionOlder ocaml.version "4.10";
   };
-}
+})

@@ -1,30 +1,30 @@
-{ lib
-, buildPythonPackage
-, cryptography
-, fetchFromGitHub
-, pytestCheckHook
-, pytest-mock
-, pythonOlder
-, six
+{
+  lib,
+  buildPythonPackage,
+  cacert,
+  cryptography,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
+  pytest-mock,
+  six,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cert-chain-resolver";
-  version = "1.0.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.4.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "rkoopmans";
     repo = "python-certificate-chain-resolver";
-    rev = version;
-    hash = "sha256-NLTRx6J6pjs7lyschHN5KtgrnpQpEyvZ2zz0pSd5sc4=";
+    tag = finalAttrs.version;
+    hash = "sha256-DWE+mR7EO5ohuRAR0WC40GBY7HpwXIpU0hhVUnWNRno=";
   };
 
-  propagatedBuildInputs = [
-    cryptography
-  ];
+  build-system = [ setuptools ];
+
+  dependencies = [ cryptography ];
 
   nativeCheckInputs = [
     pytestCheckHook
@@ -32,20 +32,23 @@ buildPythonPackage rec {
     six
   ];
 
+  env.SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
+
   disabledTests = [
     # Tests require network access
     "test_cert_returns_completed_chain"
     "test_display_flag_is_properly_formatted"
+    "test_display_flag_includes_warning_when_root_was_requested_but_not_found"
   ];
 
-  pythonImportsCheck = [
-    "cert_chain_resolver"
-  ];
+  pythonImportsCheck = [ "cert_chain_resolver" ];
 
-  meta = with lib; {
+  meta = {
     description = "Resolve / obtain the certificate intermediates of a x509 certificate";
+    mainProgram = "cert-chain-resolver";
     homepage = "https://github.com/rkoopmans/python-certificate-chain-resolver";
-    license = licenses.mit;
-    maintainers = with maintainers; [ veehaitch ];
+    changelog = "https://github.com/rkoopmans/python-certificate-chain-resolver/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ veehaitch ];
   };
-}
+})

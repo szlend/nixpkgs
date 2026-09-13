@@ -1,42 +1,53 @@
-{ lib
-, adlfs
-, azure-identity
-, buildPythonPackage
-, dvc-objects
-, fetchPypi
-, knack
-, pythonRelaxDepsHook
-, setuptools-scm }:
+{
+  lib,
+  adlfs,
+  azure-identity,
+  buildPythonPackage,
+  dvc-objects,
+  fetchPypi,
+  knack,
+  setuptools-scm,
+  setuptools,
+}:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dvc-azure";
-  version = "2.21.2";
-  format = "setuptools";
+  version = "3.1.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-ATxVIJ6qNNuz4p/DmcbBrc8KypfYquk4y/XQK7JmlPE=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-UsvHDVQUtQIZs9sKFvaK0l2rp24/Igrr5OSbPGSYriA=";
   };
 
   # Prevent circular dependency
   pythonRemoveDeps = [ "dvc" ];
 
-  nativeBuildInputs = [ setuptools-scm pythonRelaxDepsHook ];
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
-  propagatedBuildInputs = [
-    adlfs azure-identity dvc-objects knack
+  dependencies = [
+    adlfs
+    azure-identity
+    dvc-objects
+    knack
   ];
 
   # Network access is needed for tests
   doCheck = false;
 
-  pythonImportsCheck = [ "dvc_azure" ];
+  # Circular dependency
+  # pythonImportsCheck = [
+  #   "dvc_azure"
+  # ];
 
-  meta = with lib; {
-    description = "azure plugin for dvc";
-    homepage = "https://pypi.org/project/dvc-azure/${version}";
-    changelog = "https://github.com/iterative/dvc-azure/releases/tag/${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ melling ];
+  meta = {
+    description = "Azure plugin for dvc";
+    homepage = "https://pypi.org/project/dvc-azure/";
+    changelog = "https://github.com/iterative/dvc-azure/releases/tag/${finalAttrs.version}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

@@ -1,65 +1,69 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, setuptools
-, jinja2
-, pygments
-, markupsafe
-, astunparse
-, pytestCheckHook
-, hypothesis
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  jinja2,
+  pdoc-pyo3-sample-library,
+  pygments,
+  markupsafe,
+  pytestCheckHook,
+  hypothesis,
+  nix-update-script,
+  markdown2,
+  pydantic,
 }:
 
 buildPythonPackage rec {
   pname = "pdoc";
-  version = "13.0.0";
-  disabled = pythonOlder "3.7";
+  version = "16.0.0";
 
-  format = "pyproject";
+  pyproject = true;
 
-  # the Pypi version does not include tests
   src = fetchFromGitHub {
     owner = "mitmproxy";
     repo = "pdoc";
-    rev = "v${version}";
-    hash = "sha256-UzUAprvBimk2POi0QZdFuRWEeGDp+MLmdUYR0UiIubs=";
+    tag = "v${version}";
+    hash = "sha256-9amp6CWYIcniVfdlmPKYuRFR7B5JJtuMlOoDxpfvvJA=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     jinja2
     pygments
     markupsafe
-  ] ++ lib.optional (pythonOlder "3.9") astunparse;
+    markdown2
+    pydantic
+  ];
 
   nativeCheckInputs = [
     pytestCheckHook
     hypothesis
+    pdoc-pyo3-sample-library
   ];
   disabledTestPaths = [
-    # "test_snapshots" tries to match generated output against stored snapshots.
-    # They are highly sensitive dep versions, which we unlike upstream do not pin.
+    # "test_snapshots" tries to match generated output against stored snapshots,
+    # which are highly sensitive to dep versions.
     "test/test_snapshot.py"
   ];
 
-  pytestFlagsArray = [
-    ''-m "not slow"'' # skip tests marked slow
+  disabledTestMarks = [
+    "slow" # skip slow tests
   ];
 
   __darwinAllowLocalNetworking = true;
 
   pythonImportsCheck = [ "pdoc" ];
 
-  meta = with lib; {
+  passthru.updateScript = nix-update-script { };
+
+  meta = {
     changelog = "https://github.com/mitmproxy/pdoc/blob/${src.rev}/CHANGELOG.md";
     homepage = "https://pdoc.dev/";
     description = "API Documentation for Python Projects";
-    license = licenses.unlicense;
-    maintainers = with maintainers; [ pbsds ];
+    mainProgram = "pdoc";
+    license = lib.licenses.unlicense;
+    maintainers = with lib.maintainers; [ pbsds ];
   };
 }

@@ -1,61 +1,69 @@
-{ lib
-, buildPythonPackage
-, cheroot
-, fetchFromGitHub
-, pytestCheckHook
-, pythonOlder
-, defusedxml
-, jinja2
-, json5
-, python-pam
-, pyyaml
-, requests
-, setuptools
-, webtest
+{
+  lib,
+  bcrypt,
+  buildPythonPackage,
+  cheroot,
+  defusedxml,
+  fetchFromGitHub,
+  jinja2,
+  json5,
+  lxml,
+  passlib,
+  pytestCheckHook,
+  python-pam,
+  pyyaml,
+  requests,
+  setuptools,
+  webtest,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "wsgidav";
-  version = "4.2.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "4.3.5";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mar10";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-1S3Zi92YRcu/PKNWJIn2ayr5Wbc+/+E7irFBQpMrKW8=";
+    repo = "wsgidav";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-LsHVCGXgeXjHJt6VfB+uKsYjqCybBRcweTGvoR8tJ1E=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  pythonRelaxDeps = [ "bcrypt" ];
 
-  propagatedBuildInputs = [
+  __darwinAllowLocalNetworking = true;
+
+  build-system = [ setuptools ];
+
+  dependencies = [
+    bcrypt
     defusedxml
     jinja2
     json5
-    python-pam
+    cheroot
+    lxml
+    passlib
     pyyaml
   ];
 
+  optional-dependencies = {
+    pam = [ python-pam ];
+  };
+
   nativeCheckInputs = [
-    cheroot
     pytestCheckHook
     requests
     webtest
   ];
 
-  pythonImportsCheck = [
-    "wsgidav"
-  ];
+  pythonImportsCheck = [ "wsgidav" ];
 
-  meta = with lib; {
+  meta = {
     description = "Generic and extendable WebDAV server based on WSGI";
     homepage = "https://wsgidav.readthedocs.io/";
-    changelog = "https://github.com/mar10/wsgidav/blob/v${version}/CHANGELOG.md";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/mar10/wsgidav/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "wsgidav";
   };
-}
+})

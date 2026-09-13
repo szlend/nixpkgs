@@ -1,25 +1,34 @@
-{ lib
-, fetchPypi
-, buildPythonPackage
-, astropy
-, dask
-, numpy
-, setuptools-scm
+{
+  lib,
+  astropy,
+  buildPythonPackage,
+  dask,
+  fetchPypi,
+  numpy,
+  oldest-supported-numpy,
+  setuptools-scm,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "casa-formats-io";
-  version = "0.2.1";
-  format = "pyproject";
+  version = "0.3.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-8iZ+wcSfh5ACTb3/iQAf2qQpwZ6wExWwcdJoLmCEjB0=";
+    pname = "casa_formats_io";
+    inherit (finalAttrs) version;
+    hash = "sha256-FpQj0XeZ7vvOzUM/+5qG6FRwNXl3gzoUBItYdQ1M4m4=";
   };
 
-  nativeBuildInputs = [ setuptools-scm ];
+  build-system = [ setuptools-scm ];
 
-  propagatedBuildInputs = [ astropy dask numpy ];
+  nativeBuildInputs = [ oldest-supported-numpy ];
+
+  dependencies = [
+    astropy
+    dask
+    numpy
+  ];
 
   # Tests require a large (800 Mb) dataset
   doCheck = false;
@@ -29,7 +38,8 @@ buildPythonPackage rec {
   meta = {
     description = "Dask-based reader for CASA data";
     homepage = "https://casa-formats-io.readthedocs.io/";
+    changelog = "https://github.com/radio-astro-tools/casa-formats-io/blob/v${finalAttrs.version}/CHANGES.rst";
     license = lib.licenses.lgpl2Only;
     maintainers = with lib.maintainers; [ smaret ];
   };
-}
+})

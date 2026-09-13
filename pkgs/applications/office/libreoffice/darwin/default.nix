@@ -1,42 +1,33 @@
-{ stdenvNoCC
-, lib
-, fetchurl
-, undmg
-, writeScript
-, callPackage
+{
+  stdenvNoCC,
+  lib,
+  fetchurl,
+  undmg,
+  writeScript,
 }:
 
 let
   appName = "LibreOffice.app";
   scriptName = "soffice";
-  version = "7.4.3";
+  version = "26.2.4";
 
   dist = {
-    aarch64-darwin = rec {
-      arch = "aarch64";
-      archSuffix = arch;
-      url = "https://download.documentfoundation.org/libreoffice/stable/${version}/mac/${arch}/LibreOffice_${version}_MacOS_${archSuffix}.dmg";
-      sha256 = "cf95f9ecd4451d27e8304cea3ba116675267bdf75f08fbb60e0d8917f86edc04";
-    };
-
-    x86_64-darwin = rec {
-      arch = "x86_64";
-      archSuffix = "x86-64";
-      url = "https://download.documentfoundation.org/libreoffice/stable/${version}/mac/${arch}/LibreOffice_${version}_MacOS_${archSuffix}.dmg";
-      sha256 = "fe569ba23bb74eb3e86974537dd80e504debe5fd8526a00edbad6be4da18986a";
-    };
+    url = "https://download.documentfoundation.org/libreoffice/stable/${version}/mac/aarch64/LibreOffice_${version}_MacOS_aarch64.dmg";
+    sha256 = "64e0ad05564554eeee639d49b08b20908a38d4722ec95f1620d05c99bcbe9fb1";
   };
 in
 stdenvNoCC.mkDerivation {
   inherit version;
   pname = "libreoffice";
   src = fetchurl {
-    inherit (dist.${stdenvNoCC.hostPlatform.system} or
-      (throw "Unsupported system: ${stdenvNoCC.hostPlatform.system}")) url sha256;
+    inherit (dist)
+      url
+      sha256
+      ;
   };
 
   nativeBuildInputs = [ undmg ];
-  sourceRoot = "${appName}";
+  sourceRoot = appName;
 
   installPhase = ''
     runHook preInstall
@@ -44,7 +35,7 @@ stdenvNoCC.mkDerivation {
     cp -R . $out/Applications/${appName}
     cat > $out/bin/${scriptName} << EOF
     #!${stdenvNoCC.shell}
-    open -na $out/Applications/${appName} --args "$@"
+    open -na $out/Applications/${appName} --args "\$@"
     EOF
     chmod +x $out/bin/${scriptName}
     runHook postInstall
@@ -52,29 +43,25 @@ stdenvNoCC.mkDerivation {
 
   passthru.updateScript =
     let
-      defaultNixFile = builtins.toString ./default.nix;
-      updateNix = builtins.toString ./update.nix;
-      aarch64Url = dist."aarch64-darwin".url;
-      x86_64Url = dist."x86_64-darwin".url;
+      defaultNixFile = toString ./default.nix;
+      updateNix = toString ./update.nix;
     in
-    writeScript "update-libreoffice.sh"
-      ''
-        #!/usr/bin/env nix-shell
-        #!nix-shell -i bash --argstr aarch64Url ${aarch64Url} --argstr x86_64Url ${x86_64Url} --argstr version ${version} ${updateNix}
-        set -eou pipefail
+    writeScript "update-libreoffice.sh" ''
+      #!/usr/bin/env nix-shell
+      #!nix-shell -i bash --argstr url ${dist.url} --argstr version ${version} ${updateNix}
+      set -eou pipefail
 
-        # reset version first so that both platforms are always updated and in sync
-        update-source-version libreoffice-bin 0 ${lib.fakeSha256} --file=${defaultNixFile} --system=aarch64-darwin
-        update-source-version libreoffice-bin $newVersion $newAarch64Sha256 --file=${defaultNixFile} --system=aarch64-darwin
-        update-source-version libreoffice-bin 0 ${lib.fakeSha256} --file=${defaultNixFile} --system=x86_64-darwin
-        update-source-version libreoffice-bin $newVersion $newX86_64Sha256 --file=${defaultNixFile} --system=x86_64-darwin
-      '';
+      update-source-version libreoffice-bin $newVersion $newSha256 --file=${defaultNixFile} --ignore-same-version
+    '';
 
-  meta = with lib; {
+  meta = {
     description = "Comprehensive, professional-quality productivity suite, a variant of openoffice.org";
     homepage = "https://libreoffice.org/";
-    license = licenses.lgpl3;
-    maintainers = with maintainers; [ tricktron ];
-    platforms = [ "x86_64-darwin" "aarch64-darwin" ];
+    license = lib.licenses.lgpl3;
+    maintainers = with lib.maintainers; [ tricktron ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    platforms = [
+      "aarch64-darwin"
+    ];
   };
 }

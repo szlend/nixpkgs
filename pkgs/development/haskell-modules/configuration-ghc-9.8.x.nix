@@ -1,21 +1,22 @@
-##
-## Caveat: a copy of configuration-ghc-8.6.x.nix with minor changes:
-##
-##  1. "8.7" strings
-##  2. llvm 6
-##  3. disabled library update: parallel
-##
 { pkgs, haskellLib }:
+
+self: super:
 
 with haskellLib;
 
 let
   inherit (pkgs.stdenv.hostPlatform) isDarwin;
+  inherit (pkgs) lib;
+
+  warnAfterVersion =
+    ver: pkg:
+    lib.warnIf (lib.versionOlder ver
+      super.${pkg.pname}.version
+    ) "override for haskell.packages.ghc98.${pkg.pname} may no longer be needed" pkg;
+
 in
 
-self: super: {
-
-  llvmPackages = pkgs.lib.dontRecurseIntoAttrs self.ghc.llvmPackages;
+{
 
   # Disable GHC core libraries.
   array = null;
@@ -46,43 +47,106 @@ self: super: {
   process = null;
   rts = null;
   stm = null;
+  semaphore-compat = null;
+  system-cxx-std-lib = null;
   template-haskell = null;
   # GHC only builds terminfo if it is a native compiler
-  terminfo = if pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform then null else self.terminfo_0_4_1_6;
+  terminfo =
+    if pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform then
+      null
+    else
+      doDistribute self.terminfo_0_4_1_7;
   text = null;
   time = null;
   transformers = null;
   unix = null;
   xhtml = null;
+  Win32 = null;
 
-  # https://github.com/tibbe/unordered-containers/issues/214
-  unordered-containers = dontCheck super.unordered-containers;
+  # Becomes a core package in GHC >= 9.10
+  os-string = doDistribute self.os-string_2_0_10;
 
-  # Test suite does not compile.
-  data-clist = doJailbreak super.data-clist;  # won't cope with QuickCheck 2.12.x
-  dates = doJailbreak super.dates; # base >=4.9 && <4.12
-  Diff = dontCheck super.Diff;
-  HaTeX = doJailbreak super.HaTeX; # containers >=0.4 && <0.6 is too tight; https://github.com/Daniel-Diaz/HaTeX/issues/126
-  hpc-coveralls = doJailbreak super.hpc-coveralls; # https://github.com/guillaume-nargeot/hpc-coveralls/issues/82
-  http-api-data = doJailbreak super.http-api-data;
-  persistent-sqlite = dontCheck super.persistent-sqlite;
-  system-fileio = dontCheck super.system-fileio;  # avoid dependency on broken "patience"
-  unicode-transforms = dontCheck super.unicode-transforms;
-  wl-pprint-extras = doJailbreak super.wl-pprint-extras; # containers >=0.4 && <0.6 is too tight; https://github.com/ekmett/wl-pprint-extras/issues/17
-  RSA = dontCheck super.RSA; # https://github.com/GaloisInc/RSA/issues/14
-  monad-par = dontCheck super.monad-par;  # https://github.com/simonmar/monad-par/issues/66
-  github = dontCheck super.github; # hspec upper bound exceeded; https://github.com/phadej/github/pull/341
-  binary-orphans = dontCheck super.binary-orphans; # tasty upper bound exceeded; https://github.com/phadej/binary-orphans/commit/8ce857226595dd520236ff4c51fa1a45d8387b33
+  # Become core packages in GHC >= 9.10, no release compatible with GHC < 9.10 is available
+  ghc-experimental = null;
+  ghc-internal = null;
+  # Become core packages in GHC >= 9.10, but aren't uploaded to Hackage
+  ghc-toolchain = null;
+  ghc-platform = null;
 
-  # https://github.com/jgm/skylighting/issues/55
-  skylighting-core = dontCheck super.skylighting-core;
+  #
+  # Version upgrades
+  #
+  ghc-tags = self.ghc-tags_1_8;
 
-  # Break out of "yaml >=0.10.4.0 && <0.11": https://github.com/commercialhaskell/stack/issues/4485
-  stack = doJailbreak super.stack;
+  #
+  # Jailbreaks
+  #
+  hashing = doJailbreak super.hashing; # bytestring <0.12
+  hevm = appendPatch (pkgs.fetchpatch {
+    url = "https://github.com/hellwolf/hevm/commit/338674d1fe22d46ea1e8582b24c224d76d47d0f3.patch";
+    name = "release-0.54.2-ghc-9.8.4-patch";
+    sha256 = "sha256-Mo65FfP1nh7QTY+oLia22hj4eV2v9hpXlYsrFKljA3E=";
+  }) super.hevm;
+  HaskellNet-SSL = doJailbreak super.HaskellNet-SSL; # bytestring >=0.9 && <0.12
+  inflections = doJailbreak super.inflections; # text >=0.2 && <2.1
 
-  # https://github.com/fpco/inline-c/pull/131
-  # and/or https://gitlab.haskell.org/ghc/ghc/-/merge_requests/7739
-  inline-c-cpp =
-    (if isDarwin then appendConfigureFlags ["--ghc-option=-fcompact-unwind"] else x: x)
-    super.inline-c-cpp;
+  #
+  # Test suite issues
+  #
+  pcre-heavy = dontCheck super.pcre-heavy; # GHC warnings cause the tests to fail
+
+  #
+  # Other build fixes
+  #
+
+  # 2023-12-23: It needs this to build under ghc-9.6.3.
+  #   A factor of 100 is insufficient, 200 seems seems to work.
+  hip = appendConfigureFlag "--ghc-options=-fsimpl-tick-factor=200" super.hip;
+
+  # A given major version of ghc-exactprint only supports one version of GHC.
+  ghc-exactprint = doDistribute super.ghc-exactprint_1_8_0_0;
+
+  haddock-library = doJailbreak super.haddock-library;
+  ghc-lib = doDistribute self.ghc-lib_9_8_5_20250214;
+  ghc-lib-parser = doDistribute self.ghc-lib-parser_9_8_5_20250214;
+  ghc-lib-parser-ex = doDistribute self.ghc-lib-parser-ex_9_8_0_2;
+  inherit
+    (
+      let
+        hls_overlay = lself: lsuper: {
+          Cabal-syntax = lself.Cabal-syntax_3_10_3_0;
+          Cabal = lself.Cabal_3_10_3_0;
+          extensions = dontCheck (doJailbreak lself.extensions_0_1_0_1);
+        };
+      in
+      lib.mapAttrs (_: pkg: doDistribute (pkg.overrideScope hls_overlay)) {
+        apply-refact = addBuildDepend self.data-default-class super.apply-refact;
+        floskell = doJailbreak super.floskell;
+        fourmolu = dontCheck (doJailbreak self.fourmolu_0_15_0_0);
+        ghcide = super.ghcide;
+        haskell-language-server = addBuildDepends [
+          self.retrie
+          self.floskell
+          self.markdown-unlit
+        ] super.haskell-language-server;
+        hls-plugin-api = super.hls-plugin-api;
+        hlint = self.hlint_3_8;
+        lsp-types = super.lsp-types;
+        ormolu = self.ormolu_0_7_4_0;
+        retrie = doJailbreak (unmarkBroken super.retrie);
+        stylish-haskell = self.stylish-haskell_0_14_6_0;
+      }
+    )
+    apply-refact
+    floskell
+    fourmolu
+    ghcide
+    haskell-language-server
+    hls-plugin-api
+    hlint
+    lsp-types
+    ormolu
+    retrie
+    stylish-haskell
+    ;
 }

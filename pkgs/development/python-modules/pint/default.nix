@@ -1,53 +1,72 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, setuptools-scm
-, importlib-metadata
-, packaging
-# Check Inputs
-, pytestCheckHook
-, pytest-subtests
-, numpy
-, matplotlib
-, uncertainties
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  hatchling,
+  hatch-vcs,
+
+  # dependencies
+  flexcache,
+  flexparser,
+  platformdirs,
+  typing-extensions,
+
+  # tests
+  pytestCheckHook,
+  numpy,
+  matplotlib,
+  uncertainties,
+  writableTmpDirAsHomeHook,
 }:
 
 buildPythonPackage rec {
   pname = "pint";
-  version = "0.20.1";
+  version = "0.25.3";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit version;
-    pname = "Pint";
-    hash = "sha256-OHzwQHjcff5KcIAzuq1Uq2HYKrBsTuPUkiseRdViYGc=";
+  src = fetchFromGitHub {
+    owner = "hgrecco";
+    repo = "pint";
+    tag = version;
+    hash = "sha256-l2wbcS2mlamCBXr9KOWmq10WN5pNVH4Iu65UuZ0vQmU=";
   };
 
-  nativeBuildInputs = [ setuptools-scm ];
+  build-system = [
+    hatchling
+    hatch-vcs
+  ];
 
-  propagatedBuildInputs = [ packaging ]
-    ++ lib.optionals (pythonOlder "3.8") [ importlib-metadata ];
+  dependencies = [
+    flexcache
+    flexparser
+    platformdirs
+    typing-extensions
+
+    # Both uncertainties and numpy are not necessarily needed for every
+    # function of pint, but needed for the pint-convert executable which we
+    # necessarily distribute with this package as it is.
+    uncertainties
+    numpy
+  ];
 
   nativeCheckInputs = [
     pytestCheckHook
-    pytest-subtests
-    numpy
     matplotlib
-    uncertainties
+    writableTmpDirAsHomeHook
   ];
 
-  dontUseSetuptoolsCheck = true;
+  disabledTestPaths = [
+    "pint/testsuite/benchmarks"
+  ];
 
-  preCheck = ''
-    export HOME=$(mktemp -d)
-  '';
-
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/hgrecco/pint/blob/${version}/CHANGES";
     description = "Physical quantities module";
-    license = licenses.bsd3;
+    mainProgram = "pint-convert";
+    license = lib.licenses.bsd3;
     homepage = "https://github.com/hgrecco/pint/";
-    maintainers = with maintainers; [ costrouc doronbehar ];
+    maintainers = with lib.maintainers; [ doronbehar ];
   };
 }

@@ -1,29 +1,39 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, requests
-, six
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  lxml,
+  requests,
+  six,
+  pyopenssl,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "pyvmomi";
-  version = "8.0.1.0.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "9.1.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "vmware";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-MT0jT4wT8+4OEsIDWZbiqWK+3YASfVtOQT2KkadfwbM=";
+    repo = "pyvmomi";
+    tag = "v${version}";
+    hash = "sha256-r7knotP4vRX7LA3dsdUoCjzj6Z3TjMLEBs7BnRWSl0A=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     requests
     six
   ];
+
+  optional-dependencies = {
+    sso = [
+      lxml
+      pyopenssl
+    ];
+  };
 
   # Requires old version of vcrpy
   doCheck = false;
@@ -33,11 +43,11 @@ buildPythonPackage rec {
     "pyVmomi"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Python SDK for the VMware vSphere API that allows you to manage ESX, ESXi, and vCenter";
     homepage = "https://github.com/vmware/pyvmomi";
-    changelog = "https://github.com/vmware/pyvmomi/releases/tag/v${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ ];
+    changelog = "https://github.com/vmware/pyvmomi/releases/tag/${src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
 }

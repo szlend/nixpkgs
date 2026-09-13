@@ -1,48 +1,56 @@
-{ lib
-, aiobotocore
-, boto3
-, buildPythonPackage
-, dvc-objects
-, fetchPypi
-, flatten-dict
-, pythonRelaxDepsHook
-, s3fs
-, setuptools-scm }:
+{
+  lib,
+  botocore,
+  buildPythonPackage,
+  dvc-objects,
+  fetchPypi,
+  flatten-dict,
+  funcy,
+  s3fs,
+  setuptools-scm,
+  setuptools,
+}:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dvc-s3";
-  version = "2.23.0";
-  format = "setuptools";
+  version = "3.3.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-HyhZj1sN70o1CTNCiroGKjaMk7tBGqPG2PRsrnm1uVc=";
+    pname = "dvc_s3";
+    inherit (finalAttrs) version;
+    hash = "sha256-8dcYpE3O5Rkb60bkSt9LsiiCy46czdjyZAB4q8VkV9Q=";
   };
 
   # Prevent circular dependency
   pythonRemoveDeps = [ "dvc" ];
 
-  # dvc-s3 uses boto3 directly, we add in propagatedBuildInputs
-  postPatch = ''
-    substituteInPlace setup.cfg --replace 'aiobotocore[boto3]' 'aiobotocore'
-  '';
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
-  nativeBuildInputs = [ setuptools-scm pythonRelaxDepsHook ];
-
-  propagatedBuildInputs = [
-    aiobotocore boto3 dvc-objects flatten-dict s3fs
+  dependencies = [
+    botocore
+    dvc-objects
+    flatten-dict
+    funcy
+    s3fs
   ];
 
   # Network access is needed for tests
   doCheck = false;
 
-  pythonImportsCheck = [ "dvc_s3" ];
+  # Circular dependency
+  # pythonImportsCheck = [
+  #   "dvc_s3"
+  # ];
 
-  meta = with lib; {
-    description = "s3 plugin for dvc";
-    homepage = "https://pypi.org/project/dvc-s3/${version}";
-    changelog = "https://github.com/iterative/dvc-s3/releases/tag/${version}";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ melling ];
+  meta = {
+    description = "S3 plugin for dvc";
+    homepage = "https://pypi.org/project/dvc-s3";
+    changelog = "https://github.com/iterative/dvc-s3/releases/tag/${finalAttrs.version}";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

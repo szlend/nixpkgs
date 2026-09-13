@@ -1,29 +1,38 @@
-{ lib
-, bottleneck
-, buildPythonPackage
-, fetchPypi
-, jellyfish
-, joblib
-, networkx
-, numexpr
-, numpy
-, pandas
-, pyarrow
-, pytest
-, scikit-learn
-, scipy
-, pythonOlder
+{
+  lib,
+  bottleneck,
+  buildPythonPackage,
+  fetchPypi,
+  jellyfish,
+  joblib,
+  networkx,
+  numexpr,
+  numpy,
+  pandas,
+  pyarrow,
+  pytest,
+  scikit-learn,
+  scipy,
+  setuptools,
+  setuptools-scm,
+  wheel,
 }:
 
 buildPythonPackage rec {
   pname = "recordlinkage";
-  version = "0.15";
+  version = "0.16";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-aIrx54vnf85I/Kit/4njg/VIOu6H0SE7NdQ1GbeP8Cc=";
+    hash = "sha256-7NoMEN/xOLFwaBXeMysShfZwrn6MzpJZYhNQHVieaqQ=";
   };
+
+  nativeBuildInputs = [
+    setuptools
+    setuptools-scm
+    wheel
+  ];
 
   propagatedBuildInputs = [
     pyarrow
@@ -44,10 +53,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "recordlinkage" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library to link records in or between data sources";
     homepage = "https://recordlinkage.readthedocs.io/";
-    license = licenses.bsd3;
-    maintainers = [ maintainers.raitobezarius ];
+    changelog = "https://github.com/J535D165/recordlinkage/releases/tag/v${version}";
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
   };
 }

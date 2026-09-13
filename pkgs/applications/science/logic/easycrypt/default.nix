@@ -1,51 +1,63 @@
-{ lib, stdenv, fetchFromGitHub, fetchpatch, ocamlPackages, why3 }:
+{
+  lib,
+  stdenv,
+  darwin,
+  fetchFromGitHub,
+  ocamlPackages,
+  dune,
+  why3,
+  python3,
+}:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "easycrypt";
-  version = "2022.04";
+  version = "2026.09";
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
-    rev = "r${version}";
-    sha256 = "sha256:09rdwcj70lkamkhd895p284rfpz4bcnsf55mcimhiqncd2a21ml7";
+    owner = "easycrypt";
+    repo = "easycrypt";
+    tag = "r${finalAttrs.version}";
+    hash = "sha256-7ZnGZOZyV5znDGzg0c3XSsliQyOFOwJp2iyAzJtDNwk=";
   };
 
-  patches = lib.lists.map fetchpatch [
-    # Fix build with Why3 1.5
-    { url = "https://github.com/EasyCrypt/easycrypt/commit/d226387432deb7f22738e1d5579346a2cbc9be7a.patch";
-      hash = "sha256:1zvxij35fnr3h9b5wdl8ml17aqfx3a39rd4mgwmdvkapbg3pa4lm"; }
-    # Fix build with Why3 1.6
-    { url = "https://github.com/EasyCrypt/easycrypt/commit/876f2ed50a0434afdf2fb20e7c50b8a3e26bb06e.patch";
-      hash = "sha256-UycfLZWYHNsppb7qHSRaAF4Y0UnwoFueEG0wUcBUPYE="; }
-  ];
+  nativeBuildInputs =
+    with ocamlPackages;
+    [
+      dune
+      findlib
+      menhir
+      ocaml
+      python3.pkgs.wrapPython
+    ]
+    ++ lib.optional stdenv.hostPlatform.isDarwin darwin.sigtool;
 
-  nativeBuildInputs = with ocamlPackages; [
-    dune_3
-    findlib
-    menhir
-    ocaml
-  ];
   buildInputs = with ocamlPackages; [
     batteries
+    bitwuzla-cxx
     dune-build-info
-    inifiles
+    dune-site
+    markdown
+    pcre2
+    why3
     yojson
     zarith
   ];
 
-  propagatedBuildInputs = [ why3 ];
+  propagatedBuildInputs = [ why3.out ];
 
   strictDeps = true;
 
   postPatch = ''
-    substituteInPlace dune-project --replace '(name easycrypt)' '(name easycrypt)(version ${version})'
+    substituteInPlace dune-project --replace-fail '(name easycrypt)' '(name easycrypt)(version ${finalAttrs.version})'
   '';
+
+  pythonPath = with python3.pkgs; [ pyyaml ];
 
   installPhase = ''
     runHook preInstall
-    dune install --prefix $out ${pname}
+    dune install --prefix $out easycrypt
     rm $out/bin/ec-runtest
+    wrapPythonProgramsIn "$out/lib/easycrypt/commands" "''${pythonPath[*]}"
     runHook postInstall
   '';
 
@@ -55,5 +67,6 @@ stdenv.mkDerivation rec {
     platforms = lib.platforms.all;
     homepage = "https://easycrypt.info/";
     description = "Computer-Aided Cryptographic Proofs";
+    mainProgram = "easycrypt";
   };
-}
+})

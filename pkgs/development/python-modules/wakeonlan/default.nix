@@ -1,44 +1,37 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, poetry-core
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  poetry-core,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "wakeonlan";
-  version = "3.0.0";
-  disabled = pythonOlder "3.6";
-  format = "pyproject";
+  version = "3.3.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "remcohaszing";
     repo = "pywakeonlan";
-    rev = "refs/tags/${version}";
-    hash = "sha256-7BDE7TmTT8rSaG0rEn5QwH+izGWA2PeQzxpGiv7+3fo=";
+    tag = version;
+    hash = "sha256-AQjecGfcxI+zzUR6IO/iG/49QH1jClNYJFBEOABek5U=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  nativeBuildInputs = [ poetry-core ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pytestFlagsArray = [
-    "test_wakeonlan.py"
-  ];
+  enabledTestPaths = [ "test_wakeonlan.py" ];
 
-  pythonImportsCheck = [
-    "wakeonlan"
-  ];
+  pythonImportsCheck = [ "wakeonlan" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python module for wake on lan";
+    mainProgram = "wakeonlan";
     homepage = "https://github.com/remcohaszing/pywakeonlan";
-    license = licenses.mit;
-    maintainers = with maintainers; [ peterhoeg ];
+    changelog = "https://github.com/remcohaszing/pywakeonlan/releases/tag/${version}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ peterhoeg ];
   };
 }

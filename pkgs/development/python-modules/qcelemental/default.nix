@@ -1,47 +1,82 @@
-{ stdenv
-, buildPythonPackage
-, lib
-, fetchPypi
-, networkx
-, numpy
-, pint
-, pydantic
-, pytestCheckHook
-, pythonOlder
+{
+  stdenv,
+  buildPythonPackage,
+  lib,
+  pythonAtLeast,
+  fetchPypi,
+  poetry-core,
+  setuptools,
+  setuptools-scm,
+  ipykernel,
+  networkx,
+  numpy,
+  packaging,
+  pint,
+  pydantic,
+  pytestCheckHook,
+  scipy,
 }:
 
 buildPythonPackage rec {
   pname = "qcelemental";
-  version = "0.25.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.51.1";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-4+DlP+BH0UdWcYRBBApdc3E18L2zPvsdY6GTW5WCGnQ=";
+    hash = "sha256-2S7sa14rKd8b+yDy2eIpk1TUElA6XepeTPuzWW6S4TU=";
   };
 
-  propagatedBuildInputs = [
-    networkx
+  build-system = [
+    poetry-core
+    setuptools
+    setuptools-scm
+  ];
+
+  dependencies = [
     numpy
+    packaging
     pint
     pydantic
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  optional-dependencies = {
+    viz = [
+      # TODO: nglview
+      ipykernel
+    ];
+    align = [
+      networkx
+      scipy
+    ];
+  };
+
+  nativeCheckInputs = [ pytestCheckHook ] ++ lib.concatAttrValues optional-dependencies;
+
+  pythonImportsCheck = [ "qcelemental" ];
+
+  # These tests require network access
+  disabledTestPaths = [
+    "qcelemental/tests/test_gph_uno_bipartite.py"
+    "qcelemental/tests/test_model_general.py"
+    "qcelemental/tests/test_model_results.py"
+    "qcelemental/tests/test_molecule.py"
+    "qcelemental/tests/test_molparse_align_chiral.py"
+    "qcelemental/tests/test_molparse_from_schema.py"
+    "qcelemental/tests/test_molparse_from_string.py"
+    "qcelemental/tests/test_molparse_pubchem.py"
+    "qcelemental/tests/test_molparse_to_schema.py"
+    "qcelemental/tests/test_molparse_to_string.py"
+    "qcelemental/tests/test_molutil.py"
+    "qcelemental/tests/test_utils.py"
+    "qcelemental/tests/test_zqcschema.py"
   ];
 
-  pythonImportsCheck = [
-    "qcelemental"
-  ];
-
-  meta = with lib; {
-    broken = stdenv.isDarwin;
+  meta = {
     description = "Periodic table, physical constants and molecule parsing for quantum chemistry";
-    homepage = "http://docs.qcarchive.molssi.org/projects/qcelemental/";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ sheepforce ];
+    homepage = "https://github.com/MolSSI/QCElemental";
+    changelog = "https://github.com/MolSSI/QCElemental/blob/v${version}/docs/changelog.rst";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ sheepforce ];
   };
 }

@@ -1,35 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, fetchpatch
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "udatetime";
   version = "0.0.17";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-sQvFVwaZpDinLitaZOdr2MKO4779FvIJOHpVB/oLgwE=";
+  __structuredAttrs = true;
+
+  src = fetchFromGitHub {
+    owner = "freach";
+    repo = "udatetime";
+    tag = finalAttrs.version;
+    hash = "sha256-1TGLdw8yq+FmdfKin2e9SKJTA1TDNmLXmKRWcq0qTnw=";
   };
 
-  patches = [
-    # fix build with python 3.9
-    (fetchpatch {
-      url = "https://github.com/freach/udatetime/pull/33.patch";
-      sha256 = "02wm7ivkv1viqn2wflgd10dgpddfqfrwacmrldigb1mwb79n554j";
-    })
-  ];
+  build-system = [ setuptools ];
 
-  # tests not included on pypi
-  doCheck = false;
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  # shadows the installed package holding the compiled extension
+  preCheck = ''
+    rm -r udatetime
+  '';
 
   pythonImportsCheck = [ "udatetime" ];
 
-  meta = with lib; {
+  meta = {
     description = "Fast RFC3339 compliant Python date-time library";
+    mainProgram = "bench_udatetime.py";
     homepage = "https://github.com/freach/udatetime";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ globin ];
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
-}
+})

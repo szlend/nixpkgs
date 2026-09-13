@@ -1,54 +1,79 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, django
-, azure-storage-blob
-, boto3
-, dropbox
-, google-cloud-storage
-, libcloud
-, paramiko
+{
+  lib,
+  azure-storage-blob,
+  boto3,
+  buildPythonPackage,
+  cryptography,
+  django,
+  dropbox,
+  fetchFromGitHub,
+  fetchpatch,
+  google-cloud-storage,
+  libcloud,
+  moto,
+  paramiko,
+  pynacl,
+  pytestCheckHook,
+  rsa,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "django-storages";
-  version = "1.13.2";
+  version = "1.14.6";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-y63RXJCc63JH1P/FA/Eqm+w2mZ340L73wx5XF31RJog=";
+  src = fetchFromGitHub {
+    owner = "jschneier";
+    repo = "django-storages";
+    tag = version;
+    hash = "sha256-br7JGPf5EAAl0Qg7b+XaksxNPCTJsSS8HLgvA0wZmeI=";
   };
 
-  propagatedBuildInputs = [
-    django
+  patches = [
+    # Add Moto 5 support
+    # https://github.com/jschneier/django-storages/pull/1464
+    (fetchpatch {
+      url = "https://github.com/jschneier/django-storages/commit/e1aedcf2d137f164101d31f2f430f1594eedd78c.patch";
+      hash = "sha256-jSb/uJ0RXvPsXl+WUAzAgDvJl9Y3ad2F30X1SbsCc04=";
+      name = "add_moto_5_support.patch";
+    })
   ];
 
-  preCheck = ''
-    export DJANGO_SETTINGS_MODULE=tests.settings
-    # timezone issues https://github.com/jschneier/django-storages/issues/1171
-    substituteInPlace tests/test_sftp.py \
-      --replace 'test_accessed_time' 'dont_test_accessed_time' \
-      --replace 'test_modified_time' 'dont_test_modified_time'
-  '';
+  build-system = [ setuptools ];
+
+  dependencies = [ django ];
+
+  optional-dependencies = {
+    azure = [ azure-storage-blob ];
+    boto3 = [ boto3 ];
+    dropbox = [ dropbox ];
+    google = [ google-cloud-storage ];
+    libcloud = [ libcloud ];
+    s3 = [ boto3 ];
+    sftp = [ paramiko ];
+  };
 
   nativeCheckInputs = [
-    azure-storage-blob
-    boto3
-    dropbox
-    google-cloud-storage
-    libcloud
-    paramiko
-  ];
+    cryptography
+    moto
+    pytestCheckHook
+    rsa
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
-  pythonImportsCheck = [
-    "storages"
-  ];
+  checkInputs = [ pynacl ];
 
-  meta = with lib; {
+  pythonImportsCheck = [ "storages" ];
+
+  env.DJANGO_SETTINGS_MODULE = "tests.settings";
+
+  meta = {
     description = "Collection of custom storage backends for Django";
-    homepage = "https://django-storages.readthedocs.io";
     changelog = "https://github.com/jschneier/django-storages/blob/${version}/CHANGELOG.rst";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ mmai ];
+    downloadPage = "https://github.com/jschneier/django-storages/";
+    homepage = "https://django-storages.readthedocs.io";
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
   };
 }

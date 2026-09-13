@@ -1,42 +1,47 @@
-{ lib
-, buildPythonPackage
-, cloudscraper
-, fetchFromGitHub
-, pythonOlder
-, requests
+{
+  lib,
+  buildPythonPackage,
+  curl-cffi,
+  fetchFromGitHub,
+  garth,
+  pdm-backend,
+  requests,
+  ua-generator,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "garminconnect";
-  version = "0.1.55";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.3.12";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "cyberjunky";
     repo = "python-garminconnect";
-    rev = "refs/tags/${version}";
-    hash = "sha256-YPLlrlV8UyoaNtE+LgX7jpZkR7jbSe/2WRR0v0cfACY=";
+    tag = finalAttrs.version;
+    hash = "sha256-z3Ucfvt0z5dJ70DhJaoTkMhppxi9uiqFfZ2dT49y8uw=";
   };
 
-  propagatedBuildInputs = [
-    cloudscraper
+  pythonRelaxDeps = [ "garth" ];
+
+  build-system = [ pdm-backend ];
+
+  dependencies = [
+    curl-cffi
+    garth
     requests
+    ua-generator
   ];
 
-  # Module has no tests
+  # Tests require a token
   doCheck = false;
 
-  pythonImportsCheck = [
-    "garminconnect"
-  ];
+  pythonImportsCheck = [ "garminconnect" ];
 
-  meta = with lib; {
+  meta = {
     description = "Garmin Connect Python API wrapper";
     homepage = "https://github.com/cyberjunky/python-garminconnect";
-    changelog = "https://github.com/cyberjunky/python-garminconnect/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/cyberjunky/python-garminconnect/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

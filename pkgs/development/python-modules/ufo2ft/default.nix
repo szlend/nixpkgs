@@ -1,69 +1,71 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-
-# build
-, setuptools-scm
-
-# runtime
-, booleanoperations
-, cffsubr
-, compreffor
-, cu2qu
-, defcon
-, fonttools
-, skia-pathops
-, ufoLib2
-
-# tests
-, pytestCheckHook
+{
+  lib,
+  booleanoperations,
+  buildPythonPackage,
+  cffsubr,
+  compreffor,
+  defcon,
+  fetchFromGitHub,
+  fontmath,
+  fonttools,
+  pytestCheckHook,
+  setuptools,
+  setuptools-scm,
+  skia-pathops,
+  syrupy,
+  ufolib2,
+  uharfbuzz,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "ufo2ft";
-  version = "2.30.0";
-  format = "setuptools";
+  version = "3.9.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-ZpO55rNXkVbqMdGxsZn77gJnGBbM8c8GIAaQnTzVnf8=";
+  src = fetchFromGitHub {
+    owner = "googlefonts";
+    repo = "ufo2ft";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-McMhpGIvQHpsOe3jza6E3b72cKiY8gr8W9OY2Mg9JvE=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
+    setuptools
     setuptools-scm
   ];
 
-  propagatedBuildInputs = [
-    cu2qu
+  dependencies = [
+    fontmath
     fonttools
-    defcon
-    compreffor
     booleanoperations
     cffsubr
-    ufoLib2
-    skia-pathops
   ]
   ++ fonttools.optional-dependencies.lxml
   ++ fonttools.optional-dependencies.ufo;
 
   nativeCheckInputs = [
     pytestCheckHook
-  ];
+    syrupy
+    ufolib2
+    uharfbuzz
+    defcon
+  ]
+  ++ finalAttrs.passthru.optional-dependencies.compreffor
+  ++ finalAttrs.passthru.optional-dependencies.pathops;
 
-  pytestFlagsArray = [
-    # Do not depend on skia.
-    "--deselect=tests/integration_test.py::IntegrationTest::test_removeOverlaps_CFF_pathops"
-    "--deselect=tests/integration_test.py::IntegrationTest::test_removeOverlaps_pathops"
-    "--deselect=tests/preProcessor_test.py::TTFPreProcessorTest::test_custom_filters_as_argument"
-    "--deselect=tests/preProcessor_test.py::TTFInterpolatablePreProcessorTest::test_custom_filters_as_argument"
-  ];
+  optional-dependencies = {
+    compreffor = [ compreffor ];
+    cffsubr = [ ];
+    pathops = [ skia-pathops ];
+  };
 
   pythonImportsCheck = [ "ufo2ft" ];
 
-  meta = with lib; {
+  meta = {
     description = "Bridge from UFOs to FontTools objects";
     homepage = "https://github.com/googlefonts/ufo2ft";
-    license = licenses.mit;
-    maintainers = with maintainers; [ ];
+    changelog = "https://github.com/googlefonts/ufo2ft/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ jopejoe1 ];
   };
-}
+})

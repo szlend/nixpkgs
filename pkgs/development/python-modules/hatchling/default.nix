@@ -1,46 +1,39 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
 
-# runtime
-, editables
-, importlib-metadata # < 3.8
-, packaging
-, pathspec
-, pluggy
-, tomli
+  # runtime
+  editables,
+  packaging,
+  pathspec,
+  pluggy,
+  trove-classifiers,
 
-# tests
-, build
-, python
-, requests
-, virtualenv
+  # tests
+  build,
+  python,
+  requests,
+  virtualenv,
 }:
 
-let
+buildPythonPackage (finalAttrs: {
   pname = "hatchling";
-  version = "1.13.0";
-in
-buildPythonPackage {
-  inherit pname version;
-  format = "pyproject";
+  version = "1.31.0";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-+NJ1osxyBzUoa3wuK8NdoFdh5tNpXC+kFlUDlfEMU8c=";
+    inherit (finalAttrs) pname version;
+    hash = "sha256-a0itQGikgu1yObOoIVvFW0eq0zRdWN/JTlU8XS1GIRs=";
   };
 
-  # listed in backend/src/hatchling/ouroboros.py
-  propagatedBuildInputs = [
+  # listed in backend/pyproject.toml
+  dependencies = [
     editables
     packaging
     pathspec
     pluggy
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    importlib-metadata
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
+    trove-classifiers
   ];
 
   pythonImportsCheck = [
@@ -54,13 +47,12 @@ buildPythonPackage {
   # listed in /backend/tests/downstream/requirements.txt
   nativeCheckInputs = [
     build
-    packaging
     requests
     virtualenv
   ];
 
   preCheck = ''
-    export HOME=$TMPDIR
+    export HOME=$(mktemp -d)
   '';
 
   checkPhase = ''
@@ -69,11 +61,15 @@ buildPythonPackage {
     runHook postCheck
   '';
 
-  meta = with lib; {
+  meta = {
     description = "Modern, extensible Python build backend";
+    mainProgram = "hatchling";
     homepage = "https://hatch.pypa.io/latest/";
-    changelog = "https://github.com/pypa/hatch/releases/tag/hatchling-v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ hexa ofek ];
+    changelog = "https://github.com/pypa/hatch/releases/tag/hatchling-v${finalAttrs.version}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      hexa
+      ofek
+    ];
   };
-}
+})

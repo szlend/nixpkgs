@@ -1,54 +1,47 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, astroid
-, dill
-, isort
-, mccabe
-, platformdirs
-, requests
-, setuptools
-, tomli
-, tomlkit
-, typing-extensions
-, gitpython
-, py
-, pytest-timeout
-, pytest-xdist
-, pytestCheckHook
+{
+  lib,
+  stdenv,
+  astroid,
+  buildPythonPackage,
+  dill,
+  fetchFromGitHub,
+  gitpython,
+  isort,
+  mccabe,
+  platformdirs,
+  py,
+  pytest-timeout,
+  pytest-xdist,
+  pytest7CheckHook,
+  pythonAtLeast,
+  requests,
+  setuptools,
+  tomlkit,
+  typing-extensions,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pylint";
-  version = "2.16.2";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7.2";
+  version = "4.0.6-unstable-2026-07-14";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "PyCQA";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-xNCGf4CsxEKScIn6dl2Ka31P6bhMo5fTs9TIQz+vPiM=";
+    owner = "pylint-dev";
+    repo = "pylint";
+    rev = "5f7e4013c004324f11eac6f310d932f505272e28";
+    hash = "sha256-fdOA/ofrEMfzlbVbN6f5LE9nGC7QlggBU/SKW70iaC8=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     astroid
     dill
     isort
     mccabe
     platformdirs
     tomlkit
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
-  ] ++ lib.optionals (pythonOlder "3.9") [
-    typing-extensions
   ];
 
   nativeCheckInputs = [
@@ -57,24 +50,20 @@ buildPythonPackage rec {
     py
     pytest-timeout
     pytest-xdist
-    pytestCheckHook
+    pytest7CheckHook
     requests
     typing-extensions
+    writableTmpDirAsHomeHook
   ];
 
-  pytestFlagsArray = [
+  pytestFlags = [
     # DeprecationWarning: pyreverse will drop support for resolving and
     # displaying implemented interfaces in pylint 3.0. The
     # implementation relies on the '__implements__'  attribute proposed
     # in PEP 245, which was rejected in 2006.
-    "-W" "ignore::DeprecationWarning"
+    "-Wignore::DeprecationWarning"
+    "-v"
   ];
-
-  dontUseSetuptoolsCheck = true;
-
-  preCheck = ''
-    export HOME=$TEMPDIR
-  '';
 
   disabledTestPaths = [
     "tests/benchmark"
@@ -95,16 +84,24 @@ buildPythonPackage rec {
     "test_save_and_load_not_a_linter_stats"
     # Truncated string expectation mismatch
     "test_truncated_compare"
+    # Probably related to pytest versions, see pylint-dev/pylint#9477 and pylint-dev/pylint#9483
+    "test_functional"
     # AssertionError: assert [('specializa..., 'Ancestor')] == [('aggregatio..., 'Ancestor')]
     "test_functional_relation_extraction"
-  ] ++ lib.optionals stdenv.isDarwin [
+  ]
+  ++ lib.optionals (pythonAtLeast "3.14") [
+    # ModuleNotFoundError: No module named 'completely_unknown'
+    "test_do_not_import_files_from_local_directory"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "test_parallel_execution"
     "test_py3k_jobs_option"
   ];
 
-  meta = with lib; {
-    homepage = "https://pylint.pycqa.org/";
-    description = "A bug and style checker for Python";
+  meta = {
+    description = "Bug and style checker for Python";
+    homepage = "https://pylint.readthedocs.io/en/stable/";
+    # changelog = "https://github.com/pylint-dev/pylint/releases/tag/${finalAttrs.src.tag}";
     longDescription = ''
       Pylint is a Python static code analysis tool which looks for programming errors,
       helps enforcing a coding standard, sniffs for code smells and offers simple
@@ -114,7 +111,8 @@ buildPythonPackage rec {
       - symilar: an independent similarities checker
       - epylint: Emacs and Flymake compatible Pylint
     '';
-    license = licenses.gpl1Plus;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    license = lib.licenses.gpl2Plus;
+    maintainers = [ ];
+    mainProgram = "pylint";
   };
-}
+})

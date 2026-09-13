@@ -1,43 +1,58 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, pytestCheckHook
-, python-dateutil
-, duckdb
-, setuptools-scm
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+  setuptools-scm,
+
+  # dependencies
+  python-dateutil,
+
+  # tests
+  pytestCheckHook,
+  duckdb,
+  numpy,
+  pandas,
 }:
+
 buildPythonPackage rec {
   pname = "sqlglot";
-  version = "16.3.1";
-
-  disabled = pythonOlder "3.8";
+  version = "28.9.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     repo = "sqlglot";
     owner = "tobymao";
-    rev = "v${version}";
-    hash = "sha256-EN5ocyXCZaWE1BaC2eDg41+o5BoHAog1372b9rc2IDM=";
+    tag = "v${version}";
+    hash = "sha256-2AmHKGAoDF8w9k8VN9d25Js3UiSh8YNqdGRHN7VqRpw=";
   };
 
-  SETUPTOOLS_SCM_PRETEND_VERSION = version;
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
 
-  nativeBuildInputs = [ setuptools-scm ];
+  dependencies = [
+    # Optional dependency used in the sqlglot optimizer
+    python-dateutil
+  ];
 
-  # optional dependency used in the sqlglot optimizer
-  propagatedBuildInputs = [ python-dateutil ];
-
-  nativeCheckInputs = [ pytestCheckHook duckdb ];
-
-  # these integration tests assume a running Spark instance
-  disabledTestPaths = [ "tests/dataframe/integration" ];
+  nativeCheckInputs = [
+    pytestCheckHook
+    duckdb
+    numpy
+    pandas
+  ];
 
   pythonImportsCheck = [ "sqlglot" ];
 
-  meta = with lib; {
-    description = "A no dependency Python SQL parser, transpiler, and optimizer";
+  meta = {
+    description = "No dependency Python SQL parser, transpiler, and optimizer";
     homepage = "https://github.com/tobymao/sqlglot";
-    license = licenses.mit;
-    maintainers = with maintainers; [ cpcloud ];
+    changelog = "https://github.com/tobymao/sqlglot/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ cpcloud ];
   };
 }

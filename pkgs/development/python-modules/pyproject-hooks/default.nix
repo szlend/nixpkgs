@@ -1,57 +1,62 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, flit-core
-, pytestCheckHook
-, pythonOlder
-, setuptools
-, testpath
-, tomli
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  flit-core,
+  pyproject-hooks,
+  pytestCheckHook,
+  setuptools,
+  testpath,
 }:
 
 buildPythonPackage rec {
   pname = "pyproject-hooks";
-  version = "1.0.0";
-  format = "pyproject";
+  version = "1.2.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi rec {
+  src = fetchPypi {
     pname = "pyproject_hooks";
     inherit version;
-    hash = "sha256-8nGymLl/WVXVP7ErcsH7GUjCLBprcLMVxUztrKAmTvU=";
+    hash = "sha256-HoWb1cQPrpRIZC3Yca30WeXiCEGG6NLCp5qCTJcNofg=";
   };
 
-  nativeBuildInputs = [
-    flit-core
-  ];
+  nativeBuildInputs = [ flit-core ];
 
-  propagatedBuildInputs = [
-  ] ++ lib.optionals (pythonOlder "3.11") [
-    tomli
-  ];
+  # We need to disable tests because this package is part of the bootstrap chain
+  # and its test dependencies cannot be built yet when this is being built.
+  doCheck = false;
 
-  nativeCheckInputs = [
-    pytestCheckHook
-    setuptools
-    testpath
-  ];
+  passthru.tests = {
+    pytest = buildPythonPackage {
+      pname = "${pname}-pytest";
+      inherit version;
+      pyproject = false;
 
-  disabledTests = [
-    # fail to import setuptools
-    "test_setup_py"
-    "test_issue_104"
-  ];
+      dontBuild = true;
+      dontInstall = true;
 
-  pythonImportsCheck = [
-    "pyproject_hooks"
-  ];
+      nativeCheckInputs = [
+        pyproject-hooks
+        pytestCheckHook
+        setuptools
+        testpath
+      ];
 
-  meta = with lib; {
-    description = "Low-level library for calling build-backends in `pyproject.toml`-based project ";
+      disabledTests = [
+        # fail to import setuptools
+        "test_setup_py"
+        "test_issue_104"
+      ];
+    };
+  };
+
+  pythonImportsCheck = [ "pyproject_hooks" ];
+
+  meta = {
+    description = "Low-level library for calling build-backends in `pyproject.toml`-based project";
     homepage = "https://github.com/pypa/pyproject-hooks";
     changelog = "https://github.com/pypa/pyproject-hooks/blob/v${version}/docs/changelog.rst";
-    license = licenses.mit;
-    maintainers = with maintainers; [ hexa ];
+    license = lib.licenses.mit;
+    teams = [ lib.teams.python ];
   };
 }

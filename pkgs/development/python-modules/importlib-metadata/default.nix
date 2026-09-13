@@ -1,50 +1,56 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, setuptools
-, setuptools-scm
-, typing-extensions
-, toml
-, zipp
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  setuptools-scm,
+  toml,
+  zipp,
+
+  # Reverse dependency
+  sage,
 }:
 
 buildPythonPackage rec {
   pname = "importlib-metadata";
-  version = "6.0.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "9.0.0";
+  pyproject = true;
 
   src = fetchPypi {
     pname = "importlib_metadata";
     inherit version;
-    hash = "sha256-41S+3rYO+mr/3MiuEhtzVEp6p0FW0EcxGUj21xHNN40=";
+    hash = "sha256-pPV6tZnmouMBbXWVz9cutGYaUQbnh6lbzJDHEFuDHvw=";
   };
 
-  nativeBuildInputs = [
+  postPatch = ''
+    sed -i "/coherent.licensed/d" pyproject.toml
+  '';
+
+  build-system = [
     setuptools # otherwise cross build fails
     setuptools-scm
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     toml
     zipp
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    typing-extensions
   ];
 
   # Cyclic dependencies due to pyflakefs
   doCheck = false;
 
-  pythonImportsCheck = [
-    "importlib_metadata"
-  ];
+  pythonImportsCheck = [ "importlib_metadata" ];
 
-  meta = with lib; {
+  passthru.tests = {
+    inherit sage;
+  };
+
+  meta = {
     description = "Read metadata from Python packages";
     homepage = "https://importlib-metadata.readthedocs.io/";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [
+      fab
+    ];
   };
 }

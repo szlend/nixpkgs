@@ -1,25 +1,22 @@
-{ lib, stdenv, fetchFromGitLab, kernel, fetchpatch }:
+{
+  lib,
+  stdenv,
+  fetchFromGitLab,
+  kernel,
+  kernelModuleMakeFlags,
+}:
 
 stdenv.mkDerivation rec {
   pname = "ddcci-driver";
-  version = "0.4.3";
+  version = "0.4.5-unstable-2025-09-27";
   name = "${pname}-${kernel.version}-${version}";
 
   src = fetchFromGitLab {
     owner = "${pname}-linux";
     repo = "${pname}-linux";
-    rev = "v${version}";
-    hash = "sha256-1Z6V/AorD4aslLKaaCZpmkD2OiQnmpu3iroOPlNPtLE=";
+    rev = "bbb7553373f815d78e93a4a9f071ce968563694a";
+    hash = "sha256-fQjsDjbtFKhs0bUCFfKRgCg516TXdwIkhKEbIISjgs0=";
   };
-
-  patches = [
-    # https://gitlab.com/ddcci-driver-linux/ddcci-driver-linux/-/merge_requests/12
-    (fetchpatch {
-      name = "kernel-6.2-6.3.patch";
-      url = "https://gitlab.com/ddcci-driver-linux/ddcci-driver-linux/-/commit/1ef6079679acc455f75057dd7097b5b494a241dc.patch";
-      hash = "sha256-2C2leS20egGY3J2tq96gsUQXYw13wBJ3ZWrdIXxmEYs=";
-    })
-  ];
 
   hardeningDisable = [ "pic" ];
 
@@ -34,19 +31,23 @@ stdenv.mkDerivation rec {
       --replace depmod \#
   '';
 
-  makeFlags = kernel.makeFlags ++ [
+  patches = [
+    ./0001-Use-sysfs_emit-and-field-width-specifier.patch
+  ];
+
+  makeFlags = kernelModuleMakeFlags ++ [
     "KDIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
     "KVER=${kernel.modDirVersion}"
     "KERNEL_MODLIB=$(out)/lib/modules/${kernel.modDirVersion}"
     "INCLUDEDIR=$(out)/include"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Kernel module driver for DDC/CI monitors";
     homepage = "https://gitlab.com/ddcci-driver-linux/ddcci-driver-linux";
-    license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ ];
-    platforms = platforms.linux;
+    license = lib.licenses.gpl2Plus;
+    maintainers = with lib.maintainers; [ kiike ];
+    platforms = lib.platforms.linux;
     broken = kernel.kernelOlder "5.1";
   };
 }

@@ -1,41 +1,36 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, fetchpatch
-, nix-update-script
-, meson
-, ninja
-, pkg-config
-, vala
-, gtk3
-, glib
-, granite
-, libgee
-, libhandy
-, libcanberra-gtk3
-, python3
-, wrapGAppsHook
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  nix-update-script,
+  meson,
+  ninja,
+  pkg-config,
+  vala,
+  gtk4,
+  glib,
+  granite7,
+  libadwaita,
+  libcanberra,
+  wayland-scanner,
+  wrapGAppsHook4,
 }:
 
 stdenv.mkDerivation rec {
   pname = "elementary-notifications";
-  version = "6.0.3";
+  version = "8.1.2";
 
   src = fetchFromGitHub {
     owner = "elementary";
     repo = "notifications";
-    rev = version;
-    sha256 = "sha256-B1wo1N4heG872klFJOBKOEds0+6aqtvkTGefi97bdU8=";
+    tag = version;
+    hash = "sha256-qod76RSsCO9NvjnYTLRW6P1UyR1K6Uu9fEjU2WgHUWk=";
   };
 
-  patches = [
-    # Backports https://github.com/elementary/notifications/pull/184
-    # Needed for https://github.com/elementary/wingpanel-indicator-notifications/pull/252
-    # Should be part of next bump
-    (fetchpatch {
-      url = "https://github.com/elementary/notifications/commit/bd159979dbe3dbe6f3f1da7acd8e0721cc20ef80.patch";
-      sha256 = "sha256-cOfeXwoMVgvbA29axyN7HtYKTgCtGxAPrB2PA/x8RKY=";
-    })
+  strictDeps = true;
+
+  depsBuildBuild = [
+    pkg-config
   ];
 
   nativeBuildInputs = [
@@ -43,35 +38,29 @@ stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
-    python3
     vala
-    wrapGAppsHook
+    wayland-scanner
+    wrapGAppsHook4
   ];
 
   buildInputs = [
     glib
-    granite
-    gtk3
-    libcanberra-gtk3
-    libgee
-    libhandy
+    granite7
+    gtk4
+    libadwaita
+    libcanberra
   ];
-
-  postPatch = ''
-    chmod +x meson/post_install.py
-    patchShebangs meson/post_install.py
-  '';
 
   passthru = {
     updateScript = nix-update-script { };
   };
 
-  meta = with lib; {
+  meta = {
     description = "GTK notification server for Pantheon";
     homepage = "https://github.com/elementary/notifications";
-    license = licenses.gpl3Plus;
-    maintainers = teams.pantheon.members;
-    platforms = platforms.linux;
+    license = lib.licenses.gpl3Plus;
+    teams = [ lib.teams.pantheon ];
+    platforms = lib.platforms.linux;
     mainProgram = "io.elementary.notifications";
   };
 }

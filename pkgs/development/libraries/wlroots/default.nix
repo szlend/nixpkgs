@@ -1,33 +1,49 @@
-{ lib
-, stdenv
-, fetchFromGitLab
-, meson
-, ninja
-, pkg-config
-, wayland-scanner
-, libGL
-, wayland
-, wayland-protocols
-, libinput
-, libxkbcommon
-, pixman
-, libcap
-, mesa
-, xorg
-, libpng
-, ffmpeg_4
-, hwdata
-, seatd
-, vulkan-loader
-, glslang
-, nixosTests
+{
+  lib,
+  stdenv,
+  fetchFromGitLab,
+  meson,
+  ninja,
+  pkg-config,
+  wayland-scanner,
+  libGL,
+  wayland,
+  wayland-protocols,
+  libinput,
+  libxkbcommon,
+  pixman,
+  libcap,
+  libgbm,
+  libxcb-wm,
+  libxcb-render-util,
+  libxcb-image,
+  libxcb-errors,
+  libx11,
+  hwdata,
+  seatd,
+  vulkan-loader,
+  glslang,
+  libliftoff,
+  libdisplay-info,
+  lcms2,
+  evdev-proto,
+  nixosTests,
+  testers,
 
-, enableXWayland ? true
-, xwayland ? null
+  enableXWayland ? true,
+  xwayland ? null,
 }:
 
 let
-  generic = { version, hash, extraBuildInputs ? [ ], extraNativeBuildInputs ? [ ], extraPatch ? "" }:
+  generic =
+    {
+      version,
+      hash,
+      extraBuildInputs ? [ ],
+      extraNativeBuildInputs ? [ ],
+      patches ? [ ],
+      postPatch ? "",
+    }:
     stdenv.mkDerivation (finalAttrs: {
       pname = "wlroots";
       inherit version;
@@ -42,42 +58,62 @@ let
         inherit hash;
       };
 
-      postPatch = extraPatch;
+      inherit patches postPatch;
 
       # $out for the library and $examples for the example programs (in examples):
-      outputs = [ "out" "examples" ];
+      outputs = [
+        "out"
+        "examples"
+      ];
 
       strictDeps = true;
       depsBuildBuild = [ pkg-config ];
 
-      nativeBuildInputs = [ meson ninja pkg-config wayland-scanner ]
-        ++ extraNativeBuildInputs;
+      nativeBuildInputs = [
+        meson
+        ninja
+        pkg-config
+        wayland-scanner
+        glslang
+        hwdata
+      ]
+      ++ extraNativeBuildInputs;
+
+      propagatedBuildInputs = [
+        # The headers of wlroots #include <libinput.h>, and consumers of `wlroots` need not add it explicitly, hence we propagate it.
+        libinput
+      ];
 
       buildInputs = [
-        ffmpeg_4
+        libliftoff
+        libdisplay-info
         libGL
-        libcap
-        libinput
-        libpng
         libxkbcommon
-        mesa
+        libgbm
         pixman
         seatd
         vulkan-loader
         wayland
         wayland-protocols
-        xorg.libX11
-        xorg.xcbutilerrors
-        xorg.xcbutilimage
-        xorg.xcbutilrenderutil
-        xorg.xcbutilwm
+        libx11
+        libxcb-errors
+        libxcb-image
+        libxcb-render-util
+        libxcb-wm
+        lcms2
       ]
+      ++ lib.optional stdenv.hostPlatform.isLinux libcap
+      ++ lib.optional stdenv.hostPlatform.isFreeBSD evdev-proto
       ++ lib.optional finalAttrs.enableXWayland xwayland
       ++ extraBuildInputs;
 
-      mesonFlags =
-        lib.optional (!finalAttrs.enableXWayland) "-Dxwayland=disabled"
-      ;
+      mesonFlags = [
+        (lib.mesonEnable "xwayland" finalAttrs.enableXWayland)
+      ]
+      # The other allocator, udmabuf, is a linux-specific API
+      ++ lib.optionals (!stdenv.hostPlatform.isLinux) [
+        (lib.mesonOption "allocators" "gbm")
+      ];
 
       postFixup = ''
         # Install ALL example programs to $examples:
@@ -92,46 +128,47 @@ let
       '';
 
       # Test via TinyWL (the "minimum viable product" Wayland compositor based on wlroots):
-      passthru.tests.tinywl = nixosTests.tinywl;
+      passthru.tests = {
+        tinywl = nixosTests.tinywl;
+        pkg-config = testers.hasPkgConfigModules {
+          package = finalAttrs.finalPackage;
+        };
+      };
 
-      meta = with lib; {
-        description = "A modular Wayland compositor library";
+      meta = {
+        description = "Modular Wayland compositor library";
         longDescription = ''
           Pluggable, composable, unopinionated modules for building a Wayland
           compositor; or about 50,000 lines of code you were going to write anyway.
         '';
         inherit (finalAttrs.src.meta) homepage;
         changelog = "https://gitlab.freedesktop.org/wlroots/wlroots/-/tags/${version}";
-        license = licenses.mit;
-        platforms = platforms.linux;
-        maintainers = with maintainers; [ primeos synthetica ];
+        license = lib.licenses.mit;
+        platforms = lib.platforms.linux ++ lib.platforms.freebsd;
+        maintainers = with lib.maintainers; [
+          wineee
+          doronbehar
+        ];
+        pkgConfigModules = [
+          (
+            if lib.versionOlder finalAttrs.version "0.18" then
+              "wlroots"
+            else
+              "wlroots-${lib.versions.majorMinor finalAttrs.version}"
+          )
+        ];
       };
     });
 
 in
-rec {
-  wlroots_0_14 = generic {
-    version = "0.14.1";
-    hash = "sha256-wauk7TCL/V7fxjOZY77KiPbfydIc9gmOiYFOuum4UOs=";
+{
+  wlroots_0_19 = generic {
+    version = "0.19.3";
+    hash = "sha256-J+wSVUtuizaCyCn523chFbE8VtbPjyu5XYv5eLT+GM0=";
   };
 
-  wlroots_0_15 = generic {
-    version = "0.15.1";
-    hash = "sha256-MFR38UuB/wW7J9ODDUOfgTzKLse0SSMIRYTpEaEdRwM=";
-    extraBuildInputs = [ vulkan-loader ];
-    extraNativeBuildInputs = [ glslang ];
+  wlroots_0_20 = generic {
+    version = "0.20.2";
+    hash = "sha256-VdYymvzYp6/R255AK20j4xTd+JbCZgNiRfgeRJD+UZY=";
   };
-
-  wlroots_0_16 = generic {
-    version = "0.16.2";
-    hash = "sha256-JeDDYinio14BOl6CbzAPnJDOnrk4vgGNMN++rcy2ItQ=";
-    extraBuildInputs = [ vulkan-loader ];
-    extraNativeBuildInputs = [ glslang ];
-    extraPatch = ''
-      substituteInPlace backend/drm/meson.build \
-        --replace /usr/share/hwdata/ ${hwdata}/share/hwdata/
-    '';
-  };
-
-  wlroots = wlroots_0_15;
 }

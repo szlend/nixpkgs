@@ -1,49 +1,42 @@
-{ lib
-, aiohttp
-, buildPythonPackage
-, colour
-, fetchFromGitHub
-, poetry-core
-, pythonOlder
-, setuptools
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  fetchFromGitHub,
+  hatchling,
+  uv-dynamic-versioning,
 }:
 
 buildPythonPackage rec {
   pname = "ttls";
-  version = "1.6.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.8";
+  version = "1.11.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jschlyter";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-W7r2XgH8SloL9l/Lw1xWLmjF8aMBHWFe2DQ3tkqu+JQ=";
+    repo = "ttls";
+    tag = "v${version}";
+    hash = "sha256-RmfaDVpficgeQVy+mdlUhM8foUUyW/Z17IZmteYpFmo=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
+  build-system = [
+    hatchling
+    uv-dynamic-versioning
   ];
 
-  propagatedBuildInputs = [
-    aiohttp
-    colour
-    setuptools
-  ];
+  dependencies = [ aiohttp ];
 
   # Module has no tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "ttls"
-  ];
+  pythonImportsCheck = [ "ttls" ];
 
-  meta = with lib; {
+  meta = {
     description = "Module to interact with Twinkly LEDs";
     homepage = "https://github.com/jschlyter/ttls";
-    changelog = "https://github.com/jschlyter/ttls/blob/v${version}/CHANGES.md";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/jschlyter/ttls/blob/${src.tag}/CHANGES.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "ttls";
   };
 }

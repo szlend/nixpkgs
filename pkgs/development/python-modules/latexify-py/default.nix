@@ -1,39 +1,46 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, hatchling
-, dill
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  pythonAtLeast,
+  dill,
+  fetchFromGitHub,
+  hatchling,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "latexify-py";
-  version = "0.2.0";
-  format = "pyproject";
+  version = "0.4.4";
+  pyproject = true;
+
+  # AttributeError: module 'ast' has no attribute 'Num'
+  # https://docs.python.org/3/whatsnew/3.14.html#id9
+  disabled = pythonAtLeast "3.14";
 
   src = fetchFromGitHub {
     owner = "google";
     repo = "latexify_py";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-b0/cKMfIONVd6A5AYRyLx/qsFVpUjeAsadQyu/mPYxo=";
+    tag = "v${version}";
+    hash = "sha256-tyBIOIVRSNrhO1NOD7Zqmiksrvrm42DUY4w1IocVRl4=";
   };
 
-  nativeBuildInputs = [ hatchling ];
+  build-system = [ hatchling ];
 
-  propagatedBuildInputs = [ dill ];
-
-  preCheck = ''
-    cd src
-  '';
+  dependencies = [ dill ];
 
   nativeCheckInputs = [ pytestCheckHook ];
 
   pythonImportsCheck = [ "latexify" ];
 
-  meta = with lib; {
+  preCheck = ''
+    cd src
+  '';
+
+  meta = {
     description = "Generates LaTeX math description from Python functions";
     homepage = "https://github.com/google/latexify_py";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ prusnak ];
+    changelog = "https://github.com/google/latexify_py/releases/tag/v${version}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ prusnak ];
   };
 }

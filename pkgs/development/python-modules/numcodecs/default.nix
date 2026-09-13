@@ -1,66 +1,88 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, isPy27
-, setuptools
-, setuptools-scm
-, cython
-, entrypoints
-, numpy
-, msgpack
-, py-cpuinfo
-, pytestCheckHook
-, python
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+
+  # build-system
+  setuptools,
+  setuptools-scm,
+  cython,
+  py-cpuinfo,
+
+  # dependencies
+  numpy,
+  typing-extensions,
+
+  # optional-dependencies
+  crc32c,
+  google-crc32c,
+  pcodec,
+  pyzstd,
+
+  # tests
+  msgpack,
+  python,
+  pytestCheckHook,
+  importlib-metadata,
+  zstd,
 }:
 
 buildPythonPackage rec {
   pname = "numcodecs";
-  version = "0.11.0";
-  format ="pyproject";
-  disabled = isPy27;
+  version = "0.16.5";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-bAWLMh3oShcpKZsOrk1lKy5I6hyn+d8NplyxNHDmNes=";
+    hash = "sha256-DQ+2CFL4TAvZVDzE0que79N/yO/MQQrNR3fmKh0wAxg=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
     setuptools
     setuptools-scm
     cython
     py-cpuinfo
   ];
 
-  propagatedBuildInputs = [
-    entrypoints
+  dependencies = [
     numpy
-    msgpack
+    typing-extensions
   ];
+
+  optional-dependencies = {
+    crc32c = [ crc32c ];
+    google_crc32c = [ google-crc32c ];
+    msgpack = [ msgpack ];
+    pcodec = [ pcodec ];
+    # zfpy = [ zfpy ];
+  };
+
+  preBuild = lib.optionalString (stdenv.hostPlatform.isx86 && !stdenv.hostPlatform.avx2Support) ''
+    export DISABLE_NUMCODECS_AVX2=1
+  '';
 
   nativeCheckInputs = [
     pytestCheckHook
+    importlib-metadata
+    pyzstd
+    zstd
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
+
+  disabledTestPaths = [
+    # https://github.com/zarr-developers/numcodecs/issues/815
+    "numcodecs/tests/test_pcodec.py"
   ];
 
-  pytestFlagsArray = [
-    "$out/${python.sitePackages}/numcodecs"
-  ];
+  # https://github.com/NixOS/nixpkgs/issues/255262
+  preCheck = "pushd $out/${python.sitePackages}";
+  postCheck = "popd";
 
-  disabledTests = [
-    "test_backwards_compatibility"
-
-    "test_encode_decode"
-    "test_legacy_codec_broken"
-    "test_bytes"
-
-    # ValueError: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.
-    # with numpy 1.24
-    "test_non_numpy_inputs"
-  ];
-
-  meta = with lib;{
+  meta = {
     homepage = "https://github.com/zarr-developers/numcodecs";
-    license = licenses.mit;
+    license = lib.licenses.mit;
     description = "Buffer compression and transformation codecs for use in data storage and communication applications";
-    maintainers = [ maintainers.costrouc ];
+    maintainers = with lib.maintainers; [ doronbehar ];
   };
 }

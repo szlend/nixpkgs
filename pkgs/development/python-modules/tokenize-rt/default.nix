@@ -1,28 +1,32 @@
-{ buildPythonPackage
-, lib
-, fetchFromGitHub
-, isPy27
-, pytestCheckHook
+{
+  buildPythonPackage,
+  lib,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "tokenize-rt";
-  version = "4.2.1";
-  disabled = isPy27;
+  version = "6.2.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "asottile";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-YNt4YwkuA3DVq4EjJaIES9V3A6ENa3k6/qVKisjA5Pc=";
+    repo = "tokenize-rt";
+    tag = "v${version}";
+    hash = "sha256-25HeYVS5pN7mBllycumnrEkgP/a1HjrPNgqo6qJOStU=";
   };
+
+  nativeBuildInputs = [ setuptools ];
 
   nativeCheckInputs = [ pytestCheckHook ];
 
-  meta = with lib; {
-    description = "A wrapper around the stdlib `tokenize` which roundtrips";
+  meta = {
+    description = "Wrapper around the stdlib `tokenize` which roundtrips";
+    mainProgram = "tokenize-rt";
     homepage = "https://github.com/asottile/tokenize-rt";
-    license = licenses.mit;
-    maintainers = with maintainers; [ lovesegfault ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ lovesegfault ];
   };
 }

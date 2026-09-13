@@ -1,11 +1,30 @@
-{ lib, stdenv, fetchFromGitHub, cmake, boost, pkg-config, doxygen, qt48Full, libharu
-, pango, fcgi, firebird, libmysqlclient, postgresql, graphicsmagick, glew, openssl
-, pcre, harfbuzz, icu
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  boost,
+  pkg-config,
+  doxygen,
+  qt5,
+  libharu,
+  pango,
+  fcgi,
+  firebird,
+  libmysqlclient,
+  libpq,
+  graphicsmagick,
+  glew,
+  openssl,
+  harfbuzz,
+  icu,
+  libice,
+  libsm,
 }:
 
 let
   generic =
-    { version, sha256 }:
+    { version, hash }:
     stdenv.mkDerivation {
       pname = "wt";
       inherit version;
@@ -13,18 +32,41 @@ let
       src = fetchFromGitHub {
         owner = "emweb";
         repo = "wt";
-        rev = version;
-        inherit sha256;
+        tag = version;
+        inherit hash;
       };
 
-      nativeBuildInputs = [ cmake pkg-config ];
+      nativeBuildInputs = [
+        cmake
+        pkg-config
+      ];
       buildInputs = [
-        boost doxygen qt48Full libharu
-        pango fcgi firebird libmysqlclient postgresql graphicsmagick glew
-        openssl pcre harfbuzz icu
+        boost
+        doxygen
+        qt5.qtbase
+        libharu
+        pango
+        fcgi
+        firebird
+        libmysqlclient
+        libpq
+        graphicsmagick
+        glew
+        openssl
+        harfbuzz
+        icu
+        libice
+        libsm
       ];
 
+      dontWrapQtApps = true;
       cmakeFlags = [
+        "-DCMAKE_INSTALL_RPATH=${
+          lib.makeLibraryPath [
+            libice
+            libsm
+          ]
+        }"
         "-DWT_CPP_11_MODE=-std=c++11"
         "--no-warn-unused-cli"
       ]
@@ -32,25 +74,20 @@ let
         "-DWT_WRASTERIMAGE_IMPLEMENTATION=GraphicsMagick"
         "-DGM_PREFIX=${graphicsmagick}"
       ]
-      ++ lib.optional (libmysqlclient != null)
-        "-DMYSQL_PREFIX=${libmysqlclient}";
+      ++ lib.optional (libmysqlclient != null) "-DMYSQL_PREFIX=${libmysqlclient}";
 
-      meta = with lib; {
+      meta = {
         homepage = "https://www.webtoolkit.eu/wt";
         description = "C++ library for developing web applications";
-        platforms = platforms.linux;
-        license = licenses.gpl2;
-        maintainers = with maintainers; [ juliendehos willibutz ];
+        platforms = lib.platforms.linux;
+        license = lib.licenses.gpl2Only;
+        maintainers = with lib.maintainers; [ juliendehos ];
       };
     };
-in {
-  wt3 = generic {
-    version = "3.7.1";
-    sha256 = "19gf5lbrc5shpvcdyzjh20k8zdj4cybxqvkhwqfl9rvhw89qr11k";
-  };
-
+in
+{
   wt4 = generic {
-    version = "4.9.1";
-    sha256 = "sha256-Qm0qqYB/CLVHUgKE9N83MgAWQ2YFdumrB0i84qYNto8=";
+    version = "4.14.2";
+    hash = "sha256-No8Gk04g6Kcb18uMqZeLVfE47ri+k4ff0CB7j174G5I=";
   };
 }

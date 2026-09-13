@@ -1,53 +1,51 @@
-{ lib
-, aiohttp
-, bitstruct
-, buildPythonPackage
-, cryptography
-, fetchFromGitHub
-, pytestCheckHook
-, pythonOlder
-, setuptools
-, voluptuous
+{
+  lib,
+  aiohttp,
+  bitstruct,
+  buildPythonPackage,
+  cryptography,
+  fetchFromGitHub,
+  pytest-asyncio,
+  pytestCheckHook,
+  setuptools,
+  typing-extensions,
+  voluptuous,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "python-otbr-api";
-  version = "2.2.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "3.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "home-assistant-libs";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-jozMYrmXHSykv5npboyySuVDs1Lamlee15ZPYI4zmO4=";
+    repo = "python-otbr-api";
+    tag = finalAttrs.version;
+    hash = "sha256-76vYLULS8oSrO0NV6cZwfjBpafrczXpwE7wNykSXWVE=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     aiohttp
     bitstruct
     cryptography
+    typing-extensions
     voluptuous
   ];
 
   nativeCheckInputs = [
+    pytest-asyncio
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "python_otbr_api"
-  ];
+  pythonImportsCheck = [ "python_otbr_api" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library for the Open Thread Border Router";
     homepage = "https://github.com/home-assistant-libs/python-otbr-api";
-    changelog = "https://github.com/home-assistant-libs/python-otbr-api/releases/tag/${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/home-assistant-libs/python-otbr-api/releases/tag/${finalAttrs.version}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

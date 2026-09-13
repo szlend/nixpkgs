@@ -1,57 +1,45 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, fetchPypi
-, python
-, cffi
-, pytestCheckHook
-, pythonOlder
-, ApplicationServices
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  python,
+  setuptools,
+  cffi,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "pymunk";
-  version = "6.5.1";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "7.1.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    extension = "zip";
-    hash = "sha256-ZEO7YJBkCMgsD9MnwBn/X3qt39+IiecM453bjDgZDls=";
+    hash = "sha256-8wRYlyYTJbs+iShEAt1DuQjQpYcdwgEFl+NrQwnwIps=";
   };
 
-  propagatedBuildInputs = [
-    cffi
-  ];
+  nativeBuildInputs = [ cffi ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [
-    ApplicationServices
-  ];
+  build-system = [ setuptools ];
+
+  dependencies = [ cffi ];
 
   preBuild = ''
-    ${python.pythonForBuild.interpreter} setup.py build_ext --inplace
+    ${python.pythonOnBuildForHost.interpreter} setup.py build_ext --inplace
   '';
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pytestFlagsArray = [
-    "pymunk/tests"
-  ];
+  enabledTestPaths = [ "pymunk/tests" ];
 
-  pythonImportsCheck = [
-    "pymunk"
-  ];
+  pythonImportsCheck = [ "pymunk" ];
 
-  meta = with lib; {
+  meta = {
     description = "2d physics library";
     homepage = "https://www.pymunk.org";
     changelog = "https://github.com/viblo/pymunk/releases/tag/${version}";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ emilytrau ];
-    platforms = platforms.unix;
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ emilytrau ];
+    platforms = lib.platforms.unix;
   };
 }

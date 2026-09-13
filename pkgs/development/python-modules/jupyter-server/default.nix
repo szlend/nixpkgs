@@ -1,99 +1,127 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, hatch-jupyter-builder
-, hatchling
-, pandoc
-, pytestCheckHook
-, pytest-console-scripts
-, pytest-jupyter
-, pytest-timeout
-, pytest-tornasync
-, argon2-cffi
-, jinja2
-, tornado
-, pyzmq
-, ipykernel
-, ipython_genutils
-, traitlets
-, jupyter-core
-, jupyter-client
-, jupyter-events
-, jupyter-server-terminals
-, nbformat
-, nbconvert
-, send2trash
-, terminado
-, prometheus-client
-, anyio
-, websocket-client
-, requests
-, requests-unixsocket
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+
+  # build-system
+  hatch-jupyter-builder,
+  hatchling,
+
+  # dependencies
+  anyio,
+  argon2-cffi,
+  jinja2,
+  jupyter-client,
+  jupyter-core,
+  jupyter-events,
+  jupyter-server-terminals,
+  nbconvert,
+  nbformat,
+  overrides,
+  packaging,
+  prometheus-client,
+  pyzmq,
+  send2trash,
+  terminado,
+  tornado,
+  traitlets,
+  websocket-client,
+
+  # tests
+  addBinToPathHook,
+  flaky,
+  ipykernel,
+  pytest-console-scripts,
+  pytest-jupyter,
+  pytest-timeout,
+  pytestCheckHook,
+  requests,
+  versionCheckHook,
+  writableTmpDirAsHomeHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "jupyter-server";
-  version = "2.0.6";
-  format = "pyproject";
-  disabled = pythonOlder "3.7";
+  version = "2.21.0";
+  pyproject = true;
+  __structuredAttrs = true;
 
+  # Using the pypi archive to avoid building the node artifacts from source
   src = fetchPypi {
     pname = "jupyter_server";
-    inherit version;
-    hash= "sha256-jddZkukLfKVWeUoe1cylEmPGl6vG0N9WGvV0qhwKAz8=";
+    inherit (finalAttrs) version;
+    hash = "sha256-cNmhiD9X01duoX9M4GHsGnqtfvOI0AQoz7f15PACInE=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
     hatch-jupyter-builder
     hatchling
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    anyio
     argon2-cffi
     jinja2
-    tornado
-    pyzmq
-    ipython_genutils
-    traitlets
-    jupyter-core
     jupyter-client
+    jupyter-core
     jupyter-events
     jupyter-server-terminals
-    nbformat
     nbconvert
+    nbformat
+    overrides
+    packaging
+    prometheus-client
+    pyzmq
     send2trash
     terminado
-    prometheus-client
-    anyio
+    tornado
+    traitlets
     websocket-client
-    requests-unixsocket
   ];
 
+  # https://github.com/NixOS/nixpkgs/issues/299427
+  stripExclude = lib.optionals stdenv.hostPlatform.isDarwin [ "favicon.ico" ];
+
+  pythonImportsCheck = [ "jupyter_server" ];
+
   nativeCheckInputs = [
+    addBinToPathHook
+    flaky
     ipykernel
-    pandoc
-    pytestCheckHook
     pytest-console-scripts
     pytest-jupyter
     pytest-timeout
-    pytest-tornasync
+    pytestCheckHook
     requests
+    versionCheckHook
+    writableTmpDirAsHomeHook
   ];
 
-  preCheck = ''
-    export HOME=$(mktemp -d)
-    export PATH=$out/bin:$PATH
-  '';
+  pytestFlags = [
+    # AssertionError
+    "-Wignore::DeprecationWarning"
+  ];
 
   disabledTests = [
     "test_cull_idle"
-  ] ++ lib.optionals stdenv.isDarwin [
-    # attempts to use trashcan, build env doesn't allow this
-    "test_delete"
+    "test_server_extension_list"
+    "test_subscribe_websocket"
     # test is presumable broken in sandbox
     "test_authorized_requests"
+    # Fails under load on Hydra; kernel stays in 'starting' state due to a zmq socket error
+    "test_cull_connected"
+    "test_execution_state"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # attempts to use trashcan, build env doesn't allow this
+    "test_delete"
+    # Insufficient access privileges for operation
+    "test_regression_is_hidden"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    # Failed: DID NOT RAISE <class 'tornado.web.HTTPError'>
+    "test_copy_big_dir"
   ];
 
   disabledTestPaths = [
@@ -106,10 +134,18 @@ buildPythonPackage rec {
 
   __darwinAllowLocalNetworking = true;
 
-  meta = with lib; {
-    description = "The backend—i.e. core services, APIs, and REST endpoints—to Jupyter web applications";
+  meta = {
+    description = "Backend—i.e. core services, APIs, and REST endpoints—to Jupyter web applications";
     homepage = "https://github.com/jupyter-server/jupyter_server";
-    license = licenses.bsdOriginal;
-    maintainers = [ maintainers.elohmeier ];
+    changelog = "https://github.com/jupyter-server/jupyter_server/blob/v${finalAttrs.version}/CHANGELOG.md";
+    license = lib.licenses.bsdOriginal;
+    teams = [ lib.teams.jupyter ];
+    mainProgram = "jupyter-server";
+    identifiers.cpeParts = {
+      vendor = "jupyter";
+      product = "jupyter_server";
+      version = finalAttrs.version;
+      update = "*";
+    };
   };
-}
+})

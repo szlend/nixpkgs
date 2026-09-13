@@ -1,51 +1,45 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, cacert
-, cached-property
-, cffi
-, fetchPypi
-, isPyPy
-, libgit2
-, pycparser
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  cacert,
+  cached-property,
+  cffi,
+  fetchPypi,
+  isPyPy,
+  libgit2,
+  pycparser,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "pygit2";
-  version = "1.12.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "1.20.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-VuhdDmbelX1ZnR77JAnTmv7v2PAQCb/aB5a0Kktng1g=";
+    hash = "sha256-clNzVinCL/9BKnLEjCBLGcIG/an8sB5RET2WiRlMsc8=";
   };
 
-  preConfigure = lib.optionalString stdenv.isDarwin ''
+  preConfigure = lib.optionalString stdenv.hostPlatform.isDarwin ''
     export DYLD_LIBRARY_PATH="${libgit2}/lib"
   '';
 
-  buildInputs = [
-    libgit2
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
+  buildInputs = [ libgit2 ];
+
+  dependencies = [
     cached-property
     pycparser
-  ] ++ lib.optionals (!isPyPy) [
-    cffi
-  ];
+  ]
+  ++ lib.optionals (!isPyPy) [ cffi ];
 
-  propagatedNativeBuildInputs = lib.optionals (!isPyPy) [
-    cffi
-  ];
+  propagatedNativeBuildInputs = lib.optionals (!isPyPy) [ cffi ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   disabledTestPaths = [
     # Disable tests that require networking
@@ -56,24 +50,15 @@ buildPythonPackage rec {
 
   # Tests require certificates
   # https://github.com/NixOS/nixpkgs/pull/72544#issuecomment-582674047
-  SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
+  env.SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 
-  # setup.py check is broken
-  # https://github.com/libgit2/pygit2/issues/868
-  dontUseSetuptoolsCheck = true;
+  pythonImportsCheck = [ "pygit2" ];
 
-  # TODO: Test collection is failing
-  # https://github.com/NixOS/nixpkgs/pull/72544#issuecomment-582681068
-  doCheck = false;
-
-  pythonImportsCheck = [
-    "pygit2"
-  ];
-
-  meta = with lib; {
-    description = "A set of Python bindings to the libgit2 shared library";
+  meta = {
+    description = "Set of Python bindings to the libgit2 shared library";
     homepage = "https://github.com/libgit2/pygit2";
-    license = licenses.gpl2Only;
-    maintainers = with maintainers; [ ];
+    changelog = "https://github.com/libgit2/pygit2/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.gpl2Only;
+    maintainers = [ ];
   };
 }

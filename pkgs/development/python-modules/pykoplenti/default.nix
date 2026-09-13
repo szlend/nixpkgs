@@ -1,54 +1,55 @@
-{ lib
-, aiohttp
-, buildPythonPackage
-, click
-, fetchFromGitHub
-, prompt-toolkit
-, pycryptodome
-, pythonOlder
-, setuptools
+{
+  lib,
+  aiohttp,
+  buildPythonPackage,
+  click,
+  fetchFromGitHub,
+  prompt-toolkit,
+  pycryptodome,
+  pydantic,
+  hatchling,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "pykoplenti";
-  version = "1.0.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.5.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "stegm";
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-XBOKf3i8xywU/1Kzl+VI1Qnkp9ohpSuDX3AnotD32oo=";
+    repo = "pykoplenti";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-Mwh6QOdsvf32U09ebleEKL7vt3xz8tjiftVVxKL/lO4=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  pythonRelaxDeps = [ "pydantic" ];
 
-  postPatch = ''
-    # remove with 1.1.0
-    substituteInPlace setup.cfg \
-      --replace 'version = unreleased' 'version = ${version}'
-  '';
+  build-system = [ hatchling ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     aiohttp
-    click
-    prompt-toolkit
     pycryptodome
+    pydantic
   ];
+
+  optional-dependencies = {
+    CLI = [
+      click
+      prompt-toolkit
+    ];
+  };
 
   # Project has no tests
   doCheck = false;
 
   pythonImportsCheck = [ "pykoplenti" ];
 
-  meta = with lib; {
+  meta = {
     description = "Python REST client API for Kostal Plenticore Inverters";
     homepage = "https://github.com/stegm/pykoplenti/";
-    license = with licenses; [ asl20 ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/stegm/pykoplenti/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
+    mainProgram = "pykoplenti";
   };
-}
+})

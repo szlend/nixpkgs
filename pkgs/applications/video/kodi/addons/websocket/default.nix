@@ -1,13 +1,20 @@
-{ lib, buildKodiAddon, fetchzip, addonUpdateScript, six, addonDir }:
+{
+  lib,
+  rel,
+  buildKodiAddon,
+  fetchzip,
+  addonUpdateScript,
+  six,
+}:
 
 buildKodiAddon rec {
   pname = "websocket";
   namespace = "script.module.websocket";
-  version = "0.58.0+matrix.2";
+  version = "1.6.4";
 
   src = fetchzip {
-    url = "https://mirrors.kodi.tv/addons/nexus/${namespace}/${namespace}-${version}.zip";
-    sha256 = "sha256-xyOlKAAvtucC/tTm027ifEgiry/9gQneAcIwOGxmTkg=";
+    url = "https://mirrors.kodi.tv/addons/${lib.toLower rel}/${namespace}/${namespace}-${version}.zip";
+    sha256 = "sha256-1Wy+hxB059UoZnQlncytVT3sQ07dYAhNRnW3/QVD4ZE=";
   };
 
   propagatedBuildInputs = [
@@ -21,10 +28,10 @@ buildKodiAddon rec {
     };
   };
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/websocket-client/websocket-client";
-    description = "A WebSocket client for Python";
-    license = licenses.lgpl2Only;
-    maintainers = teams.kodi.members;
+    description = "WebSocket client for Python";
+    license = lib.licenses.lgpl2Only;
+    teams = [ lib.teams.kodi ];
   };
 }

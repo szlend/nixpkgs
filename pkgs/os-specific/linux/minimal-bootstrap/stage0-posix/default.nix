@@ -1,25 +1,42 @@
-{ lib
-, newScope
+{
+  lib,
+  newScope,
 }:
 
-lib.makeScope newScope (self: with self; {
-  inherit (self.callPackage ./bootstrap-sources.nix {})
-    version hex0-seed minimal-bootstrap-sources;
+lib.makeScope newScope (
+  self: with self; {
+    inherit (callPackage ./platforms.nix { })
+      platforms
+      stage0Arch
+      m2libcArch
+      m2libcOS
+      baseAddress
+      ;
 
-  src = minimal-bootstrap-sources;
+    inherit (self.callPackage ./bootstrap-sources.nix { }) version minimal-bootstrap-sources;
 
-  m2libc = src + "/M2libc";
+    src = minimal-bootstrap-sources;
 
-  hex0 = callPackage ./hex0.nix { };
+    m2libc = src + "/M2libc";
 
-  kaem = callPackage ./kaem { };
-  kaem-minimal = callPackage ./kaem/minimal.nix { };
+    hex0 = callPackage ./hex0.nix { };
+    inherit (self.hex0) hex0-seed;
 
-  stage0-posix-x86 = callPackage ./stage0-posix-x86.nix { };
+    kaem = callPackage ./kaem { };
+    kaem-minimal = callPackage ./kaem/minimal.nix { };
 
-  inherit (self.stage0-posix-x86) blood-elf-0 hex2 kaem-unwrapped M1 M2;
+    mescc-tools-boot = callPackage ./mescc-tools-boot.nix { };
 
-  mescc-tools = callPackage ./mescc-tools { };
+    inherit (self.mescc-tools-boot)
+      blood-elf-0
+      hex2
+      kaem-unwrapped
+      M1
+      M2
+      ;
 
-  mescc-tools-extra = callPackage ./mescc-tools-extra { };
-})
+    mescc-tools = callPackage ./mescc-tools { };
+
+    mescc-tools-extra = callPackage ./mescc-tools-extra { };
+  }
+)

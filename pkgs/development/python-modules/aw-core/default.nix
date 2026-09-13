@@ -1,36 +1,34 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, poetry-core
-, jsonschema
-, peewee
-, appdirs
-, iso8601
-, rfc3339-validator
-, takethetime
-, strict-rfc3339
-, tomlkit
-, deprecation
-, timeslot
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  poetry-core,
+  jsonschema,
+  peewee,
+  platformdirs,
+  iso8601,
+  rfc3339-validator,
+  strict-rfc3339,
+  tomlkit,
+  deprecation,
+  timeslot,
+  pytestCheckHook,
+  gitUpdater,
 }:
 
 buildPythonPackage rec {
   pname = "aw-core";
-  version = "0.5.12";
+  version = "0.5.17";
 
-  format = "pyproject";
+  pyproject = true;
 
   # pypi distribution doesn't include tests, so build from source instead
   src = fetchFromGitHub {
     owner = "ActivityWatch";
     repo = "aw-core";
     rev = "v${version}";
-    sha256 = "sha256-DbugVMaQHlHpfbFEsM6kfpDL2VzRs0TDn9klWjAwz64=";
+    sha256 = "sha256-bKxf+fqm+6V3JgDluKVpqq5hRL3Z+x8SHMRQmNe8vUA=";
   };
-
-  disabled = pythonOlder "3.8";
 
   nativeBuildInputs = [
     poetry-core
@@ -39,19 +37,20 @@ buildPythonPackage rec {
   propagatedBuildInputs = [
     jsonschema
     peewee
-    appdirs
+    platformdirs
     iso8601
     rfc3339-validator
-    takethetime
     strict-rfc3339
     tomlkit
     deprecation
     timeslot
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  pythonRelaxDeps = [
+    "platformdirs"
   ];
+
+  nativeCheckInputs = [ pytestCheckHook ];
 
   preCheck = ''
     # Fake home folder for tests that write to $HOME
@@ -60,10 +59,13 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "aw_core" ];
 
-  meta = with lib; {
+  passthru.updateScript = gitUpdater { rev-prefix = "v"; };
+
+  meta = {
     description = "Core library for ActivityWatch";
+    mainProgram = "aw-cli";
     homepage = "https://github.com/ActivityWatch/aw-core";
-    maintainers = with maintainers; [ huantian ];
-    license = licenses.mpl20;
+    maintainers = with lib.maintainers; [ huantian ];
+    license = lib.licenses.mpl20;
   };
 }

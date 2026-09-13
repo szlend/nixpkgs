@@ -1,42 +1,54 @@
-{ buildPythonPackage
-, fetchFromGitHub
-, jax
-, jaxlib
-, lib
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  absl-py,
+  jax,
+  numpy,
+
+  # tests
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "jmp";
-  # As of 2022-01-01, the latest stable version (0.0.2) fails tests with recent JAX versions,
-  # IIUC it's fixed in https://github.com/deepmind/jmp/commit/4969392f618d7733b265677143d8c81e44085867
-  version = "unstable-2021-10-03";
+  version = "0.0.4";
+  pyproject = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "deepmind";
-    repo = pname;
-    rev = "260e5ba01f46b10c579a61393e6c7e546aeae93e";
-    hash = "sha256-BTHy/jNf6LeV+x3GTI9MDBWLK6A5z2Z1TQyBkHMTeuE=";
+    repo = "jmp";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-+PefZU1209vvf1SfF8DXiTvKYEnZ4y8iiIr8yKikx9Y=";
   };
 
-  # Wheel requires only `numpy`, but the import needs `jax`.
-  propagatedBuildInputs = [
+  build-system = [
+    setuptools
+  ];
+
+  dependencies = [
+    numpy
+    # Not listed in `dependencies` but in practice is necessary to import jmp
+    absl-py
     jax
   ];
 
-  pythonImportsCheck = [
-    "jmp"
-  ];
+  pythonImportsCheck = [ "jmp" ];
 
   nativeCheckInputs = [
-    jaxlib
     pytestCheckHook
   ];
 
-  meta = with lib; {
-    description = "This library implements support for mixed precision training in JAX.";
+  meta = {
+    description = "This library implements support for mixed precision training in JAX";
     homepage = "https://github.com/deepmind/jmp";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ ndl ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ ndl ];
   };
-}
+})

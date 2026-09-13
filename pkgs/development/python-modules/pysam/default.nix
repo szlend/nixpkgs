@@ -1,21 +1,25 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, bzip2
-, bcftools
-, curl
-, cython
-, htslib
-, libdeflate
-, xz
-, pytestCheckHook
-, samtools
-, zlib
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  bzip2,
+  bcftools,
+  curl,
+  cython,
+  htslib,
+  libdeflate,
+  xz,
+  pytestCheckHook,
+  setuptools,
+  samtools,
+  zlib,
+  nix-update-script,
 }:
 
 buildPythonPackage rec {
-  pname   = "pysam";
-  version = "0.21.0";
+  pname = "pysam";
+  version = "0.23.3";
+  pyproject = true;
 
   # Fetching from GitHub instead of PyPi cause the 0.13 src release on PyPi is
   # missing some files which cause test failures.
@@ -23,11 +27,18 @@ buildPythonPackage rec {
   src = fetchFromGitHub {
     owner = "pysam-developers";
     repo = "pysam";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-C4/AJwcUyLoUEUEnsATLHJb5F8mltP8X2XfktYu0OTo=";
+    tag = "v${version}";
+    hash = "sha256-yOLnfuGQW+j0nHy4MRlwurZMpeRHTGmQ9eLmihcAGoQ=";
   };
 
-  nativeBuildInputs = [ samtools ];
+  build-system = [
+    cython
+    setuptools
+  ];
+
+  nativeBuildInputs = [
+    samtools
+  ];
 
   buildInputs = [
     bzip2
@@ -36,8 +47,6 @@ buildPythonPackage rec {
     xz
     zlib
   ];
-
-  propagatedBuildInputs = [ cython ];
 
   # Use nixpkgs' htslib instead of the bundled one
   # See https://pysam.readthedocs.io/en/latest/installation.html#external
@@ -68,13 +77,18 @@ buildPythonPackage rec {
     "pysam.libchtslib"
     "pysam.libcutils"
     "pysam.libcvcf"
+    "pysam.libcsamtools"
   ];
 
-  meta = with lib; {
-    description = "A python module for reading, manipulating and writing genome data sets";
-    homepage = "https://pysam.readthedocs.io/";
-    maintainers = with maintainers; [ unode ];
-    license = licenses.mit;
-    platforms = platforms.unix;
+  passthru.updateScript = nix-update-script { };
+
+  meta = {
+    description = "Python module for reading, manipulating and writing genome data sets";
+    downloadPage = "https://github.com/pysam-developers/pysam";
+    changelog = "https://github.com/pysam-developers/pysam/releases/tag/${src.tag}";
+    homepage = "https://pysam.readthedocs.io";
+    maintainers = with lib.maintainers; [ unode ];
+    license = lib.licenses.mit;
+    platforms = lib.platforms.unix;
   };
 }

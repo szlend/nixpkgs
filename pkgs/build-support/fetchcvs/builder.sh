@@ -1,6 +1,3 @@
-if [ -e .attrs.sh ]; then source .attrs.sh; fi
-source $stdenv/setup
-
 (echo "#!$SHELL"; \
  echo 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$@"') > ssh
 chmod +x ssh

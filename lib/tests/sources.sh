@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# Tests lib/sources.nix
+# Run:
+# [nixpkgs]$ lib/tests/sources.sh
+# or:
+# [nixpkgs]$ nix-build lib/tests/release.nix
+
 set -euo pipefail
 shopt -s inherit_errexit
 
@@ -62,5 +69,17 @@ dir="$(nix-instantiate --eval --strict --read-write-mode --json --expr '(with im
 ./README.md
 EOF
 ) || die "cleanSourceWith + cleanSource"
+
+
+dir="$(nix-instantiate --eval --strict --read-write-mode --json --expr '(with import <nixpkgs/lib>; "${
+  sources.sourceByGlobs '"$work"' [ "*.md" "**/*.o" ]
+}")' | crudeUnquoteJSON)"
+(cd "$dir"; find) | sort -f | diff -U10 - <(cat <<EOF
+.
+./module.o
+./README.md
+EOF
+) || die "sourceByGlobs 1"
+
 
 echo >&2 tests ok

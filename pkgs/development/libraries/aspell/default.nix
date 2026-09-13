@@ -1,9 +1,17 @@
-{ lib, stdenv, fetchurl, fetchpatch, fetchzip, perl, ncurses
+{
+  lib,
+  stdenv,
+  fetchurl,
+  fetchzip,
+  perl,
+  ncurses,
 
   # for tests
-, aspell, glibc, runCommand
+  aspell,
+  glibc,
+  runCommand,
 
-, searchNixProfiles ? true
+  searchNixProfiles ? true,
 }:
 
 let
@@ -20,28 +28,24 @@ in
 
 stdenv.mkDerivation rec {
   pname = "aspell";
-  version = "0.60.8";
+  version = "0.60.8.2";
 
   src = fetchurl {
     url = "mirror://gnu/aspell/aspell-${version}.tar.gz";
-    sha256 = "1wi60ankalmh8ds7nplz434jd7j94gdvbahdwsr539rlad8pxdzr";
+    hash = "sha256-V/5IY+rmBI9yJFqFdbRLcY+4XKFLn4wK/EGyVN/XaRk=";
   };
 
-  patches = [
-    (fetchpatch {
-      #  objstack: assert that the alloc size will fit within a chunk
-      name = "CVE-2019-25051.patch";
-      url = "https://github.com/gnuaspell/aspell/commit/0718b375425aad8e54e1150313b862e4c6fd324a.patch";
-      sha256 = "03z259xrk41x3j190gaprf3mqysyfgh3a04rjmch3h625vj95x39";
-    })
-  ] ++ lib.optional searchNixProfiles ./data-dirs-from-nix-profiles.patch;
+  patches = lib.optional searchNixProfiles ./data-dirs-from-nix-profiles.patch;
 
   postPatch = ''
     patch interfaces/cc/aspell.h < ${./clang.patch}
   '';
 
   nativeBuildInputs = [ perl ];
-  buildInputs = [ ncurses perl ];
+  buildInputs = [
+    ncurses
+    perl
+  ];
 
   doCheck = true;
 
@@ -60,16 +64,19 @@ stdenv.mkDerivation rec {
   '';
 
   passthru.tests = {
-    uses-curses = runCommand "${pname}-curses" {
-      buildInputs = [ glibc ];
-    } ''
-      if ! ldd ${aspell}/bin/aspell | grep -q ${ncurses}
-      then
-        echo "Test failure: It does not look like aspell picked up the curses dependency."
-        exit 1
-      fi
-      touch $out
-    '';
+    uses-curses =
+      runCommand "aspell-curses"
+        {
+          buildInputs = [ glibc ];
+        }
+        ''
+          if ! ldd ${aspell}/bin/aspell | grep -q ${ncurses}
+          then
+            echo "Test failure: It does not look like aspell picked up the curses dependency."
+            exit 1
+          fi
+          touch $out
+        '';
   };
 
   meta = {

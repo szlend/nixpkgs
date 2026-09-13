@@ -1,21 +1,40 @@
-{ lib, fetchPypi, buildPythonPackage, numpy
+{
+  fetchFromGitHub,
+  buildPythonPackage,
+
+  # build-system
+  pdm-backend,
+
+  # dependencies
+  numpy,
+
+  # tests
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "plyfile";
-  version = "0.7.4";
+  version = "1.1.4";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "9e9a18d22a3158fcd74df38761d43a7facc6df75126f2ab9f4e9a5d4d2188652";
+  src = fetchFromGitHub {
+    owner = "dranjan";
+    repo = "python-plyfile";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-uV5gwRb3LKPF+pPQt/m85mwgVGTaEwusJZVUbmxQrJg=";
   };
 
-  propagatedBuildInputs = [ numpy ];
+  build-system = [ pdm-backend ];
 
-  meta = with lib; {
+  dependencies = [ numpy ];
+
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  pythonImportsCheck = [ "plyfile" ];
+
+  meta = {
     description = "NumPy-based text/binary PLY file reader/writer for Python";
-    homepage    = "https://github.com/dranjan/python-plyfile";
-    maintainers = with maintainers; [ abbradar ];
+    homepage = "https://github.com/dranjan/python-plyfile";
+    maintainers = [ ];
   };
-
-}
+})

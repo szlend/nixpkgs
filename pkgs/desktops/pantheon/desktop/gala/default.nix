@@ -1,45 +1,45 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, nix-update-script
-, pkg-config
-, meson
-, python3
-, ninja
-, vala
-, desktop-file-utils
-, gettext
-, libxml2
-, gtk3
-, granite
-, libgee
-, bamf
-, libcanberra-gtk3
-, gnome-desktop
-, mesa
-, mutter
-, gnome-settings-daemon
-, wrapGAppsHook
-, gexiv2
-, systemd
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  desktop-file-utils,
+  gettext,
+  libxml2,
+  meson,
+  ninja,
+  pkg-config,
+  vala,
+  wayland-scanner,
+  wrapGAppsHook4,
+  at-spi2-core,
+  gnome-settings-daemon,
+  gnome-desktop,
+  granite,
+  granite7,
+  gtk3,
+  gtk4,
+  ibus,
+  json-glib,
+  libgee,
+  libhandy,
+  mutter,
+  sqlite,
+  systemd,
+  nix-update-script,
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "gala";
-  version = "7.1.0";
+  version = "8.6.1";
 
   src = fetchFromGitHub {
     owner = "elementary";
-    repo = pname;
-    rev = version;
-    sha256 = "sha256-x0EIah/iTluJk7P3k0g23cQldx++W58FbjnHNlF31AQ=";
+    repo = "gala";
+    tag = finalAttrs.version;
+    hash = "sha256-q2GoJSa/ECn54UM0t8Z86bdTVea6XAflotkMoEOXK0Q=";
   };
 
-  patches = [
-    # We look for plugins in `/run/current-system/sw/lib/` because
-    # there are multiple plugin providers (e.g. gala and wingpanel).
-    ./plugins-dir.patch
-  ];
+  depsBuildBuild = [ pkg-config ];
 
   nativeBuildInputs = [
     desktop-file-utils
@@ -48,40 +48,43 @@ stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
-    python3
     vala
-    wrapGAppsHook
+    wayland-scanner
+    wrapGAppsHook4
   ];
 
   buildInputs = [
-    bamf
+    at-spi2-core
     gnome-settings-daemon
-    gexiv2
     gnome-desktop
     granite
-    gtk3
-    libcanberra-gtk3
+    granite7
+    gtk3 # daemon-gtk3
+    gtk4
+    ibus
+    json-glib
     libgee
-    mesa # for libEGL
+    libhandy
     mutter
+    sqlite
     systemd
   ];
 
   postPatch = ''
-    chmod +x build-aux/meson/post_install.py
-    patchShebangs build-aux/meson/post_install.py
+    substituteInPlace meson.build \
+      --replace-fail "conf.set('PLUGINDIR', plugins_dir)" "conf.set('PLUGINDIR','/run/current-system/sw/lib/gala/plugins')"
   '';
 
   passthru = {
     updateScript = nix-update-script { };
   };
 
-  meta = with lib; {
-    description = "A window & compositing manager based on mutter and designed by elementary for use with Pantheon";
+  meta = {
+    description = "Window & compositing manager based on mutter and designed by elementary for use with Pantheon";
     homepage = "https://github.com/elementary/gala";
-    license = licenses.gpl3Plus;
-    platforms = platforms.linux;
-    maintainers = teams.pantheon.members;
+    license = lib.licenses.gpl3Plus;
+    platforms = lib.platforms.linux;
+    teams = [ lib.teams.pantheon ];
     mainProgram = "gala";
   };
-}
+})

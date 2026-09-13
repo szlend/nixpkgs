@@ -1,41 +1,37 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, isPy27
-, pytestCheckHook
-, pythonAtLeast
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "sgmllib3k";
   version = "1.0.0";
-  format = "setuptools";
+  pyproject = true;
 
-  disabled = isPy27;
+  __structuredAttrs = true;
 
-  src = fetchFromGitHub {
-    owner = "hsoft";
-    repo = "sgmllib";
-    rev = "799964676f35349ca2dd04503e34c2b3ad522c0d";
-    sha256 = "0bzf6pv85dzfxfysm6zbj8m40hp0xzr9h8qlk4hp3nmy88rznqvr";
+  src = fetchPypi {
+    inherit (finalAttrs) pname version;
+    hash = "sha256-eGj7HIv6dkwaxWPTzzacOB0TJdNhJJM6cm8p/NqoEuk=";
   };
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  build-system = [ setuptools ];
 
-  disabledTests = lib.optionals (pythonAtLeast "3.10") [
-    "test_declaration_junk_chars"
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pythonImportsCheck = [
-    "sgmllib"
-  ];
+  disabledTests = [ "test_declaration_junk_chars" ];
 
-  meta = with lib; {
+  doCheck = false;
+
+  pythonImportsCheck = [ "sgmllib" ];
+
+  meta = {
     homepage = "https://pypi.org/project/sgmllib3k/";
     description = "Python 3 port of sgmllib";
-    license = licenses.bsd2;
-    maintainers = with maintainers; [ lovesegfault ];
+    license = lib.licenses.bsd2;
+    maintainers = with lib.maintainers; [ lovesegfault ];
   };
-}
+})

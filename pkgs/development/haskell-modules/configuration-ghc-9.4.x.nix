@@ -2,18 +2,10 @@
 
 let
   inherit (pkgs) fetchpatch lib;
-  checkAgainAfter = pkg: ver: msg: act:
-    if builtins.compareVersions pkg.version ver <= 0 then act
-    else
-      builtins.throw "Check if '${msg}' was resolved in ${pkg.pname} ${pkg.version} and update or remove this";
 in
 
 with haskellLib;
-self: super: let
-  jailbreakForCurrentVersion = p: v: checkAgainAfter p v "bad bounds" (doJailbreak p);
-in {
-  llvmPackages = lib.dontRecurseIntoAttrs self.ghc.llvmPackages;
-
+self: super: {
   # Disable GHC core libraries.
   array = null;
   base = null;
@@ -46,165 +38,136 @@ in {
   system-cxx-std-lib = null;
   template-haskell = null;
   # GHC only builds terminfo if it is a native compiler
-  terminfo = if pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform then null else self.terminfo_0_4_1_6;
+  terminfo =
+    if pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform then
+      null
+    else
+      doDistribute self.terminfo_0_4_1_7;
   text = null;
   time = null;
   transformers = null;
   unix = null;
   # GHC only bundles the xhtml library if haddock is enabled, check if this is
   # still the case when updating: https://gitlab.haskell.org/ghc/ghc/-/blob/0198841877f6f04269d6050892b98b5c3807ce4c/ghc.mk#L463
-  xhtml = if self.ghc.hasHaddock or true then null else self.xhtml_3000_2_2_1;
+  xhtml = if self.ghc.hasHaddock or true then null else doDistribute self.xhtml_3000_4_0_0;
+  Win32 = null;
 
-  # Tests fail because of typechecking changes
-  conduit = dontCheck super.conduit;
+  # Becomes a core package in GHC >= 9.8
+  semaphore-compat = doDistribute self.semaphore-compat_1_0_0;
 
-  # consequences of doctest breakage follow:
+  # Becomes a core package in GHC >= 9.10
+  os-string = doDistribute self.os-string_2_0_10;
 
-  ghc-source-gen = checkAgainAfter super.ghc-source-gen "0.4.3.0" "fails to build" (markBroken super.ghc-source-gen);
+  # Become core packages in GHC >= 9.10, no release compatible with GHC < 9.10 is available
+  ghc-experimental = null;
+  ghc-internal = null;
+  # Become core packages in GHC >= 9.10, but aren't uploaded to Hackage
+  ghc-toolchain = null;
+  ghc-platform = null;
 
-  haskell-src-meta = doJailbreak super.haskell-src-meta;
-
-  # Tests fail in GHC 9.2
-  extra = dontCheck super.extra;
+  # only broken for >= 9.6
+  calligraphy = doDistribute (unmarkBroken super.calligraphy);
 
   # Jailbreaks & Version Updates
 
-  aeson = doDistribute self.aeson_2_1_2_1;
-  assoc = doJailbreak super.assoc;
-  async = doJailbreak super.async;
-  base64-bytestring = doJailbreak super.base64-bytestring;
-  binary-instances = doJailbreak super.binary-instances;
-  ChasingBottoms = doJailbreak super.ChasingBottoms;
-  constraints = doJailbreak super.constraints;
-  cpphs = overrideCabal (drv: { postPatch = "sed -i -e 's,time >=1.5 && <1.11,time >=1.5 \\&\\& <1.12,' cpphs.cabal";}) super.cpphs;
-  data-fix = doJailbreak super.data-fix;
-  dec = doJailbreak super.dec;
-  ed25519 = doJailbreak super.ed25519;
-  ghc-byteorder = doJailbreak super.ghc-byteorder;
-  ghc-lib = doDistribute self.ghc-lib_9_4_5_20230430;
-  ghc-lib-parser = doDistribute self.ghc-lib-parser_9_4_5_20230430;
-  ghc-lib-parser-ex = doDistribute self.ghc-lib-parser-ex_9_4_0_0;
-  hackage-security = doJailbreak super.hackage-security;
+  # hashable >= 1.5 needs base >= 4.18
+  hashable = self.hashable_1_4_7_0;
   hashable-time = doJailbreak super.hashable-time;
-  HTTP = overrideCabal (drv: { postPatch = "sed -i -e 's,! Socket,!Socket,' Network/TCP.hs"; }) (doJailbreak super.HTTP);
-  integer-logarithms = overrideCabal (drv: { postPatch = "sed -i -e 's, <1.1, <1.3,' integer-logarithms.cabal"; }) (doJailbreak super.integer-logarithms);
-  lifted-async = doJailbreak super.lifted-async;
-  lukko = doJailbreak super.lukko;
-  lzma-conduit = doJailbreak super.lzma-conduit;
-  parallel = doJailbreak super.parallel;
-  path = doJailbreak super.path;
-  polyparse = overrideCabal (drv: { postPatch = "sed -i -e 's, <0.11, <0.12,' polyparse.cabal"; }) (doJailbreak super.polyparse);
-  primitive = dontCheck (doJailbreak self.primitive_0_7_4_0);
-  regex-posix = doJailbreak super.regex-posix;
-  resolv = doJailbreak super.resolv;
-  singleton-bool = doJailbreak super.singleton-bool;
-  rope-utf16-splay = doDistribute self.rope-utf16-splay_0_4_0_0;
-  shake-cabal = doDistribute self.shake-cabal_0_2_2_3;
   libmpd = doJailbreak super.libmpd;
-  generics-sop = doJailbreak super.generics-sop;
-  microlens-th = doJailbreak super.microlens-th;
+
   # generically needs base-orphans for 9.4 only
   base-orphans = dontCheck (doDistribute super.base-orphans);
-  generically = addBuildDepend self.base-orphans super.generically;
+  generically = addBuildDepends [
+    self.base-orphans
+  ] super.generically;
+
+  # Needs base-orphans for GHC < 9.8 / base < 4.19
+  some = addBuildDepend self.base-orphans super.some;
 
   # the dontHaddock is due to a GHC panic. might be this bug, not sure.
   # https://gitlab.haskell.org/ghc/ghc/-/issues/21619
-  #
-  # We need >= 1.1.2 for ghc-9.4 support, but we don't have 1.1.x in
-  # hackage-packages.nix
-  hedgehog = doDistribute (dontHaddock super.hedgehog_1_2);
-  # tasty-hedgehog > 1.3 necessary to work with hedgehog 1.2:
-  # https://github.com/qfpl/tasty-hedgehog/pull/63
-  tasty-hedgehog = self.tasty-hedgehog_1_4_0_1;
-
-  # https://github.com/dreixel/syb/issues/38
-  syb = dontCheck super.syb;
-
-  splitmix = doJailbreak super.splitmix;
-  th-desugar = doDistribute self.th-desugar_1_15;
-  th-abstraction = doDistribute self.th-abstraction_0_5_0_0;
-  time-compat = doJailbreak super.time-compat;
-  tomland = doJailbreak super.tomland;
-  type-equality = doJailbreak super.type-equality;
-  unordered-containers = doJailbreak super.unordered-containers;
-  vector-binary-instances = doJailbreak super.vector-binary-instances;
+  hedgehog = dontHaddock super.hedgehog;
 
   hpack = overrideCabal (drv: {
     # Cabal 3.6 seems to preserve comments when reading, which makes this test fail
     # 2021-10-10: 9.2.1 is not yet supported (also no issue)
     testFlags = [
       "--skip=/Hpack/renderCabalFile/is inverse to readCabalFile/"
-    ] ++ drv.testFlags or [];
+    ]
+    ++ drv.testFlags or [ ];
   }) (doJailbreak super.hpack);
 
-  lens = doDistribute self.lens_5_2_2;
-
-  # Apply patches from head.hackage.
-  language-haskell-extract = appendPatch (pkgs.fetchpatch {
-    url = "https://gitlab.haskell.org/ghc/head.hackage/-/raw/dfd024c9a336c752288ec35879017a43bd7e85a0/patches/language-haskell-extract-0.2.4.patch";
-    sha256 = "0w4y3v69nd3yafpml4gr23l94bdhbmx8xky48a59lckmz5x9fgxv";
-  }) (doJailbreak super.language-haskell-extract);
-
-  # Tests depend on `parseTime` which is no longer available
-  hourglass = dontCheck super.hourglass;
-
-  memory = super.memory_0_18_0;
-
-  # https://github.com/sjakobi/bsb-http-chunked/issues/38
-  bsb-http-chunked = dontCheck super.bsb-http-chunked;
-
-  # need bytestring >= 0.11 which is only bundled with GHC >= 9.2
-  regex-rure = doDistribute (markUnbroken super.regex-rure);
-  jacinda = doDistribute super.jacinda;
-  some = doJailbreak super.some;
+  # Later versions require unix >= 2.8 which is tricky to provide with GHC 9.4
+  crypton-x509-store = doDistribute self.crypton-x509-store_1_6_11;
 
   # 2022-08-01: Tests are broken on ghc 9.2.4: https://github.com/wz1000/HieDb/issues/46
   hiedb = dontCheck super.hiedb;
 
-  hlint = self.hlint_3_5;
-  hls-hlint-plugin = super.hls-hlint-plugin.override {
-    inherit (self) hlint;
-  };
+  # Tests require skeletest which doesn't support GHC 9.4
+  toml-reader = dontCheck super.toml-reader;
 
   # 2022-10-06: https://gitlab.haskell.org/ghc/ghc/-/issues/22260
   ghc-check = dontHaddock super.ghc-check;
 
-  ghc-exactprint = overrideCabal (drv: {
-    libraryHaskellDepends = with self; [ HUnit data-default fail filemanip free ghc-paths ordered-containers silently syb Diff ];
-  })
-    self.ghc-exactprint_1_6_1_3;
+  ghc-tags = doDistribute (doJailbreak self.ghc-tags_1_7); # aeson < 2.2
 
-  # needed to build servant
-  http-api-data = super.http-api-data_0_5_1;
-  attoparsec-iso8601 = super.attoparsec-iso8601_1_1_0_0;
+  # ghc-lib >= 9.8 and friends no longer build with GHC 9.4 since they require semaphore-compat
+  ghc-lib-parser = doDistribute (
+    self.ghc-lib-parser_9_6_7_20250325.override {
+      happy = self.happy_1_20_1_1; # wants happy < 1.21
+    }
+  );
+  ghc-lib-parser-ex = doDistribute self.ghc-lib-parser-ex_9_6_0_2;
+  ghc-lib = doDistribute (
+    self.ghc-lib_9_6_7_20250325.override {
+      happy = self.happy_1_20_1_1; # wants happy < 1.21
+    }
+  );
 
-  # requires newer versions to work with GHC 9.4
-  swagger2 = dontCheck super.swagger2;
-  servant = doJailbreak super.servant;
-  servant-server = doJailbreak super.servant-server;
-  servant-auth = doJailbreak super.servant-auth;
-  servant-auth-swagger = doJailbreak super.servant-auth-swagger;
-  servant-swagger = doJailbreak super.servant-swagger;
-  servant-client-core = doJailbreak super.servant-client-core;
-  servant-client = doJailbreak super.servant-client;
+  # Last version to not depend on file-io and directory-ospath-streaming,
+  # which both need unix >= 2.8.
+  tar = self.tar_0_6_3_0;
+
+  # A given major version of ghc-exactprint only supports one version of GHC.
+  ghc-exactprint = dontCheck super.ghc-exactprint_1_6_1_3;
+
+  # Too strict upper bound on template-haskell
+  # https://github.com/mokus0/th-extras/issues/18
+  th-extras = doJailbreak super.th-extras;
+
   # https://github.com/kowainik/relude/issues/436
-  relude = dontCheck (doJailbreak super.relude);
+  relude = dontCheck super.relude;
 
-  ormolu = doDistribute self.ormolu_0_5_3_0;
-  # https://github.com/tweag/ormolu/issues/941
-  fourmolu = overrideCabal (drv: {
-    libraryHaskellDepends = drv.libraryHaskellDepends ++ [ self.file-embed ];
-  }) (disableCabalFlag "fixity-th" super.fourmolu_0_10_1_0);
+  haddock-library = doJailbreak super.haddock-library;
+  path = self.path_0_9_5;
 
-  # Apply workaround for Cabal 3.8 bug https://github.com/haskell/cabal/issues/8455
-  # by making `pkg-config --static` happy. Note: Cabal 3.9 is also affected, so
-  # the GHC 9.6 configuration may need similar overrides eventually.
-  X11-xft = __CabalEagerPkgConfigWorkaround super.X11-xft;
-  # Jailbreaks for https://github.com/gtk2hs/gtk2hs/issues/323#issuecomment-1416723309
-  glib = __CabalEagerPkgConfigWorkaround (doJailbreak super.glib);
-  cairo = __CabalEagerPkgConfigWorkaround (doJailbreak super.cairo);
-  pango = __CabalEagerPkgConfigWorkaround (doJailbreak super.pango);
+  haskell-language-server =
+    lib.throwIf pkgs.config.allowAliases
+      "haskell-language-server has dropped support for ghc 9.4 in version 2.12.0.0, please use a newer ghc version or an older nixpkgs"
+      (markBroken super.haskell-language-server);
 
-  # Pending text-2.0 support https://github.com/gtk2hs/gtk2hs/issues/327
-  gtk = doJailbreak super.gtk;
+  hlint = doDistribute self.hlint_3_6_1;
+
+  # directory-ospath-streaming requires the ospath API in core packages
+  # filepath, directory and unix.
+  stan = super.stan.override {
+    directory-ospath-streaming = null;
+  };
+
+  # Packages which need compat library for GHC < 9.6
+  inherit (lib.mapAttrs (_: addBuildDepends [ self.foldable1-classes-compat ]) super)
+    indexed-traversable
+    OneTuple
+    these
+    ;
+  base-compat-batteries = addBuildDepends [
+    self.foldable1-classes-compat
+    self.OneTuple
+  ] super.base-compat-batteries;
+
+  # Tests require nothunks < 0.3 (conflicting with Stackage) for GHC < 9.8
+  aeson = dontCheck super.aeson;
+
+  # Too strict lower bound on base
+  primitive-addr = doJailbreak super.primitive-addr;
 }

@@ -1,36 +1,54 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, isPy27
-, pytestCheckHook
-, pandas
-, torch
-, scipy
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # tests
+  pandas,
+  pytestCheckHook,
+  scipy,
+  torch,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "slicer";
-  version = "0.0.7";
-  disabled = isPy27;
+  version = "0.0.8";
+  pyproject = true;
+  __structuredAttrs = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "f5d5f7b45f98d155b9c0ba6554fa9770c6b26d5793a3e77a1030fb56910ebeec";
+  src = fetchFromGitHub {
+    owner = "interpretml";
+    repo = "slicer";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-kmZQUIgePX1+PQZBA0JuJzjAfXqaOUGb0LLyhbybL18=";
   };
 
-  nativeCheckInputs = [ pytestCheckHook pandas torch scipy ];
-
-  disabledTests = [
-    # IndexError: too many indices for array
-    "test_slicer_sparse"
-    "test_operations_2d"
+  patches = [
+    # Fix pandas 3 compatibility
+    # https://github.com/interpretml/slicer/issues/10
+    ./pandas-3-compat.patch
   ];
 
-  meta = with lib; {
+  build-system = [ setuptools ];
+
+  pythonImportsCheck = [ "slicer" ];
+
+  nativeCheckInputs = [
+    pandas
+    pytestCheckHook
+    scipy
+    torch
+  ];
+
+  meta = {
     description = "Wraps tensor-like objects and provides a uniform slicing interface via __getitem__";
     homepage = "https://github.com/interpretml/slicer";
-    license = licenses.mit;
-    maintainers = with maintainers; [ evax ];
-    platforms = platforms.unix;
+    changelog = "https://github.com/interpretml/slicer/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ evax ];
+    platforms = lib.platforms.unix;
   };
-}
+})

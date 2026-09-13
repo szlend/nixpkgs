@@ -1,41 +1,61 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, dawg-python
-, docopt
-, pytestCheckHook
-, pymorphy3-dicts-ru
-, pymorphy3-dicts-uk
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  dawg2-python,
+  pymorphy3-dicts-ru,
+  pymorphy3-dicts-uk,
+
+  # tests
+  pytestCheckHook,
+  click,
 }:
 
 buildPythonPackage rec {
   pname = "pymorphy3";
-  version = "1.2.0";
+  version = "2.0.6";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "no-plagiarism";
-    repo = pname;
-    rev = version;
-    hash = "sha256-5MXAYcjZPUrGf5G5e7Yml1SLukrZURA0TCv0GiP56rM=";
+    repo = "pymorphy3";
+    tag = version;
+    hash = "sha256-5s5v6+vMCeyn/73G5uUfRtTGkkqa7RNW8/r1v3Ay4us=";
   };
 
-  propagatedBuildInputs = [
-    dawg-python
-    docopt
+  build-system = [
+    setuptools
+  ];
+
+  dependencies = [
+    dawg2-python
     pymorphy3-dicts-ru
     pymorphy3-dicts-uk
   ];
 
+  optional-dependencies = {
+    CLI = [
+      click
+    ];
+  };
+
   nativeCheckInputs = [
     pytestCheckHook
-  ];
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
 
   pythonImportsCheck = [ "pymorphy3" ];
 
-  meta = with lib; {
+  meta = {
     description = "Morphological analyzer/inflection engine for Russian and Ukrainian";
+    mainProgram = "pymorphy";
     homepage = "https://github.com/no-plagiarism/pymorphy3";
-    license = licenses.mit;
-    maintainers = with maintainers; [ jboy ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ jboy ];
   };
 }

@@ -1,50 +1,57 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, isPyPy
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  isPyPy,
 
-# propagates
-, markupsafe
+  # build-system
+  setuptools_80,
 
-# extras: Babel
-, babel
+  # propagates
+  markupsafe,
 
-# tests
-, mock
-, pytestCheckHook
-, lingua
-, chameleon
+  # optional-dependencies
+  babel,
+  lingua,
+
+  # tests
+  chameleon,
+  mock,
+  pytestCheckHook,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mako";
-  version = "1.2.4";
+  version = "1.3.12";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    pname = "Mako";
-    inherit version;
-    hash = "sha256-1go5A9w7sBoYrWqJzb4uTq3GnAvI7x43c7pT1Ew/ejQ=";
+  src = fetchFromGitHub {
+    owner = "sqlalchemy";
+    repo = "mako";
+    tag = "rel_${lib.replaceString "." "_" finalAttrs.version}";
+    hash = "sha256-YIMmP8CIGUlgnB8/96lR9yDvEZTES766dSN0vT0JfbM=";
   };
 
-  propagatedBuildInputs = [
-    markupsafe
-  ];
+  postPatch = ''
+    substituteInPlace setup.cfg \
+      --replace-fail "tag_build = dev" ""
+  '';
 
-  passthru.optional-dependencies = {
-    babel = [
-      babel
-    ];
+  build-system = [ setuptools_80 ];
+
+  dependencies = [ markupsafe ];
+
+  optional-dependencies = {
+    babel = [ babel ];
+    lingua = [ lingua ];
   };
 
   nativeCheckInputs = [
     chameleon
-    lingua
     mock
     pytestCheckHook
-  ] ++ passthru.optional-dependencies.babel;
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
 
   disabledTests = lib.optionals isPyPy [
     # https://github.com/sqlalchemy/mako/issues/315
@@ -56,12 +63,13 @@ buildPythonPackage rec {
     "test_bytestring_passthru"
   ];
 
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/sqlalchemy/mako/releases/tag/${finalAttrs.src.tag}";
     description = "Super-fast templating language";
+    mainProgram = "mako-render";
     homepage = "https://www.makotemplates.org/";
-    changelog = "https://docs.makotemplates.org/en/latest/changelog.html";
-    license = licenses.mit;
-    platforms = platforms.unix;
-    maintainers = with maintainers; [ domenkozar ];
+    license = lib.licenses.mit;
+    platforms = lib.platforms.unix;
+    maintainers = [ ];
   };
-}
+})

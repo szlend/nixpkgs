@@ -1,43 +1,44 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, fetchpatch, isPy311
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  isPyPy,
+  fetchFromGitHub,
+  setuptools,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "pyflakes";
-  version = "3.0.1";
+  version = "3.4.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  format = "setuptools";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-7IsnamtgvYDe/tJa3X5DmIHBnmSFCv2bNGKD1BZf0P0=";
+  src = fetchFromGitHub {
+    owner = "PyCQA";
+    repo = "pyflakes";
+    tag = version;
+    hash = "sha256-4UEJjn9Eey1vHeaG468x/nMlbfGu3ohZX1R7RR2R5ik=";
   };
 
-  patches = lib.optional isPy311 # could be made unconditional on rebuild
-    (fetchpatch {
-      name = "tests-py311.patch";
-      url = "https://github.com/PyCQA/pyflakes/commit/836631f2f73d45baa4021453d89fc9fd6f52be58.diff";
-      hash = "sha256-xlgql+bN0HsGnTMkwax3ZG/5wrbkUl/kQkjlr3lsgRw=";
-    })
-  ;
+  build-system = [ setuptools ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  disabledTests = lib.optionals isPyPy [
+    # https://github.com/PyCQA/pyflakes/issues/779
+    "test_eofSyntaxError"
+    "test_misencodedFileUTF16"
+    "test_misencodedFileUTF8"
+    "test_multilineSyntaxError"
   ];
 
   pythonImportsCheck = [ "pyflakes" ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/PyCQA/pyflakes";
-    changelog = "https://github.com/PyCQA/pyflakes/blob/${version}/NEWS.rst";
-    description = "A simple program which checks Python source files for errors";
-    license = licenses.mit;
-    maintainers = with maintainers; [ dotlambda ];
+    changelog = "https://github.com/PyCQA/pyflakes/blob/${src.tag}/NEWS.rst";
+    description = "Simple program which checks Python source files for errors";
+    mainProgram = "pyflakes";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

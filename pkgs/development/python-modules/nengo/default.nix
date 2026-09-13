@@ -1,23 +1,34 @@
-{ lib, fetchFromGitHub, buildPythonPackage
-, numpy
-, scipySupport ? false, scipy
-, scikitSupport ? false, scikit-learn
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+  setuptools,
+  numpy,
+  scipySupport ? false,
+  scipy,
+  scikitSupport ? false,
+  scikit-learn,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "nengo";
-  version = "3.2.0";
+  version = "4.1.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "nengo";
     repo = "nengo";
-    rev = "v${version}";
-    sha256 = "12lz8lzirxvwnpa74k9k48c64gs6gi092928rh97siya3i6gjs6i";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-yZDnttXU5qMmQwFESkhQb06BXcqPEiPYl54azS5b284=";
   };
 
-  propagatedBuildInputs = [ numpy ]
-    ++ lib.optionals scipySupport [ scipy ]
-    ++ lib.optionals scikitSupport [ scikit-learn ];
+  build-system = [ setuptools ];
+
+  dependencies = [
+    numpy
+  ]
+  ++ lib.optionals scipySupport [ scipy ]
+  ++ lib.optionals scikitSupport [ scikit-learn ];
 
   # checks req missing:
   #   pytest-allclose
@@ -27,10 +38,10 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "nengo" ];
 
-  meta = with lib; {
-    description = "A Python library for creating and simulating large-scale brain models";
-    homepage    = "https://nengo.ai/";
-    license     = licenses.unfreeRedistributable;
-    maintainers = with maintainers; [ arjix ];
+  meta = {
+    description = "Python library for creating and simulating large-scale brain models";
+    homepage = "https://nengo.ai/";
+    license = lib.licenses.gpl2Only;
+    maintainers = [ ];
   };
-}
+})

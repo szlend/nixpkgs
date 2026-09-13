@@ -1,37 +1,74 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, attrs
-, six
-, asn1crypto
-, python-dateutil
+{
+  lib,
+  asn1crypto,
+  attrs,
+  buildPythonPackage,
+  cryptodatahub,
+  fetchFromGitLab,
+  fetchpatch2,
+  pyfakefs,
+  setuptools,
+  setuptools-scm,
+  pytestCheckHook,
+  urllib3,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "cryptoparser";
-  version = "0.8.4";
+  version = "1.5.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-Sn4sfzu1Y1gC+4K9WdiZW92cYuVbUsBXcNbNQOv0BRw=";
+  src = fetchFromGitLab {
+    owner = "coroner";
+    repo = "cryptoparser";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-HlsjenwXFDOA1uK+sn1oDHWxbzxIDriWS6pcZycEsis=";
   };
 
-  propagatedBuildInputs = [
-    attrs
-    six
+  patches = [
+    (fetchpatch2 {
+      url = "https://gitlab.com/coroner/cryptoparser/-/merge_requests/2.diff";
+      hash = "sha256-T8dK6OMR41XUMrZ6B7ZybEtljZJOR2QbCiZl04dT3wA=";
+    })
+  ];
+
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
+
+  dependencies = [
     asn1crypto
-    python-dateutil
+    attrs
+    cryptodatahub
+    urllib3
   ];
 
-  pythonImportsCheck = [
-    "cryptoparser"
+  env.PYTHONDONTWRITEBYTECODE = 1;
+
+  nativeCheckInputs = [
+    pyfakefs
+    pytestCheckHook
   ];
 
-  meta = with lib; {
+  disabledTests = [
+    # pytest incorrectly collects abstract base classes
+    "TestCasesBasesHttpHeader"
+  ];
+
+  postInstall = ''
+    find $out -name __pycache__ -type d | xargs rm -rv
+  '';
+
+  pythonImportsCheck = [ "cryptoparser" ];
+
+  passthru.updateScript = ../cryptodatahub/update.sh;
+
+  meta = {
     description = "Security protocol parser and generator";
     homepage = "https://gitlab.com/coroner/cryptoparser";
-    changelog = "https://gitlab.com/coroner/cryptoparser/-/blob/v${version}/CHANGELOG.md";
-    license = licenses.mpl20;
-    maintainers = with maintainers; [ kranzes ];
+    changelog = "https://gitlab.com/coroner/cryptoparser/-/blob/${finalAttrs.src.tag}/CHANGELOG.rst";
+    license = lib.licenses.mpl20;
+    teams = with lib.teams; [ ngi ];
   };
-}
+})

@@ -1,50 +1,70 @@
-{ lib
-, buildPythonPackage
-, click
-, fetchPypi
-, pyyaml
-, rdflib
-, ply
-, xmltodict
-, pytestCheckHook
-, pythonOlder
-, uritools
+{
+  lib,
+  beartype,
+  buildPythonPackage,
+  click,
+  fetchFromGitHub,
+  license-expression,
+  ply,
+  pytestCheckHook,
+  pyyaml,
+  rdflib,
+  semantic-version,
+  setuptools,
+  setuptools-scm,
+  uritools,
+  xmltodict,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "spdx-tools";
-  version = "0.7.1";
-  format = "setuptools";
+  version = "0.8.5";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-l15tu6iPEFqKyyKr9T/pDw6dVjWiubH+SHeB6WliOxc=";
+  src = fetchFromGitHub {
+    owner = "spdx";
+    repo = "tools-python";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-dHR5Lx8KDmfQLS4I+6oO5kucEUXsFhAaHSPpxJbxlu4=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [
+    setuptools
+    setuptools-scm
+  ];
+
+  dependencies = [
+    beartype
     click
+    license-expression
     ply
     pyyaml
     rdflib
+    semantic-version
     uritools
     xmltodict
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  pythonImportsCheck = [ "spdx_tools.spdx" ];
+
+  disabledTestPaths = [
+    # Test depends on the currently not packaged pyshacl module
+    "tests/spdx3/validation/json_ld/test_shacl_validation.py"
   ];
 
-  pythonImportsCheck = [
-    "spdx"
+  disabledTests = [
+    # Missing files
+    "test_spdx2_convert_to_spdx3"
+    "test_json_writer"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "SPDX parser and tools";
     homepage = "https://github.com/spdx/tools-python";
-    changelog = "https://github.com/spdx/tools-python/blob/v${version}/CHANGELOG.md";
-    license = licenses.asl20;
-    maintainers = [ ];
+    changelog = "https://github.com/spdx/tools-python/blob/${finalAttrs.src.tag}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

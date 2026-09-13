@@ -1,39 +1,68 @@
-{ lib
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, sphinx
-, importlib-resources
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  packaging,
+  sphinx,
+  click,
+  myst-parser,
+  pytest-regressions,
+  pytestCheckHook,
+  sphinx-external-toc,
+  sphinxcontrib-bibtex,
+  texsoup,
+  defusedxml,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "sphinx-jupyterbook-latex";
-  version = "0.5.2";
-  format = "pyproject";
+  version = "1.0.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.6";
-
-  src = fetchPypi {
-    inherit version;
-    pname = "sphinx_jupyterbook_latex";
-    hash = "sha256-2h060Cj1XdvxC5Ewu58k/GDK+2ccvTnf2VU3qvyQly4=";
+  src = fetchFromGitHub {
+    owner = "executablebooks";
+    repo = "sphinx-jupyterbook-latex";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-ZTR+s6a/++xXrLMtfFRmSmAeMWa/1de12ukxfsx85g4=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.cfg \
-      --replace "sphinx>=4,<5.1" "sphinx"
-  '';
+  patches = [
+    # sphinx.testing.path.path was removed in Sphinx 8; use pathlib.Path.
+    ./sphinx-8-testing-path.patch
+  ];
 
-  propagatedBuildInputs = [ sphinx ]
-    ++ lib.optionals (pythonOlder "3.9") [ importlib-resources ];
+  nativeBuildInputs = [ flit-core ];
+
+  propagatedBuildInputs = [
+    packaging
+    sphinx
+  ];
+
+  nativeCheckInputs = [
+    click
+    myst-parser
+    pytest-regressions
+    pytestCheckHook
+    sphinx-external-toc
+    sphinxcontrib-bibtex
+    texsoup
+    defusedxml
+  ];
+
+  disabledTests = [
+    "test_jblatex_show_tocs"
+    "test_build_no_ext"
+    "test_build_with_ext"
+  ];
 
   pythonImportsCheck = [ "sphinx_jupyterbook_latex" ];
 
-  meta = with lib; {
+  meta = {
     description = "Latex specific features for jupyter book";
     homepage = "https://github.com/executablebooks/sphinx-jupyterbook-latex";
-    changelog = "https://github.com/executablebooks/sphinx-jupyterbook-latex/raw/v${version}/CHANGELOG.md";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ marsam ];
+    changelog = "https://github.com/executablebooks/sphinx-jupyterbook-latex/raw/v${finalAttrs.version}/CHANGELOG.md";
+    license = lib.licenses.bsd3;
+    maintainers = [ ];
   };
-}
+})

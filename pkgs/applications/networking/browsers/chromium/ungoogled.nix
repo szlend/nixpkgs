@@ -1,15 +1,17 @@
-{ stdenv
-, fetchFromGitHub
-, python3Packages
-, makeWrapper
-, patch
+{
+  stdenv,
+  fetchFromGitHub,
+  python3Packages,
+  makeWrapper,
+  patch,
 }:
 
-{ rev
-, sha256
+{
+  rev,
+  hash,
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "ungoogled-chromium";
 
   version = rev;
@@ -17,7 +19,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "ungoogled-software";
     repo = "ungoogled-chromium";
-    inherit rev sha256;
+    inherit rev hash;
   };
 
   dontBuild = true;

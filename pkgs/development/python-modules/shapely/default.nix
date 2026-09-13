@@ -1,50 +1,51 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, cython
-, geos
-, setuptools
-, numpy
-, pytestCheckHook
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+
+  cython,
+  geos,
+  numpy,
+  oldest-supported-numpy,
+  setuptools,
+  wheel,
 }:
 
 buildPythonPackage rec {
   pname = "shapely";
-  version = "2.0.1";
-  format = "pyproject";
+  version = "2.1.2";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-Zqaxo+cuzpf8hVNqKBR2+bd5TeLmRsqKRRfi48FEaJM=";
+  src = fetchFromGitHub {
+    owner = "shapely";
+    repo = "shapely";
+    tag = version;
+    hash = "sha256-tnnOJsAI3v52ngFOIUIkeDuRIu2JlZGuHreVv4W8LeE=";
   };
 
   nativeBuildInputs = [
     cython
     geos # for geos-config
+    oldest-supported-numpy
     setuptools
+    wheel
   ];
 
-  buildInputs = [
-    geos
-  ];
+  buildInputs = [ geos ];
 
-  propagatedBuildInputs = [
-    numpy
-  ];
+  dependencies = [ numpy ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
+  # Fix a ModuleNotFoundError. Investigated at:
+  # https://github.com/NixOS/nixpkgs/issues/255262
   preCheck = ''
-    rm -r shapely # prevent import of local shapely
+    cd $out
   '';
 
-  disabledTests = lib.optionals (stdenv.isDarwin && stdenv.isAarch64) [
+  disabledTests = lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) [
     # FIXME(lf-): these logging tests are broken, which is definitely our
     # fault. I've tried figuring out the cause and failed.
     #
@@ -57,11 +58,11 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "shapely" ];
 
-  meta = with lib; {
-    changelog = "https://github.com/shapely/shapely/blob/${version}/CHANGES.txt";
+  meta = {
+    changelog = "https://github.com/shapely/shapely/blob/${src.tag}/CHANGES.txt";
     description = "Manipulation and analysis of geometric objects";
     homepage = "https://github.com/shapely/shapely";
-    license = licenses.bsd3;
-    maintainers = teams.geospatial.members;
+    license = lib.licenses.bsd3;
+    teams = [ lib.teams.geospatial ];
   };
 }

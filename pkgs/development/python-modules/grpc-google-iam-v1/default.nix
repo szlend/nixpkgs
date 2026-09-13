@@ -1,33 +1,58 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, grpcio
-, googleapis-common-protos
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  gitUpdater,
+  googleapis-common-protos,
+  grpcio,
+  pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "grpc-google-iam-v1";
-  version = "0.12.6";
+  version = "0.14.4";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-K8S4/fIhFaZddRyTFzKTImAsObfIaiicm3LSKNlg718=";
+  src = fetchFromGitHub {
+    owner = "googleapis";
+    repo = "google-cloud-python";
+    tag = "grpc-google-iam-v1-v${version}";
+    hash = "sha256-i2t8qtF2czaP9vgGOUN9AjQ3XhLkk8g05FtXUdk/Vng=";
   };
 
-  propagatedBuildInputs = [ grpcio googleapis-common-protos ];
+  sourceRoot = "${src.name}/packages/grpc-google-iam-v1";
 
-  # no tests run
-  doCheck = false;
+  build-system = [ setuptools ];
+
+  dependencies = [
+    grpcio
+    googleapis-common-protos
+  ];
+
+  pythonRelaxDeps = [ "protobuf" ];
+
+  nativeCheckInputs = [ pytestCheckHook ];
 
   pythonImportsCheck = [
     "google.iam"
     "google.iam.v1"
   ];
 
-  meta = with lib; {
+  pytestFlags = [
+    "-Wignore::DeprecationWarning"
+  ];
+
+  passthru = {
+    skipBulkUpdate = true; # chooses tag for a different project
+    updateScript = gitUpdater { rev-prefix = "grpc-google-iam-v1-v"; };
+  };
+
+  meta = {
     description = "GRPC library for the google-iam-v1 service";
-    homepage = "https://github.com/googleapis/googleapis";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ SuperSandro2000 ];
+    homepage = "https://github.com/googleapis/google-cloud-python/tree/main/packages/grpc-google-iam-v1";
+    changelog = "https://github.com/googleapis/google-cloud-python/blob/${src.tag}/packages/grpc-google-iam-v1/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = [ ];
   };
 }

@@ -1,32 +1,41 @@
-{ buildPythonPackage
-, fetchFromGitHub
-, lib
-, dataproperty
-, mbstrdecoder
-, pathvalidate
-, setuptools
-, tabledata
-, tcolorpy
-, typepy
-, pytestCheckHook
-, pyyaml
-, toml
-, elasticsearch
-, dominate
+{
+  lib,
+  buildPythonPackage,
+  dataproperty,
+  dominate,
+  elasticsearch,
+  fetchFromGitHub,
+  loguru,
+  mbstrdecoder,
+  pandas,
+  pathvalidate,
+  pytestCheckHook,
+  pyyaml,
+  setuptools-scm,
+  simplejson,
+  tabledata,
+  tcolorpy,
+  toml,
+  typepy,
+  xlsxwriter,
+  xlwt,
 }:
 
 buildPythonPackage rec {
   pname = "pytablewriter";
-  version = "0.64.2";
+  version = "1.2.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "thombashi";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-+IOHnmdd9g3SoHyITJJtbJ0/SAAmwWmwX5XeqsO34EM=";
+    repo = "pytablewriter";
+    tag = "v${version}";
+    hash = "sha256-YuuSMKTSG3oybvA6TDWNnGg4EiDAw2tRlM0S9mBQlkc=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools-scm ];
+
+  dependencies = [
     dataproperty
     mbstrdecoder
     pathvalidate
@@ -35,23 +44,68 @@ buildPythonPackage rec {
     typepy
   ];
 
-  checkInputs = [ pyyaml toml elasticsearch dominate ];
-  nativeCheckInputs = [ pytestCheckHook ];
-  # Circular dependency
+  optional-dependencies = {
+    all = [
+      dominate
+      elasticsearch
+      loguru
+      pandas
+      # pytablereader
+      pyyaml
+      simplejson
+      toml
+      xlsxwriter
+      xlwt
+    ];
+    es = [ elasticsearch ];
+    es8 = [ elasticsearch ];
+    excel = [
+      xlwt
+      xlsxwriter
+    ];
+    html = [ dominate ];
+    logging = [ loguru ];
+    # from = [
+    #   pytablereader
+    # ];
+    pandas = [ pandas ];
+    # sqlite = [
+    #   simplesqlite
+    # ];
+    # theme = [
+    #   pytablewriter-altrow-theme
+    # ];
+    toml = [ toml ];
+    yaml = [ pyyaml ];
+  };
+
+  nativeCheckInputs = [
+    pytestCheckHook
+  ]
+  ++ lib.concatAttrValues optional-dependencies;
+
+  pythonImportsCheck = [ "pathvalidate" ];
+
   disabledTests = [
+    # Circular dependency
     "test_normal_from_file"
     "test_normal_from_text"
     "test_normal_clear_theme"
+    # Test compares CLI output
+    "test_normal"
   ];
+
   disabledTestPaths = [
     "test/writer/binary/test_excel_writer.py"
     "test/writer/binary/test_sqlite_writer.py"
+    "test/writer/test_elasticsearch_writer.py"
   ];
 
-  meta = with lib; {
+  meta = {
+    description = "Library to write a table in various formats";
     homepage = "https://github.com/thombashi/pytablewriter";
-    description = "A library to write a table in various formats";
-    maintainers = with maintainers; [ genericnerdyusername ];
-    license = licenses.mit;
+    changelog = "https://github.com/thombashi/pytablewriter/releases/tag/${src.tag}";
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

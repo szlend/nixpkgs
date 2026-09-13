@@ -1,46 +1,79 @@
-{ stdenv
-, lib
-, fetchFromGitHub
-, gfortran
-, cmake
-, mctc-lib
-, mstore
-, toml-f
-, blas
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  gfortran,
+  meson,
+  ninja,
+  cmake,
+  pkg-config,
+  mctc-lib,
+  mstore,
+  toml-f,
+  blas,
+  buildType ? "meson",
 }:
 
 assert !blas.isILP64;
+assert (
+  builtins.elem buildType [
+    "meson"
+    "cmake"
+  ]
+);
 
 stdenv.mkDerivation rec {
   pname = "simple-dftd3";
-  version = "0.7.0";
+  version = "1.6.0";
 
   src = fetchFromGitHub {
     owner = "dftd3";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-5OvmMgjD8ujjKHkuw4NT8hEXKh5YPxuBl/Mu6g2/KIA=";
+    repo = "simple-dftd3";
+    tag = "v${version}";
+    hash = "sha256-THl8sUY7pLxFz4mY7FMj/c1hwzqLaaNNMq0qkxWkUzw=";
   };
 
-  nativeBuildInputs = [ cmake gfortran ];
+  patches = [
+    ./cmake.patch
+  ];
 
-  buildInputs = [ mctc-lib mstore toml-f blas ];
+  nativeBuildInputs = [
+    gfortran
+    pkg-config
+  ]
+  ++ lib.optionals (buildType == "meson") [
+    meson
+    ninja
+  ]
+  ++ lib.optional (buildType == "cmake") cmake;
 
-  postInstall = ''
-    substituteInPlace $out/lib/pkgconfig/s-dftd3.pc \
-      --replace "''${prefix}/" ""
-  '';
+  buildInputs = [
+    mctc-lib
+    mstore
+    toml-f
+    blas
+  ];
+
+  outputs = [
+    "out"
+    "dev"
+  ];
+
+  cmakeFlags = [
+    (lib.strings.cmakeBool "BUILD_SHARED_LIBS" (!stdenv.hostPlatform.isStatic))
+  ];
 
   doCheck = true;
-  preCheck = ''
-    export OMP_NUM_THREADS=2
-  '';
 
-  meta = with lib; {
+  meta = {
     description = "Reimplementation of the DFT-D3 program";
-    license = with licenses; [ lgpl3Only gpl3Only ];
+    mainProgram = "s-dftd3";
+    license = with lib.licenses; [
+      lgpl3Only
+      gpl3Only
+    ];
     homepage = "https://github.com/dftd3/simple-dftd3";
-    platforms = [ "x86_64-linux" ];
-    maintainers = [ maintainers.sheepforce ];
+    platforms = lib.platforms.linux;
+    maintainers = [ lib.maintainers.sheepforce ];
   };
 }

@@ -1,19 +1,20 @@
-{ lib
-, buildDunePackage
-, fetchFromGitHub
-, fetchpatch
-, angstrom
-, cmdliner
-, core
-, core_bench
-, core_unix ? null
-, js_of_ocaml
-, js_of_ocaml-ppx
-, ppx_deriving_yojson
-, uri
-, yojson
-, lwt
-, xmlm
+{
+  lib,
+  buildDunePackage,
+  fetchFromGitHub,
+  fetchpatch,
+  angstrom,
+  cmdliner,
+  core,
+  core_bench,
+  core_unix ? null,
+  js_of_ocaml,
+  js_of_ocaml-ppx,
+  ppx_deriving_yojson,
+  uri,
+  yojson,
+  lwt,
+  xmlm,
 }:
 let
   angstrom' = angstrom.overrideAttrs (attrs: {
@@ -27,9 +28,9 @@ let
   });
   uri' = uri.override { angstrom = angstrom'; };
 in
-buildDunePackage rec {
+buildDunePackage (finalAttrs: {
   pname = "mldoc";
-  version = "1.5.6";
+  version = "1.5.8";
 
   minimalOCamlVersion = "4.10";
 
@@ -38,8 +39,8 @@ buildDunePackage rec {
   src = fetchFromGitHub {
     owner = "logseq";
     repo = "mldoc";
-    rev = "2a700b2e4797e47505f423fd47dc07372bd7b04e"; # version not tagged
-    hash = "sha256-OS06fb/Nz8grztFEVwWiqsQQt2PQjqcgQFxQuAEYC54=";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-7uuNUFMSQEgakTKfpYixp43gnfpQSW++snBzgr0Ni0Y=";
   };
 
   buildInputs = [
@@ -60,10 +61,10 @@ buildDunePackage rec {
     xmlm
   ];
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/logseq/mldoc";
     description = "Another Emacs Org-mode and Markdown parser";
-    license = licenses.agpl3Only;
-    maintainers = with maintainers; [ marsam ];
+    license = lib.licenses.agpl3Only;
+    maintainers = [ ];
   };
-}
+})

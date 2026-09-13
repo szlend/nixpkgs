@@ -1,17 +1,16 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, inform
-, pythonOlder
-, sly
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  flit-core,
+  inform,
+  sly,
 }:
 
 buildPythonPackage rec {
   pname = "quantiphy-eval";
   version = "0.5";
-  format = "flit";
-
-  disabled = pythonOlder "3.6";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "KenKundert";
@@ -19,6 +18,8 @@ buildPythonPackage rec {
     rev = "v${version}";
     hash = "sha256-7VHcuINhe17lRNkHUnZkVOEtD6mVWk5gu0NbrLZwprg=";
   };
+
+  nativeBuildInputs = [ flit-core ];
 
   propagatedBuildInputs = [
     inform
@@ -38,11 +39,11 @@ buildPythonPackage rec {
   #   "quantiphy_eval"
   # ];
 
-  meta = with lib; {
+  meta = {
     description = "QuantiPhy support for evals in-line";
     homepage = "https://github.com/KenKundert/quantiphy_eval/";
     changelog = "https://github.com/KenKundert/quantiphy_eval/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ jpetrucciani ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ jpetrucciani ];
   };
 }

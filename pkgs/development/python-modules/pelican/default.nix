@@ -1,41 +1,49 @@
-{ lib
-, beautifulsoup4
-, blinker
-, buildPythonPackage
-, docutils
-, feedgenerator
-, fetchFromGitHub
-, git
-, glibcLocales
-, jinja2
-, lxml
-, markdown
-, markupsafe
-, mock
-, pytestCheckHook
-, pandoc
-, pillow
-, pygments
-, python-dateutil
-, pythonOlder
-, pytz
-, rich
-, pytest-xdist
-, six
-, typogrify
-, unidecode
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  pdm-backend,
+
+  # native dependencies
+  glibcLocales,
+  git,
+  pandoc,
+  typogrify,
+
+  # dependencies
+  blinker,
+  docutils,
+  feedgenerator,
+  jinja2,
+  markdown,
+  ordered-set,
+  pygments,
+  python-dateutil,
+  rich,
+  tzdata,
+  unidecode,
+  watchfiles,
+
+  # tests
+  beautifulsoup4,
+  lxml,
+  mock,
+  pytestCheckHook,
+  pytest-xdist,
 }:
 
 buildPythonPackage rec {
   pname = "pelican";
-  version = "4.8.0";
-  disabled = pythonOlder "3.6";
+  version = "4.12.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "getpelican";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-T+XBRBfroG1gh9ZHU7V5wsgnI1xuNTXYAe6g5Xk8Qyg=";
+    repo = "pelican";
+    tag = version;
+    hash = "sha256-g/wm4ZA4KBMnvpe58ZQ7lTUBF6PywC4IivmBBco4F00=";
     # Remove unicode file names which leads to different checksums on HFS+
     # vs. other filesystems because of unicode normalisation.
     postFetch = ''
@@ -43,46 +51,49 @@ buildPythonPackage rec {
     '';
   };
 
+  postPatch = ''
+    substituteInPlace pelican/tests/test_pelican.py \
+      --replace-fail "\"git\"" "'${git}/bin/git'"
+  '';
+
+  build-system = [ pdm-backend ];
+
+  pythonRelaxDeps = [ "pygments" ];
+
   buildInputs = [
     glibcLocales
     pandoc
     git
-    mock
     markdown
     typogrify
   ];
 
-  propagatedBuildInputs = [
-    beautifulsoup4
+  dependencies = [
     blinker
     docutils
     feedgenerator
     jinja2
-    lxml
-    markupsafe
-    pillow
+    ordered-set
     pygments
     python-dateutil
-    pytz
     rich
-    six
+    tzdata
     unidecode
+    watchfiles
   ];
+
+  optional-dependencies = {
+    markdown = [ markdown ];
+  };
 
   nativeCheckInputs = [
+    beautifulsoup4
+    git
+    lxml
+    mock
+    pandoc
     pytest-xdist
     pytestCheckHook
-    pandoc
-  ];
-
-  postPatch = ''
-    substituteInPlace pelican/tests/test_pelican.py \
-      --replace "'git'" "'${git}/bin/git'"
-  '';
-
-  pytestFlagsArray = [
-    # DeprecationWarning: 'jinja2.Markup' is deprecated and...
-    "-W ignore::DeprecationWarning"
   ];
 
   disabledTests = [
@@ -92,7 +103,7 @@ buildPythonPackage rec {
     "test_custom_locale_generation_works"
   ];
 
-  LC_ALL = "en_US.UTF-8";
+  env.LC_ALL = "en_US.UTF-8";
 
   # We only want to patch shebangs in /bin, and not those
   # of the project scripts that are created by Pelican.
@@ -105,10 +116,13 @@ buildPythonPackage rec {
 
   pythonImportsCheck = [ "pelican" ];
 
-  meta = with lib; {
+  meta = {
     description = "Static site generator that requires no database or server-side logic";
     homepage = "https://getpelican.com/";
-    license = licenses.agpl3;
-    maintainers = with maintainers; [ offline prikhi ];
+    changelog = "https://github.com/getpelican/pelican/blob/${src.tag}/docs/changelog.rst";
+    license = lib.licenses.agpl3Only;
+    maintainers = with lib.maintainers; [
+      prikhi
+    ];
   };
 }

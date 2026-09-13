@@ -1,38 +1,33 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, click
-, click-default-group
-, incremental
-, jinja2
-, mock
-, pytestCheckHook
-, toml
-, twisted
-, setuptools
-, git # shells out to git
+{
+  lib,
+  buildPythonPackage,
+  click,
+  fetchPypi,
+  git, # shells out to git
+  hatchling,
+  incremental,
+  jinja2,
+  mock,
+  pytestCheckHook,
+  twisted,
 }:
 
 buildPythonPackage rec {
   pname = "towncrier";
-  version = "22.12.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "25.8.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-nEnX519kaprqAq6QTAvBY5yP0UoBKS0rEjuNMHVkA00=";
+    hash = "sha256-7vFtKfgxrVers64yoFZXOYZiGfHr+90pfTKJTrmUDrE=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ hatchling ];
+
+  dependencies = [
     click
-    click-default-group
     incremental
     jinja2
-    toml
-    setuptools
   ];
 
   preCheck = ''
@@ -46,15 +41,14 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "towncrier"
-  ];
+  pythonImportsCheck = [ "towncrier" ];
 
-  meta = with lib; {
+  meta = {
     description = "Utility to produce useful, summarised news files";
     homepage = "https://github.com/twisted/towncrier/";
     changelog = "https://github.com/twisted/towncrier/blob/${version}/NEWS.rst";
-    license = licenses.mit;
-    maintainers = with maintainers; [ ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
+    mainProgram = "towncrier";
   };
 }

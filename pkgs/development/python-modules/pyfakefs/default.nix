@@ -1,44 +1,70 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchPypi
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+
+  # build-system
+  setuptools,
+
+  # tests
+  pytestCheckHook,
+
+  # extra tests
+  openpyxl,
+  pandas,
+  xlrd,
 }:
+let
+  self = buildPythonPackage (finalAttrs: {
+    pname = "pyfakefs";
+    version = "6.2.0";
+    pyproject = true;
 
-buildPythonPackage rec {
-  version = "5.1.0";
-  pname = "pyfakefs";
-  disabled = pythonOlder "3.5";
+    src = fetchPypi {
+      inherit (finalAttrs) pname version;
+      hash = "sha256-5Zo220R79QnOnJerPRUQwIzFGJXFMRMlpWCl5bXcGUA=";
+    };
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-MWxgJmQNFKa0+95x/ZZ0V20bVxDe2o+r3oqtUdeF28M=";
-  };
+    build-system = [ setuptools ];
 
-  postPatch = ''
-    # test doesn't work in sandbox
-    substituteInPlace pyfakefs/tests/fake_filesystem_test.py \
-      --replace "test_expand_root" "notest_expand_root"
-    substituteInPlace pyfakefs/tests/fake_os_test.py \
-      --replace "test_path_links_not_resolved" "notest_path_links_not_resolved" \
-      --replace "test_append_mode_tell_linux_windows" "notest_append_mode_tell_linux_windows"
-  '' + (lib.optionalString stdenv.isDarwin ''
-    # this test fails on darwin due to case-insensitive file system
-    substituteInPlace pyfakefs/tests/fake_os_test.py \
-      --replace "test_rename_dir_to_existing_dir" "notest_rename_dir_to_existing_dir"
-  '');
+    pythonImportsCheck = [ "pyfakefs" ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
-  # https://github.com/jmcgeheeiv/pyfakefs/issues/581 (OSError: [Errno 9] Bad file descriptor)
-  disabledTests = [ "test_open_existing_pipe" ];
-  pythonImportsCheck = [ "pyfakefs" ];
+    nativeCheckInputs = [
+      pytestCheckHook
+    ];
 
-  meta = with lib; {
-    description = "Fake file system that mocks the Python file system modules";
-    homepage = "http://pyfakefs.org/";
-    changelog = "https://github.com/jmcgeheeiv/pyfakefs/blob/master/CHANGES.md";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ gebner ];
-  };
-}
+    enabledTestPaths = [
+      "pyfakefs/tests"
+    ];
+
+    disabledTests = [
+      "test_expand_root"
+    ]
+    ++ (lib.optionals stdenv.hostPlatform.isDarwin [
+      # this test fails on darwin due to case-insensitive file system
+      "test_rename_dir_to_existing_dir"
+    ]);
+
+    # Keep the big pandas 'extra' dependency outside the standard build: providing it enables only two additional tests
+    # The other two members of the 'extra' group (xlrd and openpyxl) enable two more tests
+    passthru.tests.extra = self.overridePythonAttrs (prevPythonAttrs: {
+      nativeCheckInputs = prevPythonAttrs.nativeCheckInputs ++ [
+        pandas
+        xlrd
+        openpyxl
+      ];
+    });
+
+    __structuredAttrs = true;
+
+    meta = {
+      description = "Fake file system that mocks the Python file system modules";
+      homepage = "https://pyfakefs.org/";
+      changelog = "https://github.com/jmcgeheeiv/pyfakefs/blob/v${finalAttrs.version}/CHANGES.md";
+      license = lib.licenses.asl20;
+      maintainers = [ ];
+    };
+  });
+in
+self

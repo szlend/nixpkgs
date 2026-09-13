@@ -1,29 +1,25 @@
-{ lib
-, bleak
-, bleak-retry-connector
-, buildPythonPackage
-, cryptography
-, fetchPypi
-, poetry-core
-, pythonOlder
+{
+  lib,
+  bleak,
+  bleak-retry-connector,
+  buildPythonPackage,
+  cryptography,
+  fetchPypi,
+  poetry-core,
 }:
 
 buildPythonPackage rec {
   pname = "eufylife-ble-client";
-  version = "0.1.7";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "0.1.10";
+  pyproject = true;
 
   src = fetchPypi {
     pname = "eufylife_ble_client";
     inherit version;
-    hash = "sha256-Vt9hHUVAM0d+BcotPUD9v8jXrcg7lEDVChLENUHd3rY=";
+    hash = "sha256-hfUsFifkwr5qhYM6Otlxo4AAGu967p/eWCR+yBrC4eM=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  nativeBuildInputs = [ poetry-core ];
 
   propagatedBuildInputs = [
     bleak
@@ -34,14 +30,12 @@ buildPythonPackage rec {
   # Module has no tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "eufylife_ble_client"
-  ];
+  pythonImportsCheck = [ "eufylife_ble_client" ];
 
-  meta = with lib; {
+  meta = {
     description = "Module for parsing data from Eufy smart scales";
     homepage = "https://github.com/bdr99/eufylife-ble-client";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
 }

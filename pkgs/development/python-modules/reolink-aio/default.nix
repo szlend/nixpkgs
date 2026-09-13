@@ -1,71 +1,47 @@
-{ lib
-, aiohttp
-, aiounittest
-, buildPythonPackage
-, fetchFromGitHub
-, ffmpeg-python
-, pytestCheckHook
-, pythonOlder
-, requests
+{
+  lib,
+  aiohttp,
+  aiortsp,
+  buildPythonPackage,
+  fetchFromGitHub,
+  orjson,
+  pycryptodomex,
+  setuptools,
+  typing-extensions,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "reolink-aio";
-  version = "0.7.2";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.9";
+  version = "0.21.16";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "starkillerOG";
     repo = "reolink_aio";
-    rev = "refs/tags/${version}";
-    hash = "sha256-JW7dv/MwOOZqN2Vrg6FVhsFyZ3BWN2oVGmRn9cSNWs0=";
+    tag = finalAttrs.version;
+    hash = "sha256-aTPXma80N8LZCaI1Jn9gOribVYIGn/tny7VRATFf7wM=";
   };
 
-  postPatch = ''
-    # Packages in nixpkgs is different than the module name
-    substituteInPlace setup.py \
-      --replace "ffmpeg" "ffmpeg-python"
-  '';
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     aiohttp
-    ffmpeg-python
-    requests
+    aiortsp
+    orjson
+    pycryptodomex
+    typing-extensions
   ];
 
-  doCheck = false; # all testse require a network device
+  pythonImportsCheck = [ "reolink_aio" ];
 
-  nativeCheckInputs = [
-    aiounittest
-    pytestCheckHook
-  ];
+  # All tests require a network device
+  doCheck = false;
 
-  pytestFlagsArray = [
-    "tests/test.py"
-  ];
-
-  disabledTests = [
-    # Tests require network access
-    "test1_settings"
-    "test2_states"
-    "test3_images"
-    "test4_properties"
-    "test_succes"
-    "test_wrong_host"
-    "test_wrong_password"
-    "test_wrong_user"
-  ];
-
-  pythonImportsCheck = [
-    "reolink_aio"
-  ];
-
-  meta = with lib; {
+  meta = {
     description = "Module to interact with the Reolink IP camera API";
     homepage = "https://github.com/starkillerOG/reolink_aio";
-    changelog = "https://github.com/starkillerOG/reolink_aio/releases/tag/${version}";
-    license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/starkillerOG/reolink_aio/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

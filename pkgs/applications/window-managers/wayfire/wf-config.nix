@@ -1,25 +1,26 @@
-{ stdenv
-, lib
-, fetchFromGitHub
-, cmake
-, meson
-, ninja
-, pkg-config
-, doctest
-, glm
-, libevdev
-, libxml2
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  cmake,
+  meson,
+  ninja,
+  pkg-config,
+  doctest,
+  glm,
+  libevdev,
+  libxml2,
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "wf-config";
-  version = "0.7.1";
+  version = "0.10.0";
 
   src = fetchFromGitHub {
     owner = "WayfireWM";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "sha256-ADUBvDJcPYEB9ZvaFIgTfemo1WYwiWgCWX/z2yrEPtA=";
+    repo = "wf-config";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-WcGt6yl2LpLnAOVtiCyMyWsoMAUMG1MYhvW/m2DDMX4=";
   };
 
   nativeBuildInputs = [
@@ -39,10 +40,14 @@ stdenv.mkDerivation rec {
 
   nativeCheckInputs = [
     cmake
+  ];
+  checkInputs = [
     doctest
   ];
   # CMake is just used for finding doctest.
   dontUseCmakeConfigure = true;
+
+  strictDeps = true;
 
   mesonFlags = [
     (lib.mesonEnable "tests" (stdenv.buildPlatform.canExecute stdenv.hostPlatform))
@@ -50,11 +55,15 @@ stdenv.mkDerivation rec {
 
   doCheck = true;
 
-  meta = with lib; {
+  meta = {
     homepage = "https://github.com/WayfireWM/wf-config";
     description = "Library for managing configuration files, written for Wayfire";
-    license = licenses.mit;
-    maintainers = with maintainers; [ qyliss wucke13 rewine ];
-    platforms = platforms.unix;
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [
+      teatwig
+      wucke13
+      wineee
+    ];
+    platforms = lib.platforms.unix;
   };
-}
+})

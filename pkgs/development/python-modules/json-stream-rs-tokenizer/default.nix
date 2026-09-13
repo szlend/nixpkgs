@@ -1,69 +1,65 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, fetchFromGitHub
-, rustPlatform
-, cargo
-, darwin
-, rustc
-, setuptools-rust
-, json-stream-rs-tokenizer
-, json-stream
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  cargo,
+  libiconv,
+  fetchFromGitHub,
+  json-stream,
+  json-stream-rs-tokenizer,
+  rustc,
+  rustPlatform,
+  setuptools,
+  setuptools-rust,
+  wheel,
 }:
 
 buildPythonPackage rec {
   pname = "json-stream-rs-tokenizer";
-  version = "0.4.16";
-  format = "setuptools";
+  version = "0.5.1";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "smheidrich";
     repo = "py-json-stream-rs-tokenizer";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-MnYkCAI8x65kU0EoTRf4ZVsbjNravjokepX4yViu7go=";
+    tag = "v${version}";
+    hash = "sha256-D18nMRyCDr2NGBkdo7Lq8gaaMiOXwZAob4DymZwFvW0=";
   };
 
-  postPatch = ''
-    cp ${./Cargo.lock} ./Cargo.lock
-  '';
-
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src postPatch;
-    name = "${pname}-${version}";
-    hash = "sha256-HwWH8/UWKWOdRmyCVQtNqJxXD55f6zxLY0LhR7JU9ro=";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit pname version src;
+    hash = "sha256-IPQrqayhyQ/gmT6nK+TgDcUQ4mPrG9yiJJk6enBzybA=";
   };
 
   nativeBuildInputs = [
-    setuptools-rust
-    rustPlatform.cargoSetupHook
     cargo
+    rustPlatform.cargoSetupHook
     rustc
+    setuptools
+    setuptools-rust
+    wheel
   ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [
-    darwin.libiconv
-  ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ libiconv ];
 
   # Tests depend on json-stream, which depends on this package.
   # To avoid infinite recursion, we only enable tests when building passthru.tests.
   doCheck = false;
 
-  checkInputs = [
-    json-stream
-  ];
+  checkInputs = [ json-stream ];
 
-  pythonImportsCheck = [
-    "json_stream_rs_tokenizer"
-  ];
+  pythonImportsCheck = [ "json_stream_rs_tokenizer" ];
 
   passthru.tests = {
-    runTests = json-stream-rs-tokenizer.overrideAttrs (_: { doCheck = true; });
+    runTests = json-stream-rs-tokenizer.overrideAttrs (_: {
+      doCheck = true;
+    });
   };
 
-  meta = with lib; {
-    description = "A faster tokenizer for the json-stream Python library";
+  meta = {
+    description = "Faster tokenizer for the json-stream Python library";
     homepage = "https://github.com/smheidrich/py-json-stream-rs-tokenizer";
-    license = licenses.mit;
-    maintainers = with maintainers; [ winter ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ winter ];
   };
 }

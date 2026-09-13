@@ -1,37 +1,41 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, installShellFiles
-, setuptools
-, docopt
-, hidapi
-, pyusb
-, smbus-cffi
-, i2c-tools
-, pytestCheckHook
-, colorlog
-, crcmod
-, pillow
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  installShellFiles,
+  setuptools,
+  setuptools-scm,
+  wheel,
+  docopt,
+  hidapi,
+  pyusb,
+  smbus-cffi,
+  i2c-tools,
+  pytestCheckHook,
+  colorlog,
+  crcmod,
+  pillow,
+  udevCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "liquidctl";
-  version = "1.12.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "1.16.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-0QjgnTxqB50JNjSUAgBrGyhN2XC/TDYiC1tvhw1Bl1M=";
+    owner = "liquidctl";
+    repo = "liquidctl";
+    tag = "v${version}";
+    hash = "sha256-NN/LPcRwj1c9xIIBmNCSLkb+8LHPIqH/YuLPm3kxqEQ=";
   };
 
   nativeBuildInputs = [
     installShellFiles
     setuptools
+    setuptools-scm
+    wheel
+    udevCheckHook
   ];
 
   propagatedBuildInputs = [
@@ -45,9 +49,7 @@ buildPythonPackage rec {
     pillow
   ];
 
-  propagatedNativeBuildInputs = [
-    smbus-cffi
-  ];
+  propagatedNativeBuildInputs = [ smbus-cffi ];
 
   outputs = [
     "out"
@@ -62,24 +64,23 @@ buildPythonPackage rec {
     cp extra/linux/71-liquidctl.rules $out/lib/udev/rules.d/.
   '';
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   postBuild = ''
     # needed for pythonImportsCheck
     export XDG_RUNTIME_DIR=$TMPDIR
   '';
 
-  pythonImportsCheck = [
-    "liquidctl"
-  ];
+  pythonImportsCheck = [ "liquidctl" ];
 
-  meta = with lib; {
+  meta = {
     description = "Cross-platform CLI and Python drivers for AIO liquid coolers and other devices";
     homepage = "https://github.com/liquidctl/liquidctl";
-    changelog = "https://github.com/liquidctl/liquidctl/blob/v${version}/CHANGELOG.md";
-    license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ arturcygan evils ];
+    changelog = "https://github.com/liquidctl/liquidctl/blob/${src.tag}/CHANGELOG.md";
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [
+      arturcygan
+    ];
+    mainProgram = "liquidctl";
   };
 }

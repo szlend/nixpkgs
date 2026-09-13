@@ -1,23 +1,21 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pytestCheckHook
-, pytest-asyncio
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  pytest-asyncio,
 }:
 
 buildPythonPackage rec {
   pname = "sanic-routing";
-  version = "22.8.0";
+  version = "23.12.0";
   format = "setuptools";
-
-  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "sanic-org";
     repo = "sanic-routing";
-    rev = "refs/tags/v${version}";
-    hash = "sha256-2T6WY0nzvr8Q9lBoStzmX7m7Ct35lcG53OSLcqxkEcY=";
+    tag = "v${version}";
+    hash = "sha256-IUubPd6mqtCfY4ruI/8wkFcAcS0xXHWbe9RzDac5kRc=";
   };
 
   nativeCheckInputs = [
@@ -25,15 +23,13 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "sanic_routing"
-  ];
+  pythonImportsCheck = [ "sanic_routing" ];
 
-  meta = with lib; {
+  meta = {
     description = "Core routing component for the Sanic web framework";
     homepage = "https://github.com/sanic-org/sanic-routing";
     changelog = "https://github.com/sanic-org/sanic-routing/releases/tag/v${version}";
-    license = licenses.mit;
-    maintainers = with maintainers; [ AluisioASG ];
+    license = lib.licenses.mit;
+    maintainers = [ ];
   };
 }

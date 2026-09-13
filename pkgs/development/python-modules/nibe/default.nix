@@ -1,38 +1,38 @@
-{ lib
-, aiohttp
-, aresponses
-, async-modbus
-, async-timeout
-, buildPythonPackage
-, construct
-, exceptiongroup
-, fetchFromGitHub
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
-, setuptools
-, tenacity
+{
+  lib,
+  aresponses,
+  async-modbus,
+  async-timeout,
+  asyncclick,
+  buildPythonPackage,
+  construct,
+  exceptiongroup,
+  fetchFromGitHub,
+  pandas,
+  pytest-asyncio,
+  pytestCheckHook,
+  python-slugify,
+  setuptools,
+  tenacity,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "nibe";
-  version = "2.2.0";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.9";
+  version = "2.24.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "yozik04";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-wuW8No3G+l5rG2xoqBi1lhIcqqgfrQ5CrkaEtSct38k=";
+    repo = "nibe";
+    tag = finalAttrs.version;
+    hash = "sha256-LIGwxo82UrPXC6qh7pvhnhAbC5XzDPADFun5rADDASo=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  pythonRelaxDeps = [ "async-modbus" ];
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     async-modbus
     async-timeout
     construct
@@ -40,21 +40,28 @@ buildPythonPackage rec {
     tenacity
   ];
 
+  optional-dependencies = {
+    convert = [
+      pandas
+      python-slugify
+    ];
+    cli = [ asyncclick ];
+  };
+
   nativeCheckInputs = [
     aresponses
     pytest-asyncio
     pytestCheckHook
-  ];
+  ]
+  ++ lib.flatten (builtins.attrValues finalAttrs.passthru.optional-dependencies);
 
-  pythonImportsCheck = [
-    "nibe"
-  ];
+  pythonImportsCheck = [ "nibe" ];
 
-  meta = with lib; {
+  meta = {
     description = "Library for the communication with Nibe heatpumps";
     homepage = "https://github.com/yozik04/nibe";
-    changelog = "https://github.com/yozik04/nibe/releases/tag/${version}";
-    license = with licenses; [ gpl3Plus ];
-    maintainers = with maintainers; [ fab ];
+    changelog = "https://github.com/yozik04/nibe/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.gpl3Plus;
+    maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

@@ -1,107 +1,146 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pydantic
-, starlette
-, pytestCheckHook
-, pytest-asyncio
-, aiosqlite
-, databases
-, flask
-, httpx
-, hatchling
-, orjson
-, passlib
-, peewee
-, python-jose
-, sqlalchemy
-, trio
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  pdm-backend,
+
+  # dependencies
+  annotated-doc,
+  starlette,
+  pydantic,
+  typing-extensions,
+  typing-inspection,
+
+  # tests
+  anyio,
+  a2wsgi,
+  dirty-equals,
+  flask,
+  httpx2,
+  inline-snapshot,
+  pwdlib,
+  pyjwt,
+  pytest-xdist,
+  pytest-timeout,
+  pytestCheckHook,
+
+  # optional-dependencies
+  fastapi-cli,
+  httpx,
+  jinja2,
+  itsdangerous,
+  python-multipart,
+  pyyaml,
+  email-validator,
+  uvicorn,
+  pydantic-settings,
+  pydantic-extra-types,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "fastapi";
-  version = "0.95.1";
-  format = "pyproject";
-
-  disabled = pythonOlder "3.7";
+  version = "0.141.1";
+  pyproject = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "tiangolo";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-y6mP2w2d2oabM9bLtWRO/AdRA46LNhVrMB/0qxGxH7I=";
+    repo = "fastapi";
+    tag = finalAttrs.version;
+    hash = "sha256-5P9aDMS7gLti2CBlrucvjgl4Od1mti9ityPdqxI1RIM=";
   };
 
-  nativeBuildInputs = [
-    hatchling
-  ];
+  build-system = [ pdm-backend ];
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace '"databases[sqlite] >=0.3.2,<0.7.0",' "" \
-      --replace "starlette==" "starlette>="
-  '';
-
-  propagatedBuildInputs = [
+  dependencies = [
+    annotated-doc
     starlette
     pydantic
+    typing-extensions
+    typing-inspection
   ];
 
-  nativeCheckInputs = [
-    aiosqlite
-    # databases FIXME incompatible with SQLAlchemy 2.0
-    flask
-    httpx
-    orjson
-    passlib
-    peewee
-    python-jose
-    pytestCheckHook
-    pytest-asyncio
-    sqlalchemy
-    trio
-  ]
-  ++ passlib.optional-dependencies.bcrypt
-  ++ pydantic.optional-dependencies.email;
+  optional-dependencies = {
+    all = [
+      fastapi-cli
+      httpx
+      jinja2
+      python-multipart
+      itsdangerous
+      pyyaml
+      email-validator
+      uvicorn
+      pydantic-settings
+      pydantic-extra-types
+    ]
+    ++ fastapi-cli.optional-dependencies.standard
+    ++ uvicorn.optional-dependencies.standard;
+    standard = [
+      fastapi-cli
+      # FIXME package fastar
+      httpx
+      jinja2
+      python-multipart
+      email-validator
+      uvicorn
+      pydantic-settings
+      pydantic-extra-types
+    ]
+    ++ fastapi-cli.optional-dependencies.standard
+    ++ uvicorn.optional-dependencies.standard;
+    standard-no-fastapi-cloud-cli = [
+      fastapi-cli
+      httpx
+      jinja2
+      python-multipart
+      email-validator
+      uvicorn
+      pydantic-settings
+      pydantic-extra-types
+    ]
+    ++ fastapi-cli.optional-dependencies.standard-no-fastapi-cloud-cli
+    ++ uvicorn.optional-dependencies.standard;
+  };
 
-  pytestFlagsArray = [
-    # ignoring deprecation warnings to avoid test failure from
-    # tests/test_tutorial/test_testing/test_tutorial001.py
-    "-W ignore::DeprecationWarning"
+  nativeCheckInputs = [
+    a2wsgi
+    anyio
+    a2wsgi
+    dirty-equals
+    flask
+    httpx2
+    inline-snapshot
+    pwdlib
+    pyjwt
+    pytestCheckHook
+    pytest-xdist
+    pytest-timeout
+  ]
+  ++ anyio.optional-dependencies.trio
+  ++ finalAttrs.finalPackage.passthru.optional-dependencies.all;
+
+  disabledTests = [
+    # Coverage test
+    "test_fastapi_cli"
   ];
 
   disabledTestPaths = [
-    # Disabled tests require orjson which requires rust nightly
-    "tests/test_default_response_class.py"
     # Don't test docs and examples
     "docs_src"
-    # databases is incompatible with SQLAlchemy 2.0
-    "tests/test_tutorial/test_async_sql_databases"
-    "tests/test_tutorial/test_sql_databases"
+    "tests/test_tutorial"
+    # Infinite recursion with strawberry-graphql
+    "tests/test_tutorial/test_graphql/test_tutorial001.py"
   ];
 
-  disabledTests = [
-    "test_get_custom_response"
-    # Failed: DID NOT RAISE <class 'starlette.websockets.WebSocketDisconnect'>
-    "test_websocket_invalid_data"
-    "test_websocket_no_credentials"
-    # TypeError: __init__() missing 1...starlette-releated
-    "test_head"
-    "test_options"
-    "test_trace"
-    # Unexpected number of warnings caught
-    "test_warn_duplicate_operation_id"
-  ];
+  pythonImportsCheck = [ "fastapi" ];
 
-  pythonImportsCheck = [
-    "fastapi"
-  ];
-
-  meta = with lib; {
+  meta = {
+    changelog = "https://github.com/fastapi/fastapi/releases/tag/${finalAttrs.src.tag}";
     description = "Web framework for building APIs";
-    homepage = "https://github.com/tiangolo/fastapi";
-    license = licenses.mit;
-    maintainers = with maintainers; [ wd15 ];
+    homepage = "https://github.com/fastapi/fastapi";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ wd15 ];
   };
-}
+})

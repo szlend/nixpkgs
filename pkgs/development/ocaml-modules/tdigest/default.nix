@@ -1,28 +1,39 @@
-{ lib, fetchFromGitHub, buildDunePackage
-, core
+{
+  lib,
+  fetchFromGitHub,
+  nix-update-script,
+  buildDunePackage,
+  base,
+  ppx_sexp_conv,
 }:
 
 buildDunePackage rec {
   pname = "tdigest";
-  version = "2.1.1";
+  version = "2.2.1";
 
   src = fetchFromGitHub {
     owner = "SGrondin";
     repo = pname;
     rev = version;
-    sha256 = "sha256-R1uaCN/6NiW+jdGQiflwfihaidngvaWjJM7UFyR4vxs=";
+    sha256 = "sha256-faJ8ZQ7AWDHWfyQ2jq6+8TMe4G4NLjqHxYzLzt2LGh4=";
   };
 
-  minimalOCamlVersion = "4.08";
+  minimalOCamlVersion = "5.1";
+
+  # base v0.17 compatibility
+  patches = [ ./tdigest.patch ];
 
   propagatedBuildInputs = [
-    core
+    base
+    ppx_sexp_conv
   ];
 
-  meta = with lib; {
+  passthru.updateScript = nix-update-script { };
+
+  meta = {
     homepage = "https://github.com/SGrondin/${pname}";
     description = "OCaml implementation of the T-Digest algorithm";
-    license = licenses.mit;
-    maintainers = with maintainers; [ niols ];
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ niols ];
   };
 }
